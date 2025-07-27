@@ -24,6 +24,7 @@ setup(
         'console_scripts': [
             'rc_node = roomie_rc.rc_node:main',
             'test_gui_node = roomie_rc.test_gui_node:main',
+            'test_ioc_node = roomie_rc.test_ioc_node:main',
         ],
     },
 )

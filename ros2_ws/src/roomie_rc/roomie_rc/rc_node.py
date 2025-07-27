@@ -299,12 +299,6 @@ class RCNode(Node):
                 self.handle_delivery_complete_request(gui_event_msg.task_id)
             else:
                 self.get_logger().warn(f'배송 도착 상태가 아닌데 수령 완료 요청: task_state_id={self.current_task_state_id}')
-            
-        # TODO: 나중에 구현할 이벤트들
-        # elif event_id == 13:  # 픽업장소 이동 종료 (RC → GUI)
-        # elif event_id == 15:  # 배송장소 이동 종료 (RC → GUI)  
-        # elif event_id == 16:  # 서랍 열림 (RC → GUI)
-        # elif event_id == 27:  # 적재 이상 (RC → GUI)
         
         else:
             self.get_logger().info(f'알 수 없는 GUI 이벤트: {event_id}')
