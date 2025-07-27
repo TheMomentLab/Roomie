@@ -5,8 +5,20 @@ import websockets
 import requests
 import json
 import threading
+import logging
 from datetime import datetime
 from config import RMS_WS_URL, RMS_HTTP_URL, FOOD_TYPES
+
+# 로그 설정
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('staff_gui.log', encoding='utf-8'),
+        logging.StreamHandler()  # 콘솔에도 출력
+    ]
+)
+logger = logging.getLogger(__name__)
 
 class StaffGUI:
     def __init__(self):
@@ -140,11 +152,14 @@ class StaffGUI:
     def display_order_details(self, order_data):
         self.clear_order_details()
         
+        logger.info(f"🔍 display_order_details 호출됨: {order_data}")
+        
         task_id = order_data['task_id']
         self.order_title.config(text=f"주문 #{task_id}")
         
         # 주문 항목들 표시
         items = order_data['order_details']['items']
+        logger.info(f"📦 주문 항목들: {items}")
         total_amount = 0
         
         for item in items:
@@ -178,7 +193,8 @@ class StaffGUI:
         room_frame = tk.Frame(self.delivery_info_frame, bg="white")
         room_frame.pack(fill=tk.X, pady=2)
         tk.Label(room_frame, text="호실", font=("Arial", 11), bg="white").pack(side=tk.LEFT)
-        tk.Label(room_frame, text=order_data['request_location'], 
+        location = order_data.get('request_location', 'N/A')  # request_location 사용
+        tk.Label(room_frame, text=location, 
                 font=("Arial", 11), bg="white").pack(side=tk.RIGHT)
         
         # 현재 시간으로 주문 시간 표시 (실제로는 서버에서 받아야 함)
@@ -202,40 +218,59 @@ class StaffGUI:
                 self.display_order_details(self.orders[task_id])
     
     def add_new_order(self, order_data):
-        """새 주문 추가"""
-        task_id = order_data['task_id']
-        self.orders[task_id] = order_data
-        
-        # 주문 시간 (현재 시간으로 설정)
-        current_time = datetime.now().strftime("%H:%M")
-        order_text = f"주문 #{task_id} {current_time}"
-        
-        self.orders_listbox.insert(tk.END, order_text)
-        
-        # 알림 표시
-        messagebox.showinfo("새 주문", f"새로운 주문이 접수되었습니다!\n주문 번호: {task_id}")
+            """새 주문 추가"""
+            # task_id를 항상 문자열로 변환하여 저장합니다.
+            task_id = str(order_data['task_id']) 
+            self.orders[task_id] = order_data
+            
+            # 주문 시간 (현재 시간으로 설정)
+            current_time = datetime.now().strftime("%H:%M")
+            order_text = f"주문 #{task_id} {current_time}"
+            
+            self.orders_listbox.insert(tk.END, order_text)
+            
+            # 새로 추가된 주문을 자동으로 선택하고 세부 정보를 표시합니다.
+            # 새로 추가된 항목의 인덱스를 가져옵니다.
+            new_order_index = self.orders_listbox.size() - 1
+            if new_order_index >= 0:
+                self.orders_listbox.selection_clear(0, tk.END)  # 이전 선택을 모두 지웁니다.
+                self.orders_listbox.selection_set(new_order_index)  # 새 항목을 선택합니다.
+                self.orders_listbox.see(new_order_index)  # 필요한 경우 새 항목으로 스크롤합니다.
+                self.on_order_select(None) # 선택 핸들러를 수동으로 호출합니다.
+
+            # 알림 표시
+            messagebox.showinfo("새 주문", f"새로운 주문이 접수되었습니다!\n주문 번호: {task_id}")
     
     def mark_ready(self):
         """준비완료 처리"""
         if not self.selected_order:
+            logger.warning("선택된 주문이 없어 준비완료 처리를 건너뜝니다.") # 추가
             return
             
         task_id = self.selected_order
         
+        # HTTP 요청 URL과 페이로드 로그 추가
+        request_url = f"{RMS_HTTP_URL}/food_order_status_change"
+        request_payload = {
+            "type": "request",
+            "action": "food_order_status_change", 
+            "payload": {
+                "task_id": task_id
+            }
+        }
+        logger.info(f"⬆️ HTTP 요청 전송: URL='{request_url}', Payload={json.dumps(request_payload, ensure_ascii=False)}") # 추가
+
         try:
             # HTTP 요청으로 상태 변경
             response = requests.post(
-                f"{RMS_HTTP_URL}/food_order_status_change",
-                json={
-                    "type": "request",
-                    "action": "food_order_status_change", 
-                    "payload": {
-                        "task_id": task_id
-                    }
-                },
+                request_url, # 수정
+                json=request_payload, # 수정
                 timeout=5
             )
             
+            # 서버 응답 상태 코드 및 내용 로그 추가
+            logger.info(f"⬇️ HTTP 응답 수신: Status Code={response.status_code}, Response Body='{response.text}'") # 추가
+
             if response.status_code == 200:
                 data = response.json()
                 if data.get('payload', {}).get('status_changed') == 'food_ready':
@@ -243,11 +278,12 @@ class StaffGUI:
                     self.move_to_ready(task_id)
                     messagebox.showinfo("완료", f"주문 #{task_id}이 준비완료되었습니다!")
                 else:
-                    messagebox.showerror("오류", "상태 변경에 실패했습니다.")
+                    messagebox.showerror("오류", f"상태 변경에 실패했습니다. 응답: {data}") # 응답 내용 추가
             else:
-                messagebox.showerror("오류", f"서버 오류: {response.status_code}")
+                messagebox.showerror("오류", f"서버 오류: {response.status_code}. 응답: {response.text}") # 응답 내용 추가
                 
         except requests.RequestException as e:
+            logger.error(f"❌ 통신 오류 발생: {str(e)}") # 추가
             messagebox.showerror("오류", f"통신 오류: {str(e)}")
     
     def move_to_ready(self, task_id):
@@ -275,66 +311,8 @@ class StaffGUI:
     
     def show_robot_arrival(self, task_id, robot_id):
         """로봇 도착 알림"""
-        # 팝업 창 생성
-        popup = tk.Toplevel(self.root)
-        popup.title(f"{robot_id} 도착")
-        popup.geometry("400x300")
-        popup.configure(bg="white")
-        
-        # 팝업을 화면 중앙에 위치
-        popup.transient(self.root)
-        popup.grab_set()
-        
-        # 창을 화면 중앙에 배치
-        x = self.root.winfo_x() + (self.root.winfo_width() // 2) - 200
-        y = self.root.winfo_y() + (self.root.winfo_height() // 2) - 150
-        popup.geometry(f"+{x}+{y}")
-        
-        # 메인 프레임
-        main_frame = tk.Frame(popup, bg="white")
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
-        
-        # 로봇 아이콘 (텍스트로 표현)
-        icon_label = tk.Label(main_frame, text="🤖", font=("Arial", 48), 
-                             bg="white", fg="#3498db")
-        icon_label.pack(pady=(20, 10))
-        
-        # 제목
-        title_label = tk.Label(main_frame, text=f"{robot_id} 도착", 
-                              font=("Arial", 20, "bold"), 
-                              bg="white", fg="#2c3e50")
-        title_label.pack(pady=(0, 10))
-        
-        # 메시지
-        message_label = tk.Label(main_frame, 
-                                text=f"{robot_id}이 픽업 장소에 도착했습니다.",
-                                font=("Arial", 12), 
-                                bg="white", fg="#7f8c8d",
-                                wraplength=300)
-        message_label.pack(pady=(0, 20))
-        
-        # 주문 정보 (해당 주문이 있는 경우)
-        if task_id in self.orders:
-            order_info = self.orders[task_id]
-            order_text = f"주문 #{task_id}"
-            if 'request_location' in order_info:
-                order_text += f" ({order_info['request_location']})"
-            
-            order_label = tk.Label(main_frame, text=order_text,
-                                  font=("Arial", 11, "bold"),
-                                  bg="white", fg="#e74c3c")
-            order_label.pack(pady=(0, 20))
-        
-        # 확인 버튼
-        ok_button = tk.Button(main_frame, text="확인", 
-                             font=("Arial", 12, "bold"),
-                             bg="#3498db", fg="white",
-                             relief=tk.FLAT, padx=30, pady=8,
-                             command=popup.destroy)
-        ok_button.pack(pady=(0, 10))
-        
-        # 5초 후 자동으로 닫기
-        popup.after(5000, popup.destroy)
+        messagebox.showinfo("로봇 도착", 
+                           f"로봇 {robot_id}이 주문 #{task_id} 픽업을 위해 도착했습니다!")
     
     def start_websocket_connection(self):
         """WebSocket 연결 시작"""
@@ -353,17 +331,19 @@ class StaffGUI:
                 async with websockets.connect(RMS_WS_URL) as websocket:
                     self.websocket = websocket
                     self.ws_connected = True
-                    print("WebSocket 연결됨")
+                    logger.info("WebSocket 연결됨")
                     
                     async for message in websocket:
                         try:
                             data = json.loads(message)
+                            # 받은 데이터 로그 출력
+                            logger.info(f"📨 받은 WebSocket 메시지: {json.dumps(data, ensure_ascii=False, indent=2)}")
                             self.root.after(0, self.handle_websocket_message, data)
                         except json.JSONDecodeError:
-                            print(f"잘못된 JSON 메시지: {message}")
+                            logger.error(f"❌ 잘못된 JSON 메시지: {message}")
                             
             except Exception as e:
-                print(f"WebSocket 오류: {e}")
+                logger.error(f"WebSocket 오류: {e}")
                 self.ws_connected = False
                 await asyncio.sleep(5)  # 5초 후 재연결 시도
     
@@ -373,15 +353,23 @@ class StaffGUI:
         action = data.get('action')
         payload = data.get('payload', {})
         
+        logger.info(f"🔍 메시지 분석: type={message_type}, action={action}")
+        
         if message_type == 'event':
             if action == 'food_order_creation':
+                logger.info(f"🍽️ 새 주문 접수: {payload}")
                 # 새 주문 접수
                 self.add_new_order(payload)
             elif action == 'food_pickup_arrival':
+                logger.info(f"🤖 로봇 도착: task_id={payload.get('task_id')}, robot_id={payload.get('robot_id')}")
                 # 로봇 도착
                 task_id = payload.get('task_id')
                 robot_id = payload.get('robot_id')
                 self.show_robot_arrival(task_id, robot_id)
+            else:
+                logger.warning(f"❓ 처리되지 않은 이벤트 액션: {action}")
+        else:
+            logger.warning(f"❓ 처리되지 않은 메시지 타입: {message_type}")
     
     def run(self):
         self.root.mainloop()

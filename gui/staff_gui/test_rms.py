@@ -123,7 +123,7 @@ def run_auto_orders():
     async def auto_order_loop():
         counter = 1
         while True:
-            await asyncio.sleep(30)  # 30초마다
+            await asyncio.sleep(15)  # 30초마다
             
             if connected_clients:  # 연결된 클라이언트가 있을 때만
                 order_event = {
