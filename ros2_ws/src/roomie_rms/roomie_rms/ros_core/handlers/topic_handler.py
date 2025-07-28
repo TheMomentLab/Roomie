@@ -2,11 +2,12 @@ import asyncio
 import json
 from datetime import datetime
 
-from app.utils.logger import get_logger, log_ros_event, log_database_operation, log_websocket_event
+from app.utils.logger import get_logger, log_database_operation, log_websocket_event
 from app.utils.error_handler import handle_database_errors, database_transaction, safe_database_connection
 from app.utils.exceptions import DatabaseException
 from app.config import settings
 from app.services import db_manager
+from app.services.websocket_manager import manager as websocket_manager
 
 logger = get_logger(__name__)
 
@@ -37,7 +38,7 @@ class TopicHandler:
 
     @handle_database_errors
     def robot_state_callback(self, msg):
-        """RC로부터 로봇 상태 정보를 받아 DB에 업데이트하고, AGUI/SGUI에 알립니다."""
+        """RC로부터 로봇 상태 정보를 받아 DB에 업데이트하고, AGUI/SGUI에 알림 및 로그를 기록합니다."""
         logger.info(
             "로봇 상태 수신",
             category="ROS2", subcategory="TOPIC-SUB",
@@ -47,9 +48,27 @@ class TopicHandler:
         try:
             with safe_database_connection(db_manager.get_connection) as conn:
                 with database_transaction(conn) as cursor:
+                    # 1. robot_current_state 에 현재 상태 업데이트
                     self.robot_manager.update_robot_current_state(cursor, msg.robot_id, status_id=msg.robot_state_id)
             
-            # TODO: WebSocket 이벤트 전송 로직 추가
+                    # 2. robot_log 에 현재 상태 기록
+                    cursor.execute("SELECT battery_level, is_charging, floor_id, error_id FROM robot_current_state WHERE robot_id = %s", (msg.robot_id,))
+                    current_snapshot = cursor.fetchone()
+                    
+                    self.robot_manager.add_robot_log(
+                        cursor,
+                        robot_id=msg.robot_id,
+                        status_id=msg.robot_state_id,
+                        battery_level=current_snapshot['battery_level'],
+                        is_charging=current_snapshot['is_charging'],
+                        floor_id=current_snapshot['floor_id'],
+                        error_id=current_snapshot['error_id']
+                    )
+
+
+            if msg.robot_state_id == settings.db_consts.robot_status['복귀 대기 중']:
+                logger.info(f"로봇 {msg.robot_id} 복귀 여부 판단 시작...")
+                self.robot_manager.decide_and_execute_return(msg.robot_id)
             
         except (DatabaseException, Exception) as e:
             logger.error(
@@ -58,7 +77,7 @@ class TopicHandler:
             )
 
     def task_state_callback(self, msg):
-        """RC로부터 받은 작업 상태를 로깅합니다 (RMS -> RC 방향이 메인)."""
+        """RC로부터 받은 작업 상태를 로깅합니다 (참고용)."""
         logger.info(
             "작업 상태 수신 (RC -> RMS)",
             category="ROS2", subcategory="TOPIC-SUB",
@@ -80,7 +99,12 @@ class TopicHandler:
             with safe_database_connection(db_manager.get_connection) as conn:
                 with database_transaction(conn) as cursor:
                     # 작업 정보 조회
-                    cursor.execute("SELECT robot_id, location_id FROM task WHERE id = %s", (task_id,))
+                    cursor.execute("""
+                        SELECT t.robot_id, t.location_id, tt.name as task_type_name 
+                        FROM task t
+                        JOIN task_type tt ON t.type_id = tt.id
+                        WHERE t.id = %s
+                    """, (task_id,))
                     task_info = cursor.fetchone()
                     
                     if not task_info:
@@ -96,34 +120,38 @@ class TopicHandler:
                     
                     # 픽업 장소 도착
                     if arrival_location_id != destination_id:
-                         logger.info(
-                             "픽업 장소 도착",
-                             category="TASK", subcategory="STATUS-UPDATE",
-                             details={"RobotID": robot_id, "TaskID": task_id, "LocationID": arrival_location_id}
-                         )
-                         
-                         # DB 상태 업데이트
-                         cursor.execute("UPDATE task SET task_status_id = %s WHERE id = %s",
-                                      (settings.db_consts.task_status['픽업 대기 중'], task_id))
-                         log_database_operation("UPDATE", "task", True, f"Task {task_id} 상태 '픽업 대기 중'으로 변경")
-                         
-                         # ROS2 토픽으로 상태 전파
-                         self.publish_task_state(task_id, settings.db_consts.task_status['픽업 대기 중'])
-                         
-                         # SGUI에 픽업 도착 알림 전송
-                         from app.services.websocket_manager import manager as websocket_manager
-                         if websocket_manager:
-                             event_data = {
-                                 "type": "event",
-                                 "action": "food_pickup_arrival",
-                                 "payload": {
-                                     "task_id": str(task_id),
-                                     "robot_id": f"ROBOT_{robot_id:02d}"
-                                 }
-                             }
-                             import json
-                             websocket_manager.broadcast_to_sync("staff", json.dumps(event_data))
-                             log_websocket_event("BROADCAST", "staff", f"픽업 도착 알림 - Task {task_id}")
+                        logger.info(
+                            "픽업 장소 도착",
+                            category="TASK", subcategory="STATUS-UPDATE",
+                            details={"RobotID": robot_id, "TaskID": task_id, "LocationID": arrival_location_id}
+                        )
+                        
+                        # DB 상태 업데이트
+                        cursor.execute("UPDATE task SET task_status_id = %s WHERE id = %s",
+                                    (settings.db_consts.task_status['픽업 대기 중'], task_id))
+                        log_database_operation("UPDATE", "task", True, f"Task {task_id} 상태 '픽업 대기 중'으로 변경")
+                        
+                        # ROS2 토픽으로 상태 전파
+                        self.publish_task_state(task_id, settings.db_consts.task_status['픽업 대기 중'])
+                        
+                        # SGUI에 픽업 도착 알림 전송
+                        action_type = ""
+                        if task_info['task_type_name'] == '음식배송':
+                            action_type = "food_pickup_arrival"
+                        elif task_info['task_type_name'] == '비품배송':
+                            action_type = "supply_pickup_arrival"
+
+                        if action_type:
+                            event_data = {
+                                "type": "event", 
+                                "action": action_type,
+                                "payload": {
+                                    "task_id": str(task_id), 
+                                    "robot_id": f"ROBOT_{robot_id:02d}"
+                                }
+                            }
+                            websocket_manager.broadcast_to_sync("staff", json.dumps(event_data))
+                            log_websocket_event("BROADCAST", "staff", f"픽업 도착 알림({action_type}) - Task {task_id}")
 
                     # 최종 목적지 도착
                     else:
@@ -144,27 +172,24 @@ class TopicHandler:
                         self.publish_task_state(task_id, settings.db_consts.task_status['배송 도착'])
                         
                         # GGUI에 배송 도착 알림 전송 (해당 위치의 클라이언트에게만)
-                        from app.services.websocket_manager import manager as websocket_manager
-                        if websocket_manager:
-                            event_data = {
-                                "type": "event",
-                                "action": "delivery_completion",
-                                "payload": {
-                                    "task_name": f"TASK_{task_id}",
-                                    "request_location": destination_name
-                                }
+                        event_data = {
+                            "type": "event",
+                            "action": "delivery_completion",
+                            "payload": {
+                                "task_name": f"TASK_{task_id}",
+                                "request_location": destination_name
                             }
-                            import json
-                            # 특정 위치의 게스트에게만 전송 (위치 기반 라우팅)
-                            websocket_manager.send_to_client_by_location_sync("guest", destination_name, json.dumps(event_data))
-                            log_websocket_event("SEND", f"guest@{destination_name}", f"배송 도착 알림 - Task {task_id}")
+                        }
+                        # 특정 위치의 게스트에게만 전송 (위치 기반 라우팅)
+                        websocket_manager.send_to_client_by_location_sync("guest", destination_name, json.dumps(event_data))
+                        log_websocket_event("SEND", f"guest@{destination_name}", f"배송 도착 알림 - Task {task_id}")
 
         except (DatabaseException, Exception) as e:
             logger.error(f"도착 이벤트 처리 중 오류: {e}", category="TASK", subcategory="ERROR", details={"Event": "Arrival"})
 
     @handle_database_errors
     def battery_status_callback(self, msg):
-        """수신한 배터리 정보를 DB에 업데이트하고, AGUI에 실시간으로 전송합니다."""
+        """수신한 배터리 정보를 DB에 업데이트하고, AGUI에 실시간으로 전송 및 로그를 기록합니다."""
         logger.info(
             "배터리 상태 수신",
             category="ROS2", subcategory="TOPIC-SUB",
@@ -174,8 +199,27 @@ class TopicHandler:
         try:
             with safe_database_connection(db_manager.get_connection) as conn:
                 with database_transaction(conn) as cursor:
-                    self.robot_manager.update_robot_current_state(cursor, msg.robot_id, battery_level=msg.charge_percentage)
-            
+                    # 1. robot_current_state 에 현재 상태 업데이트
+                    self.robot_manager.update_robot_current_state(
+                        cursor, 
+                        msg.robot_id, 
+                        battery_level=msg.charge_percentage, 
+                        is_charging=msg.is_charging
+                    )
+                    
+                    # 2. robot_log 에 현재 상태 기록
+                    cursor.execute("SELECT robot_status_id, floor_id, error_id FROM robot_current_state WHERE robot_id = %s", (msg.robot_id,))
+                    current_snapshot = cursor.fetchone()
+
+                    self.robot_manager.add_robot_log(
+                        cursor,
+                        robot_id=msg.robot_id,
+                        status_id=current_snapshot['robot_status_id'],
+                        battery_level=int(msg.charge_percentage),
+                        is_charging=msg.is_charging,
+                        floor_id=current_snapshot['floor_id'],
+                        error_id=current_snapshot['error_id']
+                    )
             # TODO: WebSocket 이벤트 전송 로직 추가
 
         except (DatabaseException, Exception) as e:
@@ -196,12 +240,8 @@ class TopicHandler:
 
         try:
             with safe_database_connection(db_manager.get_connection) as conn:
-                with database_transaction(conn) as cursor:
-                    # `location` 테이블에서 가장 가까운 위치 찾기 (여기서는 가장 가까운 위치 ID가 1이라고 가정)
-                    # TODO: 실제 가장 가까운 위치를 찾는 로직 구현 필요
-                    nearest_location_id = 1 
-                    
-                    self.robot_manager.update_robot_current_state(cursor, msg.robot_id, location_id=nearest_location_id)
+                with database_transaction(conn) as cursor:                    
+                    self.robot_manager.update_robot_current_state(cursor, msg.robot_id, floor_id=msg.floor_id)
             
             # TODO: WebSocket 이벤트 전송 로직 추가
 
@@ -269,28 +309,27 @@ class TopicHandler:
                 with database_transaction(conn) as cursor:
                     cursor.execute("UPDATE task SET task_status_id = %s, task_completion_time = %s WHERE id = %s",
                                  (settings.db_consts.task_status['수령 완료'], datetime.now(), msg.task_id))
+                    cursor.execute("SELECT l.name as destination_name FROM task t JOIN location l ON t.location_id = l.id WHERE t.id = %s", (msg.task_id,))
+                    task_info = cursor.fetchone()
+                    destination_name = task_info['destination_name'] if task_info else ""
                     
-                    cursor.execute("UPDATE robot_current_state SET robot_status_id = %s WHERE robot_id = %s",
-                                 (settings.db_consts.robot_status['작업 가능'], msg.robot_id))
-
             log_database_operation("UPDATE", "task", True, f"Task {msg.task_id} 상태 '수령 완료'로 변경")
             
             # ROS2 토픽으로 최종 작업 상태 전파
             self.publish_task_state(msg.task_id, settings.db_consts.task_status['수령 완료'])
             
             # WebSocket 이벤트 전송
-            from app.services.websocket_manager import manager
-            if manager:
-                websocket_payload = {
-                    "action": "task_final_completion",
+            if destination_name:
+                event_data = {
+                    "type": "event",
+                    "action": "delivery_completion",
                     "payload": {
-                        "task_id": msg.task_id,
-                        "robot_id": msg.robot_id,
-                        "completion_time": datetime.now().isoformat()
+                        "task_name": f"TASK_{msg.task_id}",
+                        "request_location": destination_name
                     }
                 }
-                manager.broadcast_to_sync("admin", websocket_payload)
-                log_websocket_event("BROADCAST", "admin", f"Task {msg.task_id} 최종 완료 알림")
+                websocket_manager.send_to_client_by_location_sync("guest", destination_name, json.dumps(event_data))
+                log_websocket_event("SEND", f"guest@{destination_name}", f"배송 완료 알림 - Task {msg.task_id}")
 
         except (DatabaseException, Exception) as e:
             logger.error(

@@ -11,6 +11,7 @@ Roomie RMS 설정 관리 모듈
 
 from pydantic_settings import BaseSettings
 from typing import Dict, Optional
+from pathlib import Path
 
 # API 엔드포인트 경로를 관리하는 클래스
 class ApiEndpoints:
@@ -154,6 +155,10 @@ class Settings(BaseSettings):
     # SQL 파일 경로
     DB_SCHEMA_PATH: str = "static/sql/roomie_db_tables.sql"
     DB_DATA_PATH: str = "static/sql/roomie_db_data.sql"
+
+    # 정적 파일 경로
+    PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
+    STATIC_DIR: Path = PROJECT_ROOT / "static"
     
     # 클래스로 분리된 설정들을 포함
     api: ApiEndpoints = ApiEndpoints()

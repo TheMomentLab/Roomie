@@ -330,12 +330,12 @@ string message
       {
         "food_name": "스파게티",
         "price": 15000,
-        "image": "/images/spaghetti.jpg"
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD... (생략)"
       },
       {
         "food_name": "피자",
         "price": 25000,
-        "image": "/images/pizza.jpg"
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD... (생략)"
       }
     ]
   }
@@ -361,11 +361,11 @@ string message
     "supply_items": [
       {
         "supply_name": "타월",
-        "image": "/images/towel.jpg"
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD... (생략)"
       },
       {
         "supply_name": "생수",
-        "image": "/images/water.jpg"
+        "image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD... (생략)"
       }
     ]
   }
@@ -616,7 +616,7 @@ string message
   "payload": {
     "tasks": [
       {
-        "task_id": "TASK_001",
+        "task_id": 1,
         "task_type": "음식배송",
         "task_status": "수령 완료",
         "destination": "ROOM_202",
@@ -625,7 +625,7 @@ string message
         "task_completion_time": "2024-03-15T10:52:10Z"
       },
       {
-        "task_id": "TASK_002",
+        "task_id": 2,
         "task_type": "음식배송",
         "task_status": "픽업 대기중",
         "destination": "ROOM_102",
@@ -646,7 +646,7 @@ string message
   "type": "request",
   "action": "task_detail",
   "payload": {
-    "task_id": "TASK_001"
+    "task_id": 1
   }
 }
 ```
@@ -685,7 +685,7 @@ string message
   "action": "robot_list",
   "payload": {
     "filters": {
-      "robot_id": "ROBOT_001",
+      "robot_id": "ROBOT_01",
       "model_name": "ServiceBot_V2",
       "robot_status": "복귀 중"
     }
@@ -703,20 +703,22 @@ string message
       {
         "robot_id": "ROBOT_01",
         "model_name": "ServiceBot_V2",
-        "current_location": "LOB_WAITING",
         "battery_level": 85,
+        "is_charging": "N",
         "task_status": "배송 중",
+        "task_id": 13,
         "has_error": "N",
         "error_code": null
       },
       {
         "robot_id": "ROBOT_02",
         "model_name": "ServiceBot_V1",
-        "current_location": "LOB_CALL",
         "battery_level": 45,
-        "task_status": "failed",
-        "has_error": "Y",
-        "error_code": "..."
+        "is_charging": "Y",
+        "task_status": "작업 불가능",
+        "task_id": null,
+        "has_error": "N",
+        "error_code": null
       }
     ]
   }

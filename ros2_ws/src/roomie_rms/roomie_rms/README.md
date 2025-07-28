@@ -44,9 +44,39 @@
                                      └─────────────────┘
 ```
 
-🔄 데이터 흐름:
-- GUI → HTTP → RMS Node (FastAPI) → 내부 처리 → RMS Node (ROS2) → Topics → Robot Controller
-- Robot Controller → Topics → RMS Node (ROS2) → 내부 처리 → RMS Node (FastAPI) → WebSocket → GUI
+### 데이터 흐름
+
+#### 2.1 GUI → Robot Controller (명령 전송)
+```
+GUI (PyQt6)
+    ↓ HTTP Request
+HTTP Manager (FastAPI Router)
+    ↓ 비즈니스 로직 호출
+Task Manager (비즈니스 로직)
+    ↓ 로봇 할당 및 명령 생성
+Action Handler (ROS2 Action Client)
+    ↓ ROS2 Action Call
+Robot Controller (ROS2 Action Server)
+```
+
+#### 2.2 Robot Controller → GUI (상태 업데이트)
+```
+Robot Controller (ROS2 Publisher)
+    ↓ ROS2 Topic Publish
+Topic Handler (ROS2 Subscriber)
+    ↓ 상태 업데이트 및 DB 저장
+Robot Manager / Task Manager
+    ↓ 실시간 이벤트 전송
+WebSocket Manager (FastAPI WebSocket)
+    ↓ WebSocket Message
+GUI (PyQt6 WebSocket Client)
+```
+
+#### 2.3 통합 데이터 처리 흐름
+- **동기식 처리**: GUI ↔ HTTP Manager ↔ Task/Robot Manager ↔ DB Manager ↔ MySQL
+- **비동기식 처리**: Robot Controller ↔ Topic Handler ↔ WebSocket Manager ↔ GUI
+- **명령 실행**: Task Manager ↔ Action Handler ↔ Robot Controller
+- **상태 관리**: Topic Handler ↔ Robot Manager ↔ DB Manager
 
 ## 3. 기술 스택
 
@@ -110,27 +140,27 @@ roomie_rms/
     │       ├── exceptions.py    # 커스텀 예외 클래스
     │       └── error_handler.py # 에러 처리 데코레이터 및 컨텍스트 매니저
     │
-    ├── testing/                 # 테스트 도구
-    │   ├── __init__.py
-    │   ├── sgui_app.py          # Staff GUI 애플리케이션
-    │   ├── ggui_app.py          # Guest GUI 애플리케이션
-    │   └── rc_gui.py            # RC 시뮬레이터 (GUI + ROS2 Node 통합)
-    │
     ├── logs/                    # 로그 파일 저장소
     │   └── roomie_rms_*.log     # 애플리케이션 로그 (세션별로 생성)
     │
-    └── static/                  # 정적 파일
-        ├── images/              # 이미지 파일
-        │   ├── food/            # 음식 이미지
-        │   └── supply/          # 물품 이미지
-        └── sql/                 # 데이터베이스 스키마 및 초기 데이터
-            ├── roomie_db_tables.sql  # 테이블 스키마
-            └── roomie_db_data.sql    # 초기 데이터
+    ├── static/                  # 정적 파일
+    │   ├── images/              # 이미지 파일
+    │   │   ├── food/            # 음식 이미지
+    │   │   └── supply/          # 물품 이미지
+    │   └── sql/                 # 데이터베이스 스키마 및 초기 데이터
+    │       ├── roomie_db_tables.sql  # 테이블 스키마
+    │       └── roomie_db_data.sql    # 초기 데이터
+    │
+    └── testing/                 # 테스트 도구
+        ├── __init__.py
+        ├── sgui_app.py          # Staff GUI 애플리케이션
+        ├── ggui_app.py          # Guest GUI 애플리케이션
+        └── rc_gui.py            # RC 시뮬레이터 (GUI + ROS2 Node 통합)
 ```
 
 ## 5. 핵심 구현 기능
 
-### 5.1 🆕 통합 서비스 매니저 아키텍처
+### 5.1 통합 서비스 매니저 아키텍처
 - **`services/http_manager.py`**: 모든 HTTP API 엔드포인트를 클래스 기반으로 통합 관리
   - `HttpManager` 클래스: FastAPI 라우터를 내장하여 모든 HTTP API 처리
   - 음식/물품 메뉴, 위치 조회, 작업 생성/변경, 작업/로봇 목록 관리
@@ -141,11 +171,14 @@ roomie_rms/
   - 게스트/스태프/관리자별 WebSocket 엔드포인트 제공
   - 실시간 이벤트 전송 및 연결 상태 관리
 
-- **기존 `routers/` 폴더 제거**: 모든 라우터 로직이 각 매니저 내부로 통합
+- **라우터 통합**: 모든 라우터 로직을 각 매니저 내부로 통합하여 폴더 구조 간소화
 
 ### 5.2 모듈화된 아키텍처
-- **기존**: 단일 `rms_node.py` 파일 (631라인)에 모든 로직 집중
-- **개선**: 관심사 분리를 통한 모듈화
+- **관심사 분리**: 단일 파일에 집중된 로직을 기능별로 분리하여 유지보수성을 향상
+  - `ros_core/`: ROS2 관련 핵심 로직
+  - `handlers/`: ROS2 인터페이스별 처리 로직
+  - `business/`: 비즈니스 로직 분리
+  - `services/`: 통신 프로토콜별 매니저 분리
   - `ros_core/`: ROS2 관련 핵심 로직
   - `handlers/`: ROS2 인터페이스별 처리 로직
   - `business/`: 비즈니스 로직 분리
@@ -155,7 +188,6 @@ roomie_rms/
 - **표준화된 로깅**: 모든 모듈에서 일관된 로그 포맷
 - **파일 로깅**: 로테이션 기능을 포함한 파일 저장
 - **로그 레벨 관리**: 환경변수 기반 로그 레벨 설정
-- **이모지 제거**: 깔끔한 로그 메시지 (로그 레벨 중복 표시 제거)
 
 ### 5.4 에러 처리 표준화
 - **커스텀 예외**: 계층적 예외 클래스 구조
@@ -216,8 +248,7 @@ python testing/ggui_app.py
 
 ### 7.2 로그 설정
 - **로그 파일**: `logs/roomie_rms_YYYYMMDD_HHMMSS.log`
-- **로그 레벨**: 환경변수 `LOG_LEVEL` 또는 `settings.LOG_LEVEL`
-- **로그 로테이션**: 10MB 단위, 최대 5개 백업 파일
+- **로그 레벨**: 환경변수 `LOG_LEVEL`
 
 ### 7.3 데이터베이스 설정
 - **자동 생성**: 데이터베이스가 없으면 자동으로 생성
@@ -227,13 +258,17 @@ python testing/ggui_app.py
 ## 8. API 엔드포인트
 
 ### 8.1 HTTP API (`/api/gui/`)
-- `POST /api/gui/get_food_menu`: 음식 메뉴 조회
-- `POST /api/gui/get_supply_menu`: 물품 메뉴 조회
-- `POST /api/gui/get_locations`: 위치 목록 조회
-- `POST /api/gui/create_delivery_task`: 배송 작업 생성
-- `POST /api/gui/change_task_status`: 작업 상태 변경
-- `GET /api/gui/get_tasks`: 작업 목록 조회 (필터링 지원)
-- `GET /api/gui/get_robots`: 로봇 목록 조회 (필터링 지원)
+- `POST /api/gui/create_call_task`: 호출 작업 생성 (GGUI)
+- `POST /api/gui/get_food_menu`: 음식 메뉴 조회 (GGUI)
+- `POST /api/gui/get_supply_menu`: 비품 메뉴 조회 (GGUI)
+- `POST /api/gui/create_delivery_task`: 배송 작업 생성 (GGUI)
+- `POST /api/gui/get_call_history`: 호출 내역 조회 (GGUI)
+- `POST /api/gui/get_order_history`: 주문 내역 조회 (GGUI)
+- `POST /api/gui/food_order_status_change`: 음식 주문 작업 상태 변경 (SGUI)
+- `POST /api/gui/task_list`: 작업 목록 조회 (AGUI)
+- `POST /api/gui/task_detail`: 작업 상세 정보 조회 (AGUI)
+- `POST /api/gui/robot_list`: 로봇 목록 조회 (AGUI)
+
 
 ### 8.2 WebSocket (`/api/gui/ws/`)
 - `/api/gui/ws/guest/{location_name}`: 게스트용 실시간 이벤트
@@ -244,13 +279,27 @@ python testing/ggui_app.py
 - `/images/`: 음식 및 물품 이미지 제공
 
 ## 9. 데이터베이스 구조
-- **robot**: 로봇 정보
-- **task**: 작업 정보
-- **location**: 위치 정보
-- **order**: 주문 정보
-- **food_order_item**: 음식 주문 상세 정보
-- **supply_order_item**: 물품 주문 상세 정보
-- **food**: 음식 메뉴
-- **supply**: 물품 메뉴
-- **task_type**: 작업 유형
-- **task_status**: 작업 상태
+
+### 9.1 기본 정보 테이블
+- **floor**: 층 정보 (1층~4층)
+- **location_type**: 장소 유형 (로비, 편의시설, 객실, 엘레베이터)
+- **location**: 상세 위치 정보 (객실, 픽업 장소, 엘레베이터 등)
+- **task_type**: 작업 유형 (음식배송, 비품배송, 호출, 길안내)
+- **task_status**: 작업 상태 (접수됨, 준비완료, 로봇할당됨 등)
+- **robot_status**: 로봇 상태 (작업가능, 작업수행중, 복귀중 등)
+- **error**: 에러 유형 (작업실패, 통신오류, 시스템오류)
+
+### 9.2 작업 관리 테이블
+- **task**: 작업 정보 (생성시간, 할당시간, 완료시간 등)
+- **order**: 주문 정보 (작업 ID, 위치, 총 가격)
+- **food_order_item**: 음식 주문 상세 정보 (음식 ID, 수량)
+- **supply_order_item**: 비품 주문 상세 정보 (비품 ID, 수량)
+
+### 9.3 로봇 관리 테이블
+- **robot**: 로봇 기본 정보 (이름, 모델명, 설치일)
+- **robot_current_state**: 로봇 현재 상태 (배터리, 충전여부, 위치, 에러)
+- **robot_log**: 로봇 상태 로그 (시간별 상태 변화 기록)
+
+### 9.4 메뉴 관리 테이블
+- **food**: 음식 메뉴 (이름, 가격, 조리시간, 이미지)
+- **supply**: 비품 목록 (이름, 이미지)
