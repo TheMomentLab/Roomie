@@ -1,1 +1,12 @@
-/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_msgs/srv/door_elevator/DoorStatus.srv
+# DoorStatus.srv
+# Request
+int32 robot_id
+---
+# Response
+int32 robot_id
+bool success
+bool door_opened
+
+# door_opened values:
+# false: closed
+# true: opened 
