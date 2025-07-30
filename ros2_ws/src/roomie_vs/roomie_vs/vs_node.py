@@ -1377,13 +1377,21 @@ class VSNode(Node):
             self.aruco_dict_name = "DICT_ARUCO_ORIGINAL"
             self.get_logger().info("✅ ArUco 사전 로딩 성공")
             
-            self.get_logger().info("🔍 ArUco 기본 파라미터 생성 시도...")
-            self.aruco_params = cv2.aruco.DetectorParameters()
-            self.get_logger().info("✅ ArUco 파라미터 생성 성공")
+            self.get_logger().info("🔍 ArUco 파라미터 설정...")
+            # OpenCV 4.6.0 안전성을 위해 파라미터를 None으로 설정 (기본값 사용)
+            self.aruco_params = None
+            self.get_logger().info("✅ ArUco 파라미터 설정 완료 (기본값 사용)")
             
-            # ArucoDetector는 일단 생성하지 않음 (이 부분이 문제일 가능성)
-            self.aruco_detector = None
-            self.aruco_api_version = "basic"
+            # ArUco 감지 시스템 활성화 (레거시 API 사용)
+            if self.aruco_dict is not None:
+                self.get_logger().info("🔍 ArUco 감지 시스템 활성화...")
+                self.aruco_detector = True  # 활성화 플래그로 사용
+                self.get_logger().info("✅ ArUco 감지 시스템 활성화 완료")
+                self.aruco_api_version = "legacy"
+            else:
+                self.get_logger().warning("ArUco 사전이 없어 감지 시스템 비활성화")
+                self.aruco_detector = False
+                self.aruco_api_version = "error"
             
         except Exception as e:
             self.get_logger().warning(f"초기화 중 오류: {e}")
@@ -1538,7 +1546,7 @@ class VSNode(Node):
     
     def detect_and_update_location(self, input_image: np.ndarray = None) -> int:
         """ArUco 마커를 감지하여 위치 업데이트 및 현재 위치 반환"""
-        if self.aruco_detector is None:
+        if not self.aruco_detector or self.aruco_dict is None:
             self.get_logger().debug("ArUco 시스템이 초기화되지 않음")
             return self.last_detected_location_id
         
@@ -1548,8 +1556,12 @@ class VSNode(Node):
                 current_color = input_image
             else:
                 # 현재 카메라 프레임 획득
-                with self.camera.frame_lock:
-                    current_color = self.camera.current_color
+                if self.current_camera is None:
+                    self.get_logger().debug("현재 카메라가 설정되지 않음")
+                    return self.last_detected_location_id
+                
+                with self.current_camera.frame_lock:
+                    current_color = self.current_camera.current_color
             
             if current_color is None:
                 self.get_logger().debug("카메라 프레임이 없음")
@@ -1561,18 +1573,12 @@ class VSNode(Node):
             # 그레이스케일 변환
             gray = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
             
-            # A키 테스트와 동일한 관대한 파라미터로 감지
-            test_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_ARUCO_ORIGINAL)
-            test_params = cv2.aruco.DetectorParameters()
-            test_params.minMarkerPerimeterRate = 0.03
-            test_params.maxMarkerPerimeterRate = 4.0
-            test_params.polygonalApproxAccuracyRate = 0.1
-            test_params.maxErroneousBitsInBorderRate = 0.35
-            test_params.errorCorrectionRate = 0.6
-            test_detector = cv2.aruco.ArucoDetector(test_dict, test_params)
-            
-            # ArUco 마커 감지 (A키 테스트와 동일한 방식)
-            corners, ids, rejected = test_detector.detectMarkers(gray)
+            # 레거시 API로 ArUco 마커 감지 (기본 파라미터 사용)
+            corners, ids, rejected = cv2.aruco.detectMarkers(
+                gray, 
+                self.aruco_dict, 
+                parameters=None
+            )
             
             # 조용한 자동 감지 (로그 최소화)
             
@@ -1622,8 +1628,12 @@ class VSNode(Node):
         """ArUco 감지 테스트 함수 ('A' 키용) - 모든 ArUco 사전 시도"""
         try:
             # 현재 카메라 프레임 획득
-            with self.camera.frame_lock:
-                current_color = self.camera.current_color
+            if self.current_camera is None:
+                self.get_logger().warning("⚠️ 현재 카메라가 설정되지 않았습니다")
+                return
+            
+            with self.current_camera.frame_lock:
+                current_color = self.current_camera.current_color
             
             if current_color is None:
                 self.get_logger().warning("⚠️ 카메라 프레임이 없습니다")
@@ -1666,21 +1676,15 @@ class VSNode(Node):
             
             for dict_id, dict_name in aruco_dicts_to_test:
                 try:
-                    # 테스트용 ArUco 사전과 detector 생성
+                    # 테스트용 ArUco 사전 생성 (파라미터는 기본값)
                     test_dict = cv2.aruco.getPredefinedDictionary(dict_id)
-                    test_params = cv2.aruco.DetectorParameters()
                     
-                    # 관대한 파라미터 설정
-                    test_params.minMarkerPerimeterRate = 0.03
-                    test_params.maxMarkerPerimeterRate = 4.0
-                    test_params.polygonalApproxAccuracyRate = 0.1
-                    test_params.maxErroneousBitsInBorderRate = 0.35
-                    test_params.errorCorrectionRate = 0.6
-                    
-                    test_detector = cv2.aruco.ArucoDetector(test_dict, test_params)
-                    
-                    # ArUco 마커 감지
-                    corners, ids, rejected = test_detector.detectMarkers(gray)
+                    # ArUco 마커 감지 (레거시 API, 기본 파라미터 사용)
+                    corners, ids, rejected = cv2.aruco.detectMarkers(
+                        gray, 
+                        test_dict, 
+                        parameters=None
+                    )
                     
                     detected_count = len(ids) if ids is not None else 0
                     rejected_count = len(rejected) if rejected is not None else 0
@@ -1727,47 +1731,38 @@ class VSNode(Node):
             self.get_logger().error(f"스택 트레이스: {traceback.format_exc()}")
     
     def _add_aruco_visualization(self, image: np.ndarray):
-        """ArUco 마커 감지 결과를 이미지에 표시"""
-        if self.aruco_detector is None:
+        """ArUco 마커 감지 결과를 이미지에 표시 (이미 감지된 정보 사용)"""
+        if not self.aruco_detector or self.aruco_dict is None:
             return
         
         try:
-            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            
-            # A키 테스트와 동일한 관대한 파라미터로 감지
-            test_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_ARUCO_ORIGINAL)
-            test_params = cv2.aruco.DetectorParameters()
-            test_params.minMarkerPerimeterRate = 0.03
-            test_params.maxMarkerPerimeterRate = 4.0
-            test_params.polygonalApproxAccuracyRate = 0.1
-            test_params.maxErroneousBitsInBorderRate = 0.35
-            test_params.errorCorrectionRate = 0.6
-            test_detector = cv2.aruco.ArucoDetector(test_dict, test_params)
-            
-            # ArUco 마커 감지
-            corners, ids, rejected = test_detector.detectMarkers(gray)
-            
-            if ids is not None:
-                # 감지된 마커 그리기
-                cv2.aruco.drawDetectedMarkers(image, corners, ids)
+            # 이미 감지된 위치 정보 표시 (별도 감지하지 않음)
+            if self.last_detected_location_id is not None:
+                location_names = {
+                    0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
+                    4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
+                    102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
+                }
+                location_name = location_names.get(self.last_detected_location_id, f"ID_{self.last_detected_location_id}")
                 
-                # 마커 정보 텍스트 표시
-                cv2.putText(image, f"ArUco Markers: {len(ids)}", (10, 160), 
+                # 감지된 위치 정보 표시 (더 아래쪽으로 이동)
+                cv2.putText(image, f"ArUco Status: Active", (10, 240), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                cv2.putText(image, f"Location: {location_name}", (10, 265), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
                 
-                # 첫 번째 마커의 location_id 표시
-                if len(ids) > 0:
-                    marker_id = int(ids[0][0])
-                    location_id = self.aruco_to_location.get(marker_id, -1)
-                    if location_id != -1:
-                        location_names = {
-                            0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
-                            4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
-                            102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
-                        }
-                        location_name = location_names.get(location_id, f"ID_{location_id}")
-                        cv2.putText(image, f"Location: {location_name}", (10, 185), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+                # 마지막 감지 시간 표시 (선택적)
+                if self.last_detection_time is not None:
+                    import time
+                    current_time = self.get_clock().now()
+                    time_diff = (current_time - self.last_detection_time).nanoseconds / 1e9
+                    cv2.putText(image, f"Last detected: {time_diff:.1f}s ago", (10, 290), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 255), 2)
+            else:
+                # 아직 감지된 마커가 없음
+                cv2.putText(image, f"ArUco Status: Waiting", (10, 240), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (128, 128, 128), 2)
+                
         except Exception as e:
             pass
     
@@ -1791,9 +1786,19 @@ class VSNode(Node):
             
             try:
                 # 현재 프레임 획득
-                with self.camera.frame_lock:
-                    current_depth = self.camera.current_depth
-                    current_color = self.camera.current_color
+                if self.current_camera is None:
+                    response.success = False
+                    response.message = "현재 카메라가 설정되지 않음"
+                    response.x = []
+                    response.y = []
+                    response.depth = []
+                    response.is_pressed = []
+                    response.timestamp = []
+                    return response
+                
+                with self.current_camera.frame_lock:
+                    current_depth = self.current_camera.current_depth
+                    current_color = self.current_camera.current_color
                 
                 # 이미지 좌우반전
                 if self.flip_horizontal:
