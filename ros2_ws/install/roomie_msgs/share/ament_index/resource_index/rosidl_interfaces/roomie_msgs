@@ -1,9 +1,13 @@
+action/ClickButton.action
+action/ClickButton.idl
 action/PerformReturn.action
 action/PerformReturn.idl
 action/PerformTask.action
 action/PerformTask.idl
 action/ReturnCountdown.action
 action/ReturnCountdown.idl
+action/SetPose.action
+action/SetPose.idl
 action/StartCountdown.action
 action/StartCountdown.idl
 door_elevator/DoorStatus.srv

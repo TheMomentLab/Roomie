@@ -1,0 +1,4 @@
+{
+    "idf.pythonInstallPath": "/home/mac/venv/ros_venv/bin/python",
+    "cmake.sourceDirectory": "/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_msgs"
+}

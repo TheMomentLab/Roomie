@@ -17,6 +17,7 @@ Roomie/
 │       ├── roomie_vs/                 # Vision Service 노드 (VS)
 │       ├── roomie_rms/                # Main Server 노드 (RMS)
 │       ├── roomie_agui/               # 관리자 GUI 노드 (Admin GUI)
+│       ├── roomie_ac/                 # Arm Controller 노드 (AC)
 │       └── bringup/                   # 통합 launch 파일 모음
 │
 ├── esp32_firmware/                     # Micro-ROS 전용 ESP32 펌웨어 개발

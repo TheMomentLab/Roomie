@@ -85,6 +85,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/PerformReturn.action"
   "action/StartCountdown.action"
   "action/ReturnCountdown.action"
+  "action/SetPose.action"
+  "action/ClickButton.action"
   
   DEPENDENCIES
     geometry_msgs
