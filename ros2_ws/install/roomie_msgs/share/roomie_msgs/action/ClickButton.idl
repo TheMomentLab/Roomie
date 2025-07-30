@@ -1,0 +1,32 @@
+// generated from rosidl_adapter/resource/action.idl.em
+// with input from roomie_msgs/action/ClickButton.action
+// generated code does not contain a copyright notice
+
+
+module roomie_msgs {
+  module action {
+    @verbatim (language="comment", text=
+      "Goal")
+    struct ClickButton_Goal {
+      int32 robot_id;
+
+      int32 button_id;
+    };
+    @verbatim (language="comment", text=
+      "Result ")
+    struct ClickButton_Result {
+      int32 robot_id;
+
+      boolean success;
+
+      string message;
+    };
+    @verbatim (language="comment", text=
+      "Feedback ")
+    struct ClickButton_Feedback {
+      int32 robot_id;
+
+      string status;
+    };
+  };
+};
