@@ -2,7 +2,7 @@
 
 # since this file is sourced use either the provided AMENT_CURRENT_PREFIX
 # or fall back to the destination set at configure time
-: ${AMENT_CURRENT_PREFIX:="/home/jay/project_ws/ros-repo-2/ros2_ws/install/roomie_msgs"}
+: ${AMENT_CURRENT_PREFIX:="/home/jinhyuk2me/project_ws/Roomie/ros2_ws/install/roomie_msgs"}
 if [ ! -d "$AMENT_CURRENT_PREFIX" ]; then
   if [ -z "$COLCON_CURRENT_PREFIX" ]; then
     echo "The compile time prefix path '$AMENT_CURRENT_PREFIX' doesn't " \

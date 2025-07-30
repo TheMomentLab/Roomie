@@ -11,6 +11,33 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
+# Find Python and numpy for rosidl Python generation
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -c "import numpy; print(numpy.get_include())"
+  OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+  ERROR_QUIET
+)
+
+if(NUMPY_INCLUDE_DIR)
+  message(STATUS "Found numpy include directory: ${NUMPY_INCLUDE_DIR}")
+  include_directories(${NUMPY_INCLUDE_DIR})
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${NUMPY_INCLUDE_DIR}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${NUMPY_INCLUDE_DIR}")
+else()
+  # Fallback to system numpy if available
+  if(EXISTS "/usr/lib/python3/dist-packages/numpy/core/include")
+    set(NUMPY_INCLUDE_DIR "/usr/lib/python3/dist-packages/numpy/core/include")
+    message(STATUS "Using system numpy include directory: ${NUMPY_INCLUDE_DIR}")
+    include_directories(${NUMPY_INCLUDE_DIR})
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -I${NUMPY_INCLUDE_DIR}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I${NUMPY_INCLUDE_DIR}")
+  else()
+    message(WARNING "Could not find numpy include directory")
+  endif()
+endif()
+
 # Generate interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
   # Messages - Robot Status

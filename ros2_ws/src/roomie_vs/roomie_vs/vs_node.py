@@ -5,6 +5,7 @@ from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
 import threading
 import time
+import os
 import numpy as np
 import cv2
 import cv2.aruco as aruco
@@ -227,11 +228,14 @@ class OpenNI2Camera:
             self.logger.warning(f"카메라 정리 중 에러: {e}")
 
 class WebCamCamera:
-    """일반 웹캠을 위한 카메라 클래스"""
+    """일반 웹캠을 위한 카메라 클래스 (자동 탐지 지원)"""
     
-    def __init__(self, logger, camera_id=0):
+    def __init__(self, logger, camera_id=None, camera_ids_to_try=None, camera_name="웹캠"):
         self.logger = logger
-        self.camera_id = camera_id
+        self.preferred_camera_id = camera_id  # 우선 시도할 ID
+        self.camera_ids_to_try = camera_ids_to_try or [0, 1, 2, 3]  # 시도할 ID 목록
+        self.camera_name = camera_name
+        self.actual_camera_id = None  # 실제 작동하는 ID
         self.is_running = False
         self.cap = None
         
@@ -240,32 +244,62 @@ class WebCamCamera:
         self.frame_lock = threading.Lock()
         
     def initialize(self) -> bool:
-        """웹캠 카메라 초기화"""
+        """웹캠 카메라 자동 탐지 초기화"""
         try:
-            self.logger.info(f"웹캠 카메라 초기화 시작... (camera_id={self.camera_id})")
+            # 우선 지정된 camera_id 시도 (있는 경우)
+            if self.preferred_camera_id is not None:
+                if self._try_camera_id(self.preferred_camera_id):
+                    return True
             
-            self.cap = cv2.VideoCapture(self.camera_id)
-            if not self.cap.isOpened():
-                self.logger.error(f"웹캠 {self.camera_id} 열기 실패")
+            # 지정된 ID가 실패하면 순차적으로 시도
+            self.logger.info(f"{self.camera_name} 자동 탐지 시작... (시도할 ID: {self.camera_ids_to_try})")
+            
+            for camera_id in self.camera_ids_to_try:
+                if self.preferred_camera_id is not None and camera_id == self.preferred_camera_id:
+                    continue  # 이미 시도했으므로 스킵
+                    
+                if self._try_camera_id(camera_id):
+                    return True
+            
+            self.logger.error(f"{self.camera_name} 자동 탐지 실패: 모든 camera_id 시도 완료")
+            return False
+            
+        except Exception as e:
+            self.logger.error(f"{self.camera_name} 초기화 실패: {e}")
+            return False
+    
+    def _try_camera_id(self, camera_id: int) -> bool:
+        """특정 camera_id로 웹캠 초기화 시도"""
+        try:
+            self.logger.info(f"{self.camera_name} camera_id={camera_id} 시도 중...")
+            
+            cap = cv2.VideoCapture(camera_id)
+            if not cap.isOpened():
+                self.logger.debug(f"camera_id={camera_id} 열기 실패")
+                cap.release()
                 return False
             
             # 해상도 설정 (640x480)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             
             # 테스트 프레임 읽기
-            ret, frame = self.cap.read()
-            if not ret:
-                self.logger.error("웹캠에서 프레임 읽기 실패")
+            ret, frame = cap.read()
+            if not ret or frame is None:
+                self.logger.debug(f"camera_id={camera_id} 프레임 읽기 실패")
+                cap.release()
                 return False
             
+            # 성공!
+            self.cap = cap
+            self.actual_camera_id = camera_id
             self.is_running = True
             height, width = frame.shape[:2]
-            self.logger.info(f"웹캠 카메라 초기화 완료: {width}x{height}")
+            self.logger.info(f"✅ {self.camera_name} 초기화 성공: camera_id={camera_id}, {width}x{height}")
             return True
             
         except Exception as e:
-            self.logger.error(f"웹캠 카메라 초기화 실패: {e}")
+            self.logger.debug(f"camera_id={camera_id} 시도 중 에러: {e}")
             return False
     
     def get_frames(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
@@ -299,23 +333,41 @@ class WebCamCamera:
                 self.cap.release()
                 self.cap = None
                 
-            self.logger.info(f"웹캠 카메라 정리 완료 (camera_id={self.camera_id})")
+            self.logger.info(f"{self.camera_name} 정리 완료 (camera_id={self.actual_camera_id})")
             
         except Exception as e:
             self.logger.warning(f"웹캠 정리 중 에러: {e}")
 
 class MultiCameraManager:
-    """멀티 카메라 시스템 관리 클래스"""
+    """멀티 카메라 시스템 관리 클래스 (자동 웹캠 탐지 지원)"""
     
     def __init__(self, logger):
         self.logger = logger
         
-        # 전방 카메라들
-        self.front_webcam = WebCamCamera(logger, camera_id=1)  # 외부 USB 웹캠 (전방)
-        self.front_depth = OpenNI2Camera(logger)              # 뎁스 카메라
+        # 환경변수에서 camera_id 읽기 (선택사항)
+        import os
+        front_cam_id_env = os.getenv('FRONT_CAMERA_ID')
+        rear_cam_id_env = os.getenv('REAR_CAMERA_ID')
         
-        # 후방 카메라
-        self.rear_webcam = WebCamCamera(logger, camera_id=0)   # 내장 웹캠 (후방)
+        front_preferred_id = int(front_cam_id_env) if front_cam_id_env else None
+        rear_preferred_id = int(rear_cam_id_env) if rear_cam_id_env else None
+        
+        # 전방 카메라들 (자동 탐지)
+        self.front_webcam = WebCamCamera(
+            logger, 
+            camera_id=front_preferred_id,  # 환경변수 우선 또는 None
+            camera_ids_to_try=[2, 0, 1, 3],  # ABKO APC930을 먼저 시도
+            camera_name="전방 웹캠"
+        )
+        self.front_depth = OpenNI2Camera(logger)  # 뎁스 카메라
+        
+        # 후방 카메라 (자동 탐지)  
+        self.rear_webcam = WebCamCamera(
+            logger, 
+            camera_id=rear_preferred_id,  # 환경변수 우선 또는 None
+            camera_ids_to_try=[0, 2, 1, 3],  # HD Webcam을 먼저 시도
+            camera_name="후방 웹캠"
+        )
         
         # 초기화 상태
         self.front_webcam_initialized = False
@@ -582,18 +634,18 @@ class MultiModelDetector:
         self.current_model_name = None
         self.current_model = None
         
-        # 모델별 클래스 정의
+        # 모델별 클래스 정의 (실제 모델 순서에 맞게 수정)
         self.model_classes = {
-            'normal': ['person', 'chair', 'door'],  # 일반 주행용: 사람, 의자, 유리문
+            'normal': ['chair', 'door', 'person'],  # 실제 순서: 0=chair, 1=door, 2=person
             'elevator': ['button', 'direction_light', 'display', 'door']  # 엘리베이터용: 버튼, 방향등, 디스플레이, 문
         }
         
-        # 모델별 ID 매핑
+        # 모델별 ID 매핑 (실제 순서에 맞게 수정)
         self.model_id_maps = {
             'normal': {
-                'person': 'PERSON',
-                'chair': 'CHAIR', 
-                'door': 'DOOR'
+                'chair': 'CHAIR',  # 0: chair
+                'door': 'DOOR',    # 1: door
+                'person': 'PERSON' # 2: person
             },
             'elevator': {
                 'button': 'BUTTON',
@@ -613,38 +665,49 @@ class MultiModelDetector:
         try:
             from ultralytics import YOLO
             
-            # 1. 일반 주행용 모델 (model_normal.pt)
-            normal_model_path = self._find_model('model_normal.pt')
+            # 1. 일반 주행용 모델 (training/normal/best.pt)
+            normal_model_path = self._find_model_in_subdir('normal', 'best.pt')
             if normal_model_path:
                 try:
                     self.models['normal'] = YOLO(normal_model_path)
-                    self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
+                    # 실제 모델 클래스 확인
+                    if hasattr(self.models['normal'], 'names'):
+                        actual_classes = list(self.models['normal'].names.values())
+                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
+                        self.logger.info(f"📋 실제 클래스: {actual_classes}")
+                    else:
+                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
                 except Exception as e:
                     self.logger.warning(f"⚠️ 일반 주행 모델 로딩 실패: {e}")
             else:
                 # 일반 주행용 모델이 없으면 COCO 사전훈련 모델 사용
                 try:
                     self.models['normal'] = YOLO('yolov8n.pt')
-                    self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
+                    # COCO 모델 클래스 확인
+                    if hasattr(self.models['normal'], 'names'):
+                        actual_classes = list(self.models['normal'].names.values())
+                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
+                        self.logger.info(f"📋 COCO 클래스 (전체 {len(actual_classes)}개): person, chair 등만 필터링 사용")
+                    else:
+                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
                 except Exception as e:
                     self.logger.warning(f"⚠️ COCO 모델도 로딩 실패: {e}")
             
-            # 2. 엘리베이터용 모델 (best.pt 또는 model_elevator.pt)
-            elevator_paths = ['best.pt', 'model_elevator.pt']
-            elevator_loaded = False
-            
-            for model_file in elevator_paths:
-                elevator_model_path = self._find_model(model_file)
-                if elevator_model_path:
-                    try:
-                        self.models['elevator'] = YOLO(elevator_model_path)
+            # 2. 엘리베이터용 모델 (training/elevator/best.pt)
+            elevator_model_path = self._find_model_in_subdir('elevator', 'best.pt')
+            if elevator_model_path:
+                try:
+                    self.models['elevator'] = YOLO(elevator_model_path)
+                    # 실제 모델 클래스 확인
+                    if hasattr(self.models['elevator'], 'names'):
+                        actual_classes = list(self.models['elevator'].names.values())
                         self.logger.info(f"✅ 엘리베이터 모델 로딩 성공: {elevator_model_path}")
-                        elevator_loaded = True
-                        break
-                    except Exception as e:
-                        self.logger.warning(f"⚠️ 엘리베이터 모델 로딩 실패 ({model_file}): {e}")
-                        
-            if not elevator_loaded:
+                        self.logger.info(f"📋 실제 클래스: {actual_classes}")
+                    else:
+                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공: {elevator_model_path}")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ 엘리베이터 모델 로딩 실패: {e}")
+            else:
                 self.logger.warning("⚠️ 엘리베이터용 모델을 찾을 수 없습니다")
             
             # 초기화 결과
@@ -691,6 +754,27 @@ class MultiModelDetector:
                     return model_path
         
         self.logger.debug(f"모델을 찾을 수 없음: {model_filename}")
+        return None
+    
+    def _find_model_in_subdir(self, subdir, model_filename):
+        """training 폴더의 서브디렉토리에서 모델 파일 찾기"""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        possible_dirs = [
+            os.path.join(script_dir, "..", "training"),
+            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "training"),
+            os.path.join(os.getcwd(), "ros2_ws", "src", "roomie_vs", "training"),
+            "ros2_ws/src/roomie_vs/training"
+        ]
+        
+        for search_dir in possible_dirs:
+            if os.path.exists(search_dir):
+                model_path = os.path.join(search_dir, subdir, model_filename)
+                if os.path.exists(model_path):
+                    self.logger.debug(f"모델 발견: {model_path}")
+                    return model_path
+        
+        self.logger.debug(f"모델을 찾을 수 없음: {subdir}/{model_filename}")
         return None
     
     def set_model_for_mode(self, mode_id):
@@ -768,8 +852,22 @@ class MultiModelDetector:
                     confs = result.boxes.conf.cpu().numpy()
                     classes = result.boxes.cls.cpu().numpy()
                     
-                    current_class_names = self.model_classes.get(self.current_model_name, [])
-                    current_id_map = self.model_id_maps.get(self.current_model_name, {})
+                    # 실제 모델의 클래스 이름 사용 (모델에서 직접 가져오기)
+                    if hasattr(self.current_model, 'names'):
+                        # YOLO 모델이 가진 실제 클래스 이름들
+                        actual_class_names = list(self.current_model.names.values())
+                        self.logger.debug(f"실제 모델 클래스: {actual_class_names}")
+                        current_class_names = actual_class_names
+                    else:
+                        # 백업: 수동 정의된 클래스 이름
+                        current_class_names = self.model_classes.get(self.current_model_name, [])
+                        self.logger.warning(f"모델에서 클래스 이름을 가져올 수 없어 수동 정의 사용: {current_class_names}")
+                    
+                    # ID 매핑도 실제 클래스 이름에 맞게 동적 생성
+                    if hasattr(self.current_model, 'names'):
+                        current_id_map = {name: name.upper() for name in current_class_names}
+                    else:
+                        current_id_map = self.model_id_maps.get(self.current_model_name, {})
                     
                     for box, conf, cls in zip(boxes, confs, classes):
                         x1, y1, x2, y2 = box.astype(int)
@@ -1020,7 +1118,7 @@ class YOLOButtonDetector:
                 return True
             else:
                 self.logger.error("엘리베이터 감지 YOLO 모델을 찾을 수 없습니다")
-                self.logger.error("training/best.pt 파일이 있는지 확인하세요")
+                self.logger.error("training/elevator/best.pt 파일이 있는지 확인하세요")
                 raise FileNotFoundError("엘리베이터 감지 YOLO 모델 파일을 찾을 수 없습니다")
                 
         except ImportError:
@@ -1053,7 +1151,8 @@ class YOLOButtonDetector:
             
         self.logger.info(f"엘리베이터 감지 모델 검색: {training_dir}")
         
-        best_model_path = os.path.join(training_dir, "best.pt")
+        # 엘리베이터 서브디렉토리에서 best.pt 찾기
+        best_model_path = os.path.join(training_dir, "elevator", "best.pt")
         if os.path.exists(best_model_path):
             self.logger.info(f"엘리베이터 감지 모델 발견: {best_model_path}")
             return best_model_path
@@ -1177,76 +1276,39 @@ class VSNode(Node):
         self.flip_horizontal = True  # 좌우반전을 기본으로 켜기
         self.confidence_threshold = 0.7
         
+        # 헤드리스 모드 설정 (GUI 없이 동작)
+        self.headless_mode = os.environ.get('ROOMIE_HEADLESS', 'false').lower() in ['true', '1', 'yes']
+        if self.headless_mode:
+            self.get_logger().info("🖥️ 헤드리스 모드 활성화: GUI 없이 동작합니다")
+        
         # ArUco 마커 감지 설정
         try:
             # OpenCV 버전 확인
             opencv_version = cv2.__version__
             self.get_logger().info(f"OpenCV 버전: {opencv_version}")
+            self.get_logger().info(f"OpenCV 파일 위치: {cv2.__file__}")
+            self.get_logger().info("🔍 ArUco 초기화 시작...")
             
-            # 여러 ArUco 사전 시도
-            aruco_dicts_to_try = [
-                (cv2.aruco.DICT_4X4_50, "DICT_4X4_50"),
-                (cv2.aruco.DICT_4X4_100, "DICT_4X4_100"), 
-                (cv2.aruco.DICT_4X4_250, "DICT_4X4_250"),
-                (cv2.aruco.DICT_4X4_1000, "DICT_4X4_1000"),
-                (cv2.aruco.DICT_5X5_50, "DICT_5X5_50"),
-                (cv2.aruco.DICT_6X6_50, "DICT_6X6_50")
-            ]
-            
-            # 첫 번째로 성공하는 사전 사용 (기본: DICT_ARUCO_ORIGINAL)
+            # ArUco 기본 설정 (단계별 테스트)
+            self.get_logger().info("🔍 ArUco 기본 사전 로딩 시도...")
             self.aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_ARUCO_ORIGINAL)
             self.aruco_dict_name = "DICT_ARUCO_ORIGINAL"
+            self.get_logger().info("✅ ArUco 사전 로딩 성공")
             
-            # ArUco 감지 파라미터를 더 관대하게 설정
+            self.get_logger().info("🔍 ArUco 기본 파라미터 생성 시도...")
             self.aruco_params = cv2.aruco.DetectorParameters()
+            self.get_logger().info("✅ ArUco 파라미터 생성 성공")
             
-            # 매우 관대한 파라미터 설정
-            self.aruco_params.adaptiveThreshWinSizeMin = 3
-            self.aruco_params.adaptiveThreshWinSizeMax = 53  # 더 큰 윈도우
-            self.aruco_params.adaptiveThreshWinSizeStep = 4
-            self.aruco_params.adaptiveThreshConstant = 5    # 더 낮은 임계값
+            # ArucoDetector는 일단 생성하지 않음 (이 부분이 문제일 가능성)
+            self.aruco_detector = None
+            self.aruco_api_version = "basic"
             
-            # 마커 크기 허용 범위를 매우 넓게
-            self.aruco_params.minMarkerPerimeterRate = 0.01  # 매우 작은 마커도 허용
-            self.aruco_params.maxMarkerPerimeterRate = 8.0   # 매우 큰 마커도 허용
-            
-            # 다각형 근사를 매우 관대하게
-            self.aruco_params.polygonalApproxAccuracyRate = 0.2
-            
-            # 코너 간 거리를 매우 작게
-            self.aruco_params.minCornerDistanceRate = 0.005
-            self.aruco_params.minMarkerDistanceRate = 0.005
-            
-            # 에러 허용을 매우 높게
-            self.aruco_params.maxErroneousBitsInBorderRate = 0.5  # 50% 에러까지 허용
-            self.aruco_params.errorCorrectionRate = 0.8  # 80% 에러 정정
-            
-            # 코너 정제 강화
-            self.aruco_params.cornerRefinementMethod = cv2.aruco.CORNER_REFINE_SUBPIX
-            self.aruco_params.cornerRefinementWinSize = 7
-            self.aruco_params.cornerRefinementMaxIterations = 50
-            self.aruco_params.cornerRefinementMinAccuracy = 0.01
-            
-            # 마커 경계 설정
-            self.aruco_params.markerBorderBits = 1
-            self.aruco_params.perspectiveRemovePixelPerCell = 8  # 더 높은 해상도
-            self.aruco_params.perspectiveRemoveIgnoredMarginPerCell = 0.05  # 더 작은 마진
-            
-            # Otsu 임계값 설정
-            self.aruco_params.minOtsuStdDev = 2.0  # 더 낮은 표준편차
-            
-            # ArucoDetector 생성
-            self.aruco_detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
-            self.aruco_api_version = "4.12+"
-            
-            self.get_logger().info(f"ArUco 초기화 성공 (사전: {self.aruco_dict_name}, 관대한 파라미터)")
-                
         except Exception as e:
-            self.get_logger().warning(f"ArUco 초기화 실패: {e}")
+            self.get_logger().warning(f"초기화 중 오류: {e}")
             self.aruco_dict = None
             self.aruco_params = None
             self.aruco_detector = None
-            self.aruco_api_version = "none"
+            self.aruco_api_version = "error"
         
         # 마지막으로 감지된 위치 저장
         self.last_detected_location_id = 0  # 기본값: LOB_WAITING
@@ -2288,150 +2350,156 @@ def main(args=None):
                             display_image = node._draw_objects_on_image(display_image, objects)
                         node._add_info_text(display_image, objects)
                         
-                        cv2.imshow('Roomie VS RGB (YOLO Enhanced)', display_image)
+                        # GUI 표시 (헤드리스 모드가 아닐 때만)
+                        if not node.headless_mode:
+                            cv2.imshow('Roomie VS RGB (YOLO Enhanced)', display_image)
                     
                     if depth_image is not None:
                         depth_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
                         depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
-                        cv2.imshow('Roomie VS Depth', depth_colored)
+                        # GUI 표시 (헤드리스 모드가 아닐 때만)
+                        if not node.headless_mode:
+                            cv2.imshow('Roomie VS Depth', depth_colored)
                     
-                    # 키 처리
-                    key = cv2.waitKey(30) & 0xFF
-                    if key == 27:  # ESC
-                        node.get_logger().info("ESC 키 눌림 - GUI 종료")
-                        break
-                    elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션
-                        node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
-                        node.simulate_tracking_sequence(robot_id=1, task_id=1)
-                    elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트
-                        current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
-                        node.get_logger().info(f"'T' 키 눌림 - 추적 이벤트 발행 시도 (현재: {current_mode})")
-                        import random
-                        event_id = random.choice([0, 1, 2, 3])
-                        success = node.publish_tracking_event(robot_id=1, tracking_event_id=event_id, task_id=1)
-                        if not success:
-                            node.get_logger().info("추적 이벤트를 발행하려면 '1t' 명령으로 추적모드로 변경하세요")
-                    elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트
-                        current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
-                        node.get_logger().info(f"'G' 키 눌림 - 등록 완료 이벤트 발행 시도 (현재: {current_mode})")
-                        success = node.publish_registered_event(robot_id=1)
-                        if not success:
-                            node.get_logger().info("등록 완료 이벤트를 발행하려면 '1r' 명령으로 등록모드로 변경하세요")
-                    elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
-                        model_info = node.model_detector.get_current_model_info()
-                        current_model = model_info['model_name'] or "None"
+                    # 키 처리 (헤드리스 모드가 아닐 때만)
+                    if not node.headless_mode:
+                        key = cv2.waitKey(30) & 0xFF
                         
-                        if objects:
-                            button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
-                            other_objects = [obj for obj in objects if obj.get('class_name') != 'button']
+                        if key == 27:  # ESC
+                            node.get_logger().info("ESC 키 눌림 - GUI 종료")
+                            break
+                        elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션
+                            node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
+                            node.simulate_tracking_sequence(robot_id=1, task_id=1)
+                        elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트
+                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            node.get_logger().info(f"'T' 키 눌림 - 추적 이벤트 발행 시도 (현재: {current_mode})")
+                            import random
+                            event_id = random.choice([0, 1, 2, 3])
+                            success = node.publish_tracking_event(robot_id=1, tracking_event_id=event_id, task_id=1)
+                            if not success:
+                                node.get_logger().info("추적 이벤트를 발행하려면 '1t' 명령으로 추적모드로 변경하세요")
+                        elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트
+                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            node.get_logger().info(f"'G' 키 눌림 - 등록 완료 이벤트 발행 시도 (현재: {current_mode})")
+                            success = node.publish_registered_event(robot_id=1)
+                            if not success:
+                                node.get_logger().info("등록 완료 이벤트를 발행하려면 '1r' 명령으로 등록모드로 변경하세요")
+                        elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
+                            model_info = node.model_detector.get_current_model_info()
+                            current_model = model_info['model_name'] or "None"
                             
-                            node.get_logger().info(f"'B' 키 눌림 - 객체 탐지 결과 (모델: {current_model}):")
-                            node.get_logger().info(f"  전체 객체: {len(objects)}개")
-                            node.get_logger().info(f"  버튼: {len(button_objects)}개")
-                            node.get_logger().info(f"  기타 객체: {len(other_objects)}개")
-                            
-                            if button_objects:
-                                node.get_logger().info("  탐지된 버튼들:")
-                                for i, obj in enumerate(button_objects):
-                                    confidence = obj.get('confidence', 1.0)
-                                    pressed = "눌림" if obj.get('is_pressed', False) else "안눌림"
-                                    model_name = obj.get('model_name', 'unknown')
-                                    button_id = obj.get('button_id', 'unknown')
-                                    recognition_method = obj.get('recognition_method', 'none')
-                                    floor_type = obj.get('floor_type', 'unknown')
-                                    
-                                    # 버튼 이름 변환
-                                    if isinstance(button_id, int):
-                                        if button_id == 100:
-                                            button_name = "하행버튼"
-                                        elif button_id == 101:
-                                            button_name = "상행버튼"
-                                        elif button_id == 102:
-                                            button_name = "열기버튼"
-                                        elif button_id == 103:
-                                            button_name = "닫기버튼"
-                                        elif button_id == 13:
-                                            button_name = "B1층"
-                                        elif button_id == 14:
-                                            button_name = "B2층"
+                            if objects:
+                                button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
+                                other_objects = [obj for obj in objects if obj.get('class_name') != 'button']
+                                
+                                node.get_logger().info(f"'B' 키 눌림 - 객체 탐지 결과 (모델: {current_model}):")
+                                node.get_logger().info(f"  전체 객체: {len(objects)}개")
+                                node.get_logger().info(f"  버튼: {len(button_objects)}개")
+                                node.get_logger().info(f"  기타 객체: {len(other_objects)}개")
+                                
+                                if button_objects:
+                                    node.get_logger().info("  탐지된 버튼들:")
+                                    for i, obj in enumerate(button_objects):
+                                        confidence = obj.get('confidence', 1.0)
+                                        pressed = "눌림" if obj.get('is_pressed', False) else "안눌림"
+                                        model_name = obj.get('model_name', 'unknown')
+                                        button_id = obj.get('button_id', 'unknown')
+                                        recognition_method = obj.get('recognition_method', 'none')
+                                        floor_type = obj.get('floor_type', 'unknown')
+                                        
+                                        # 버튼 이름 변환
+                                        if isinstance(button_id, int):
+                                            if button_id == 100:
+                                                button_name = "하행버튼"
+                                            elif button_id == 101:
+                                                button_name = "상행버튼"
+                                            elif button_id == 102:
+                                                button_name = "열기버튼"
+                                            elif button_id == 103:
+                                                button_name = "닫기버튼"
+                                            elif button_id == 13:
+                                                button_name = "B1층"
+                                            elif button_id == 14:
+                                                button_name = "B2층"
+                                            else:
+                                                button_name = f"{button_id}층"
                                         else:
-                                            button_name = f"{button_id}층"
-                                    else:
-                                        button_name = str(button_id)
-                                    
-                                    node.get_logger().info(f"    {i+1}. {button_name} ({model_name}/{recognition_method}) - 신뢰도:{confidence:.2f}, {pressed}, {obj['depth_mm']}mm")
+                                            button_name = str(button_id)
+                                        
+                                        node.get_logger().info(f"    {i+1}. {button_name} ({model_name}/{recognition_method}) - 신뢰도:{confidence:.2f}, {pressed}, {obj['depth_mm']}mm")
+                                
+                                if other_objects:
+                                    node.get_logger().info("  기타 객체들:")
+                                    for i, obj in enumerate(other_objects):
+                                        class_name = obj.get('class_name', 'unknown')
+                                        confidence = obj.get('confidence', 1.0)
+                                        model_name = obj.get('model_name', 'unknown')
+                                        node.get_logger().info(f"    {i+1}. {class_name} ({model_name}) - 신뢰도:{confidence:.2f}, {obj['depth_mm']}mm")
+                            else:
+                                node.get_logger().info(f"'B' 키 눌림 - 탐지된 객체가 없습니다 (모델: {current_model})")
+                        elif key == ord('f') or key == ord('F'):  # F키: 좌우반전 토글
+                            node.flip_horizontal = not node.flip_horizontal
+                            status = "켜짐" if node.flip_horizontal else "꺼짐"
+                            node.get_logger().info(f"'F' 키 눌림 - 좌우반전: {status}")
+                        elif key == ord('c') or key == ord('C'):  # C키: 신뢰도 임계값 조정
+                            current_conf = node.confidence_threshold
+                            if current_conf == 0.7:
+                                node.confidence_threshold = 0.5
+                            elif current_conf == 0.5:
+                                node.confidence_threshold = 0.9
+                            else:
+                                node.confidence_threshold = 0.7
                             
-                            if other_objects:
-                                node.get_logger().info("  기타 객체들:")
-                                for i, obj in enumerate(other_objects):
-                                    class_name = obj.get('class_name', 'unknown')
-                                    confidence = obj.get('confidence', 1.0)
-                                    model_name = obj.get('model_name', 'unknown')
-                                    node.get_logger().info(f"    {i+1}. {class_name} ({model_name}) - 신뢰도:{confidence:.2f}, {obj['depth_mm']}mm")
-                        else:
-                            node.get_logger().info(f"'B' 키 눌림 - 탐지된 객체가 없습니다 (모델: {current_model})")
-                    elif key == ord('f') or key == ord('F'):  # F키: 좌우반전 토글
-                        node.flip_horizontal = not node.flip_horizontal
-                        status = "켜짐" if node.flip_horizontal else "꺼짐"
-                        node.get_logger().info(f"'F' 키 눌림 - 좌우반전: {status}")
-                    elif key == ord('c') or key == ord('C'):  # C키: 신뢰도 임계값 조정
-                        current_conf = node.confidence_threshold
-                        if current_conf == 0.7:
-                            node.confidence_threshold = 0.5
-                        elif current_conf == 0.5:
-                            node.confidence_threshold = 0.9
-                        else:
-                            node.confidence_threshold = 0.7
-                        
-                        node.get_logger().info(f"'C' 키 눌림 - 신뢰도 임계값: {current_conf:.2f} → {node.confidence_threshold:.2f}")
+                            node.get_logger().info(f"'C' 키 눌림 - 신뢰도 임계값: {current_conf:.2f} → {node.confidence_threshold:.2f}")
 
-                    elif key == ord('m') or key == ord('M'):  # M키: 현재 모드 확인
-                        current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
-                        model_info = node.model_detector.get_current_model_info()
-                        model_status = "✅" if model_info['is_active'] else "❌"
-                        current_model = model_info['model_name'] or "None"
-                        aruco_status = "✅" if node.aruco_dict else "❌"
-                        
-                        node.get_logger().info(f"'M' 키 눌림 - 현재 상태:")
-                        node.get_logger().info(f"  VS 모드: {current_mode} (mode_id={node.current_mode_id})")
-                        node.get_logger().info(f"  현재 모델: {current_model} {model_status}")
-                        node.get_logger().info(f"  사용 가능한 모델: {model_info['available_models']}")
-                        node.get_logger().info(f"  현재 카메라: {node.current_camera_name}")
-                        node.get_logger().info(f"  ArUco 시스템: {aruco_status}")
-                        node.get_logger().info(f"  좌우반전: {'ON' if node.flip_horizontal else 'OFF'}")
-                        node.get_logger().info(f"  신뢰도 임계값: {node.confidence_threshold}")
-                        
-                        # 현재 위치 정보
-                        location_names = {
-                            0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
-                            4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
-                            102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
-                        }
-                        current_location_name = location_names.get(node.last_detected_location_id, f"ID_{node.last_detected_location_id}")
-                        node.get_logger().info(f"  현재 위치: {current_location_name}")
-                        
-                        if model_info['is_active']:
-                            supported_classes = model_info['class_names']
-                            node.get_logger().info(f"  감지 가능한 객체: {supported_classes}")
-                        else:
-                            node.get_logger().info(f"  감지 가능한 객체: 없음 (모델 비활성화)")
-                        
-                        node.get_logger().info("후방 카메라 모드: 0(대기), 1(등록), 2(추적)")
-                        node.get_logger().info("전방 카메라 모드: 3(엘리베이터 외부), 4(엘리베이터 내부), 5(일반), 6(대기)")
-                        node.get_logger().info("시뮬레이션 모드: 100(배송), 101(호출), 102(길안내), 103(복귀), 104(엘리베이터)")
-                        node.get_logger().info("키보드: A(ArUco테스트), F(좌우반전), C(신뢰도조정)")
-                    elif key == ord('a') or key == ord('A'):  # A키: ArUco 감지 테스트
-                        node.test_aruco_detection()
-                    elif key != 255:  # 다른 키가 눌렸을 때
-                        if 32 <= key <= 126:
-                            node.get_logger().info(f"'{chr(key)}' 키 눌림")
-                            node.get_logger().info("사용 가능한 키:")
-                            node.get_logger().info("   R(추적시뮬레이션), T(추적이벤트), G(등록완료)")
-                            node.get_logger().info("   B(버튼정보), M(상태확인), A(ArUco테스트)")
-                            node.get_logger().info("   F(좌우반전), C(신뢰도), ESC(종료)")
-                        else:
-                            node.get_logger().info(f"키 코드 {key} 눌림")
-                        
+                        elif key == ord('m') or key == ord('M'):  # M키: 현재 모드 확인
+                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            model_info = node.model_detector.get_current_model_info()
+                            model_status = "✅" if model_info['is_active'] else "❌"
+                            current_model = model_info['model_name'] or "None"
+                            aruco_status = "✅" if node.aruco_dict else "❌"
+                            
+                            node.get_logger().info(f"'M' 키 눌림 - 현재 상태:")
+                            node.get_logger().info(f"  VS 모드: {current_mode} (mode_id={node.current_mode_id})")
+                            node.get_logger().info(f"  현재 모델: {current_model} {model_status}")
+                            node.get_logger().info(f"  사용 가능한 모델: {model_info['available_models']}")
+                            node.get_logger().info(f"  현재 카메라: {node.current_camera_name}")
+                            node.get_logger().info(f"  ArUco 시스템: {aruco_status}")
+                            node.get_logger().info(f"  좌우반전: {'ON' if node.flip_horizontal else 'OFF'}")
+                            node.get_logger().info(f"  신뢰도 임계값: {node.confidence_threshold}")
+                            
+                            # 현재 위치 정보
+                            location_names = {
+                                0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
+                                4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
+                                102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
+                            }
+                            current_location_name = location_names.get(node.last_detected_location_id, f"ID_{node.last_detected_location_id}")
+                            node.get_logger().info(f"  현재 위치: {current_location_name}")
+                            
+                            if model_info['is_active']:
+                                supported_classes = model_info['class_names']
+                                node.get_logger().info(f"  감지 가능한 객체: {supported_classes}")
+                            else:
+                                node.get_logger().info(f"  감지 가능한 객체: 없음 (모델 비활성화)")
+                            
+                            node.get_logger().info("후방 카메라 모드: 0(대기), 1(등록), 2(추적)")
+                            node.get_logger().info("전방 카메라 모드: 3(엘리베이터 외부), 4(엘리베이터 내부), 5(일반), 6(대기)")
+                            node.get_logger().info("시뮬레이션 모드: 100(배송), 101(호출), 102(길안내), 103(복귀), 104(엘리베이터)")
+                            node.get_logger().info("키보드: A(ArUco테스트), F(좌우반전), C(신뢰도조정)")
+                        elif key == ord('a') or key == ord('A'):  # A키: ArUco 감지 테스트
+                            node.test_aruco_detection()
+                        elif key != 255 and key != -1:  # 다른 키가 눌렸을 때 (헤드리스 모드 제외)
+                            if 32 <= key <= 126:
+                                node.get_logger().info(f"'{chr(key)}' 키 눌림")
+                                node.get_logger().info("사용 가능한 키:")
+                                node.get_logger().info("   R(추적시뮬레이션), T(추적이벤트), G(등록완료)")
+                                node.get_logger().info("   B(버튼정보), M(상태확인), A(ArUco테스트)")
+                                node.get_logger().info("   F(좌우반전), C(신뢰도), ESC(종료)")
+                            else:
+                                node.get_logger().info(f"키 코드 {key} 눌림")
+                            
                 except Exception as e:
                     node.get_logger().error(f"프레임 처리 오류: {e}")
                     time.sleep(0.1)
@@ -2450,7 +2518,9 @@ def main(args=None):
             if hasattr(node, 'camera_manager'):
                 node.camera_manager.cleanup_all_cameras()
             
-            cv2.destroyAllWindows()
+            # GUI 윈도우 정리 (헤드리스 모드가 아닐 때만)
+            if hasattr(node, 'headless_mode') and not node.headless_mode:
+                cv2.destroyAllWindows()
             node.destroy_node()
             
     except RuntimeError as e:

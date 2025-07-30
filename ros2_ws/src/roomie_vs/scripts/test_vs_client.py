@@ -339,6 +339,7 @@ class VSInterfaceTestClient(Node):
         print("  1e : SetVSMode - 엘리베이터 외부 (mode_id=3)")
         print("  1i : SetVSMode - 엘리베이터 내부 (mode_id=4)")
         print("  1n : SetVSMode - 일반모드 (mode_id=5)")
+        print("  1f : SetVSMode - 전방 대기모드 (mode_id=6)")
         print("  1s : SetVSMode - 배송 시뮬레이션 (mode_id=100)")
         print("  1c : SetVSMode - 호출 시뮬레이션 (mode_id=101)")
         print("  1g : SetVSMode - 길안내 시뮬레이션 (mode_id=102)")
@@ -502,6 +503,8 @@ class VSInterfaceTestClient(Node):
                     self.test_set_vs_mode(4)  # 엘리베이터 내부 모드
                 elif cmd == "1n":
                     self.test_set_vs_mode(5)  # 일반모드
+                elif cmd == "1f":
+                    self.test_set_vs_mode(6)  # 전방 대기모드
                 elif cmd == "1s":
                     self.test_set_vs_mode(100) # 배송 시뮬레이션
                 elif cmd == "1c":
