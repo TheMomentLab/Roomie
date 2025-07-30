@@ -67,13 +67,14 @@ CREATE TABLE robot (
 CREATE TABLE robot_current_state (
     robot_id INT PRIMARY KEY,
     robot_status_id INT,
-    location_id INT,
-    battery_level FLOAT,
+    battery_level INT,
+    is_charging BOOLEAN,
+    floor_id INT,
     error_id INT,
     last_updated_time DATETIME,
     FOREIGN KEY (robot_id) REFERENCES robot(id),
     FOREIGN KEY (robot_status_id) REFERENCES robot_status(id),
-    FOREIGN KEY (location_id) REFERENCES location(id),
+    FOREIGN KEY (floor_id) REFERENCES floor(id),
     FOREIGN KEY (error_id) REFERENCES error(id)
 );
 
@@ -82,13 +83,15 @@ CREATE TABLE robot_log (
     robot_id INT,
     robot_status_id INT,
     task_id INT,
-    location_id INT,
+    battery_level INT,
+    is_charging BOOLEAN,
+    floor_id INT,
     error_id INT,
-    record_time DATETIME,
+    last_updated_time DATETIME,
     FOREIGN KEY (robot_id) REFERENCES robot(id),
     FOREIGN KEY (robot_status_id) REFERENCES robot_status(id),
     FOREIGN KEY (task_id) REFERENCES task(id),
-    FOREIGN KEY (location_id) REFERENCES location(id),
+    FOREIGN KEY (floor_id) REFERENCES floor(id),
     FOREIGN KEY (error_id) REFERENCES error(id)
 );
 
@@ -105,6 +108,7 @@ CREATE TABLE food (
     id INT PRIMARY KEY,
     name VARCHAR(16),
     price INT,
+    cooking_time INT,
     image VARCHAR(255)
 );
 

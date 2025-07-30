@@ -73,11 +73,11 @@ INSERT INTO `error` (id, name) VALUES
 (103, '시스템 오류');
 
 -- food: 음식 메뉴
-INSERT INTO `food` (id, name, price, image) VALUES
-(0, '스파게티', 15000, '/images/food/spaghetti.jpg'),
-(1, '피자', 31000, '/images/food/pizza.jpg'),
-(2, '스테이크', 48000, '/images/food/steak.jpg'),
-(3, '버거', 11000, '/images/food/burger.jpg');
+INSERT INTO `food` (id, name, price, cooking_time, image) VALUES
+(0, '스파게티', 15000, 18, '/images/food/spaghetti.jpg'),
+(1, '피자', 31000, 20, '/images/food/pizza.jpg'),
+(2, '스테이크', 48000, 20, '/images/food/steak.jpg'),
+(3, '버거', 11000, 15, '/images/food/burger.jpg');
 
 -- supply: 비품 목록
 INSERT INTO `supply` (id, name, image) VALUES
