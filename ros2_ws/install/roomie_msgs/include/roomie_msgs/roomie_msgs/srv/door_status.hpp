@@ -1,1 +1,12 @@
-/home/jinhyuk2me/project_ws/Roomie/ros2_ws/build/roomie_msgs/rosidl_generator_cpp/roomie_msgs/srv/door_status.hpp
+// generated from rosidl_generator_cpp/resource/idl.hpp.em
+// generated code does not contain a copyright notice
+
+#ifndef ROOMIE_MSGS__SRV__DOOR_STATUS_HPP_
+#define ROOMIE_MSGS__SRV__DOOR_STATUS_HPP_
+
+#include "roomie_msgs/srv/detail/door_status__struct.hpp"
+#include "roomie_msgs/srv/detail/door_status__builder.hpp"
+#include "roomie_msgs/srv/detail/door_status__traits.hpp"
+#include "roomie_msgs/srv/detail/door_status__type_support.hpp"
+
+#endif  // ROOMIE_MSGS__SRV__DOOR_STATUS_HPP_

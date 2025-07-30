@@ -1,1 +1,4 @@
-/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_msgs/msg/task_management/PickupCompleted.msg
+# PickupCompleted.msg
+int32 robot_id
+int32 task_id
+builtin_interfaces/Time timestamp 
