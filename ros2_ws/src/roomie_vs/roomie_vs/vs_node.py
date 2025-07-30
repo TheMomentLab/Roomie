@@ -230,7 +230,7 @@ class OpenNI2Camera:
 class WebCamCamera:
     """일반 웹캠을 위한 카메라 클래스 (자동 탐지 지원)"""
     
-    def __init__(self, logger, camera_id=None, camera_ids_to_try=None, camera_name="웹캠"):
+    def __init__(self, logger, camera_id=None, camera_ids_to_try=None, camera_name="Webcam"):
         self.logger = logger
         self.preferred_camera_id = camera_id  # 우선 시도할 ID
         self.camera_ids_to_try = camera_ids_to_try or [0, 1, 2, 3]  # 시도할 ID 목록
@@ -244,29 +244,155 @@ class WebCamCamera:
         self.frame_lock = threading.Lock()
         
     def initialize(self) -> bool:
-        """웹캠 카메라 자동 탐지 초기화"""
+        """웹캠 카메라 자동 탐지 초기화 (백엔드 정보 고려)"""
         try:
             # 우선 지정된 camera_id 시도 (있는 경우)
             if self.preferred_camera_id is not None:
                 if self._try_camera_id(self.preferred_camera_id):
                     return True
             
-            # 지정된 ID가 실패하면 순차적으로 시도
+            # 모든 카메라 스캔해서 백엔드 정보 고려하여 선택
             self.logger.info(f"{self.camera_name} 자동 탐지 시작... (시도할 ID: {self.camera_ids_to_try})")
             
-            for camera_id in self.camera_ids_to_try:
-                if self.preferred_camera_id is not None and camera_id == self.preferred_camera_id:
-                    continue  # 이미 시도했으므로 스킵
-                    
-                if self._try_camera_id(camera_id):
-                    return True
+            # 사용 가능한 카메라들을 모두 스캔
+            available_cameras = self._scan_available_cameras()
             
-            self.logger.error(f"{self.camera_name} 자동 탐지 실패: 모든 camera_id 시도 완료")
+            if not available_cameras:
+                self.logger.error(f"{self.camera_name} 자동 탐지 실패: 사용 가능한 카메라 없음")
+                return False
+            
+            # 카메라 타입에 따라 적절한 카메라 선택
+            selected_camera = self._select_appropriate_camera(available_cameras)
+            
+            if selected_camera is not None:
+                return self._try_camera_id(selected_camera['id'])
+            
+            self.logger.error(f"{self.camera_name} 자동 탐지 실패: 적절한 카메라를 찾을 수 없음")
             return False
             
         except Exception as e:
             self.logger.error(f"{self.camera_name} 초기화 실패: {e}")
             return False
+    
+    def _scan_available_cameras(self) -> list:
+        """사용 가능한 모든 카메라 스캔하여 정보 수집"""
+        available_cameras = []
+        
+        for camera_id in self.camera_ids_to_try:
+            if self.preferred_camera_id is not None and camera_id == self.preferred_camera_id:
+                continue  # 이미 시도했으므로 스킵
+                
+            try:
+                cap = cv2.VideoCapture(camera_id)
+                if not cap.isOpened():
+                    cap.release()
+                    continue
+                
+                # 테스트 프레임 읽기
+                ret, frame = cap.read()
+                if not ret or frame is None:
+                    cap.release()
+                    continue
+                
+                # 카메라 정보 수집
+                backend = cap.getBackendName()
+                height, width = frame.shape[:2]
+                
+                # 카메라 디바이스 이름 가져오기 (v4l2-ctl 사용)
+                device_name = self._get_camera_device_name(camera_id)
+                
+                camera_info = {
+                    'id': camera_id,
+                    'backend': backend,
+                    'width': width,
+                    'height': height,
+                    'device_name': device_name
+                }
+                
+                available_cameras.append(camera_info)
+                self.logger.info(f"발견된 카메라: ID={camera_id}, {width}x{height}, backend={backend}, device='{device_name}'")
+                
+                cap.release()
+                
+            except Exception as e:
+                self.logger.debug(f"camera_id={camera_id} 스캔 중 에러: {e}")
+                continue
+        
+        return available_cameras
+    
+    def _get_camera_device_name(self, camera_id: int) -> str:
+        """v4l2-ctl을 사용하여 카메라 디바이스 이름 가져오기"""
+        try:
+            import subprocess
+            device_path = f"/dev/video{camera_id}"
+            
+            # v4l2-ctl로 디바이스 정보 가져오기
+            result = subprocess.run(
+                ['v4l2-ctl', '--device', device_path, '--info'],
+                capture_output=True, text=True, timeout=3
+            )
+            
+            if result.returncode == 0:
+                # Card 이름 추출 (실제 카메라 이름)
+                for line in result.stdout.split('\n'):
+                    if 'Card type' in line:
+                        card_name = line.split(':', 1)[1].strip()
+                        return card_name
+                    elif 'Device name' in line:
+                        device_name = line.split(':', 1)[1].strip()
+                        return device_name
+            
+            return f"Unknown (ID={camera_id})"
+            
+        except Exception as e:
+            self.logger.debug(f"카메라 디바이스 이름 가져오기 실패 (ID={camera_id}): {e}")
+            return f"Unknown (ID={camera_id})"
+    
+    def _select_appropriate_camera(self, available_cameras: list) -> dict:
+        """디바이스 이름을 기반으로 적절한 카메라 선택"""
+        if not available_cameras:
+            return None
+        
+        # 전방 USB 웹캠인 경우
+        if "USB" in self.camera_name:
+            # 디바이스 이름에서 USB 웹캠 찾기
+            for camera in available_cameras:
+                device_name = camera['device_name'].lower()
+                # USB 웹캠의 일반적인 키워드들
+                usb_keywords = ['usb', 'webcam', 'c920', 'c922', 'c930', 'apc930', 'abko', 'logitech']
+                
+                if any(keyword in device_name for keyword in usb_keywords):
+                    self.logger.info(f"USB 웹캠으로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # USB 웹캠을 못 찾았으면 0번이 아닌 카메라 우선
+            for camera in available_cameras:
+                if camera['id'] != 0:
+                    self.logger.warning(f"USB 웹캠 디바이스명 미매칭, ID 기반 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 그래도 없으면 첫 번째
+            self.logger.warning("USB 웹캠을 찾지 못해 첫 번째 카메라 사용")
+            return available_cameras[0]
+        
+        # 후방 내장 카메라인 경우
+        elif "Built-in" in self.camera_name:
+            # 디바이스 이름에서 내장 카메라 찾기
+            for camera in available_cameras:
+                device_name = camera['device_name'].lower()
+                # 내장 카메라의 일반적인 키워드들
+                builtin_keywords = ['integrated', 'built-in', 'webcam', 'camera', 'hd']
+                
+                if camera['id'] == 0 or any(keyword in device_name for keyword in builtin_keywords):
+                    self.logger.info(f"내장 카메라로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 내장 카메라가 없으면 첫 번째 사용 가능한 카메라
+            self.logger.warning("내장 카메라를 찾지 못해 첫 번째 카메라 사용")
+            return available_cameras[0]
+        
+        # 기본적으로 첫 번째 사용 가능한 카메라 선택
+        return available_cameras[0]
     
     def _try_camera_id(self, camera_id: int) -> bool:
         """특정 camera_id로 웹캠 초기화 시도"""
@@ -295,7 +421,10 @@ class WebCamCamera:
             self.actual_camera_id = camera_id
             self.is_running = True
             height, width = frame.shape[:2]
-            self.logger.info(f"✅ {self.camera_name} 초기화 성공: camera_id={camera_id}, {width}x{height}")
+            
+            # 카메라 백엔드 정보 확인
+            backend = cap.getBackendName()
+            self.logger.info(f"✅ {self.camera_name} 초기화 성공: camera_id={camera_id}, {width}x{height}, backend={backend}")
             return True
             
         except Exception as e:
@@ -352,21 +481,21 @@ class MultiCameraManager:
         front_preferred_id = int(front_cam_id_env) if front_cam_id_env else None
         rear_preferred_id = int(rear_cam_id_env) if rear_cam_id_env else None
         
-        # 전방 카메라들 (자동 탐지)
+        # 전방 카메라들 - 고정 설정: 뎁스 + USB 웹캠
         self.front_webcam = WebCamCamera(
             logger, 
             camera_id=front_preferred_id,  # 환경변수 우선 또는 None
-            camera_ids_to_try=[2, 0, 1, 3],  # ABKO APC930을 먼저 시도
-            camera_name="전방 웹캠"
+            camera_ids_to_try=[0, 1, 2, 3],  # 디바이스 이름으로 구분
+            camera_name="Front USB Webcam"
         )
         self.front_depth = OpenNI2Camera(logger)  # 뎁스 카메라
         
-        # 후방 카메라 (자동 탐지)  
+        # 후방 카메라 - 고정 설정: 노트북 내장캠
         self.rear_webcam = WebCamCamera(
             logger, 
             camera_id=rear_preferred_id,  # 환경변수 우선 또는 None
-            camera_ids_to_try=[0, 2, 1, 3],  # HD Webcam을 먼저 시도
-            camera_name="후방 웹캠"
+            camera_ids_to_try=[0, 1, 2, 3],  # 모든 ID 시도하되 백엔드로 내장캠 선택
+            camera_name="Rear Built-in Camera"
         )
         
         # 초기화 상태
@@ -426,54 +555,44 @@ class MultiCameraManager:
             return False
     
     def get_camera_for_mode(self, mode_id):
-        """모드에 따른 카메라 선택 (대기모드는 카메라 없이도 안정적 동작)"""
+        """모드에 따른 카메라 선택 (모든 모드에서 카메라 활성화)"""
         if mode_id in [0, 1, 2]:  # 후방 관련 모드들
-            if mode_id == 0:  # 후방 대기모드
-                # 대기모드는 카메라 없이도 VS 서비스 제공
-                if self.rear_webcam_initialized:
-                    return self.rear_webcam, None, "후방 웹캠 (대기모드)"
-                else:
-                    self.logger.info("후방 대기모드: 카메라 없이 VS 서비스만 제공")
-                    return None, None, "후방 대기모드 (카메라 없음)"
-            else:  # 등록모드(1), 추적모드(2)
-                if self.rear_webcam_initialized:
-                    return self.rear_webcam, None, "후방 웹캠"
-                else:
-                    self.logger.warning(f"후방 웹캠이 초기화되지 않아 모드 {mode_id} 사용 불가")
-                    return None, None, "없음"
+            if self.rear_webcam_initialized:
+                if mode_id == 0:
+                    return self.rear_webcam, None, "Rear Webcam (Standby)"
+                else:  # 등록모드(1), 추적모드(2)
+                    return self.rear_webcam, None, "Rear Webcam"
+            else:
+                self.logger.warning(f"후방 웹캠이 초기화되지 않아 모드 {mode_id} 사용 불가")
+                return None, None, "None"
                 
         elif mode_id in [3, 4, 5, 6]:  # 전방 관련 모드들
-            if mode_id == 6:  # 전방 대기모드
-                # 대기모드는 카메라 없이도 VS 서비스 제공
-                if self.front_webcam_initialized:
-                    return self.front_webcam, None, "전방 웹캠 (대기모드)"
-                else:
-                    self.logger.info("전방 대기모드: 카메라 없이 VS 서비스만 제공")
-                    return None, None, "전방 대기모드 (카메라 없음)"
-            elif mode_id == 5:  # 일반 주행 모드 (웹캠 + 뎁스)
-                webcam = self.front_webcam if self.front_webcam_initialized else None
-                depth = self.front_depth if self.front_depth_initialized else None
-                
-                if webcam and depth:
-                    return webcam, depth, "전방 웹캠 + 뎁스"
-                elif webcam:
-                    self.logger.warning("뎁스 카메라 없이 웹캠만 사용")
-                    return webcam, None, "전방 웹캠만"
-                elif depth:
-                    self.logger.warning("웹캠 없이 뎁스 카메라만 사용")
-                    return depth, None, "뎁스만"
-                else:
-                    self.logger.error("일반 주행 모드용 카메라가 없음")
-                    return None, None, "없음"
-            else:  # 엘리베이터 외부(3), 내부(4) 모드
-                if self.front_webcam_initialized:
-                    return self.front_webcam, None, "전방 웹캠"
-                else:
-                    self.logger.warning(f"전방 웹캠이 초기화되지 않아 모드 {mode_id} 사용 불가")
-                    return None, None, "없음"
+            # 모든 전방 모드에서 웹캠 + 뎁스 카메라 제공 (모델 적용은 별도)
+            if self.front_webcam_initialized and self.front_depth_initialized:
+                if mode_id == 3:
+                    return self.front_webcam, self.front_depth, "Front Webcam + Depth (Elevator Out)"
+                elif mode_id == 4:
+                    return self.front_webcam, self.front_depth, "Front Webcam + Depth (Elevator In)"
+                elif mode_id == 5:
+                    return self.front_webcam, self.front_depth, "Front Webcam + Depth"
+                else:  # mode_id == 6
+                    return self.front_webcam, self.front_depth, "Front Webcam + Depth (Standby)"
+            elif self.front_webcam_initialized:
+                self.logger.warning("뎁스 카메라 없이 웹캠만 사용")
+                if mode_id == 3:
+                    return self.front_webcam, None, "Front Webcam Only (Elevator Out)"
+                elif mode_id == 4:
+                    return self.front_webcam, None, "Front Webcam Only (Elevator In)"
+                elif mode_id == 5:
+                    return self.front_webcam, None, "Front Webcam Only"
+                else:  # mode_id == 6
+                    return self.front_webcam, None, "Front Webcam Only (Standby)"
+            else:
+                self.logger.warning("전방 카메라들이 초기화되지 않았습니다")
+                return None, None, "None"
         else:
-            self.logger.warning(f"알 수 없는 모드 ID: {mode_id}")
-            return None, None, "없음"
+            # 시뮬레이션 모드 등
+            return None, None, "Simulation Mode"
     
     def cleanup_all_cameras(self):
         """모든 카메라 정리"""
@@ -499,30 +618,30 @@ class MultiCameraManager:
     def get_required_cameras_for_mode(self, mode_id):
         """모드별 필요한 카메라 목록 반환"""
         camera_requirements = {
-            # 후방 관련 모드
-            0: [],                    # 후방 대기: 카메라 없이도 VS 서비스 제공
-            1: ['rear_webcam'],       # 등록 모드: 후방 웹캠만
-            2: ['rear_webcam'],       # 추적 모드: 후방 웹캠만
+            # 후방 관련 모드 - 모두 후방 웹캠 사용
+            0: ['rear_webcam'],           # 후방 대기: 후방 웹캠 (항상 켜놓기)
+            1: ['rear_webcam'],           # 등록 모드: 후방 웹캠만
+            2: ['rear_webcam'],           # 추적 모드: 후방 웹캠만
             
-            # 전방 관련 모드  
-            3: ['front_webcam'],      # 엘리베이터 외부: 전방 웹캠만
-            4: ['front_webcam'],      # 엘리베이터 내부: 전방 웹캠만
+            # 전방 관련 모드 - 모두 전방 웹캠 + 뎁스 사용 (카메라는 항상 켜두고 모델만 선택적 적용)
+            3: ['front_webcam', 'front_depth'],  # 엘리베이터 외부: 전방 웹캠 + 뎁스
+            4: ['front_webcam', 'front_depth'],  # 엘리베이터 내부: 전방 웹캠 + 뎁스
             5: ['front_webcam', 'front_depth'],  # 일반 주행: 전방 웹캠 + 뎁스
-            6: [],                    # 전방 대기: 카메라 없이도 VS 서비스 제공
+            6: ['front_webcam', 'front_depth'],  # 전방 대기: 전방 웹캠 + 뎁스 (항상 켜놓기)
             
             # 시뮬레이션 모드들 (카메라 불필요)
             100: [], 101: [], 102: [], 103: [], 104: []
         }
+        
         return camera_requirements.get(mode_id, [])
     
     def initialize_cameras_for_mode(self, mode_id):
         """모드에 필요한 카메라만 초기화 (GPU 리소스 절약)"""
         required_cameras = self.get_required_cameras_for_mode(mode_id)
         
-        self.logger.info(f"🎯 모드 {mode_id}에 필요한 카메라: {required_cameras if required_cameras else '없음 (대기모드)'}")
+        self.logger.info(f"🎯 모드 {mode_id}에 필요한 카메라: {required_cameras}")
         
-        # 먼저 모든 카메라를 정리 (이전 모드에서 사용하던 카메라들)
-        self._cleanup_unused_cameras(required_cameras)
+        # 전방/후방 카메라는 독립적으로 유지 - 기존 카메라 정리하지 않음
         
         # 필요한 카메라만 초기화
         success = True
@@ -554,48 +673,11 @@ class MultiCameraManager:
             if initialized_cameras:
                 self.logger.info(f"✅ 모드 {mode_id} 카메라 초기화 완료: {', '.join(initialized_cameras)}")
             else:
-                self.logger.warning(f"⚠️ 모드 {mode_id} 필요 카메라 초기화 실패")
+                self.logger.info(f"🔄 모드 {mode_id}: 카메라 이미 초기화됨")
         else:
-            self.logger.info(f"🟡 모드 {mode_id}: 대기모드 - 카메라 없이 VS 서비스 제공")
+            self.logger.info(f"🟡 모드 {mode_id}: 시뮬레이션 모드 - 카메라 불필요")
             
-        return success or len(required_cameras) == 0  # 대기모드는 항상 성공
-    
-    def _cleanup_unused_cameras(self, required_cameras):
-        """현재 모드에 불필요한 카메라들을 정리하여 리소스 절약"""
-        cleanup_count = 0
-        
-        # 후방 웹캠 정리
-        if 'rear_webcam' not in required_cameras and self.rear_webcam_initialized:
-            try:
-                self.rear_webcam.cleanup()
-                self.rear_webcam_initialized = False
-                cleanup_count += 1
-                self.logger.info("🧹 후방 웹캠 리소스 정리 완료")
-            except Exception as e:
-                self.logger.warning(f"후방 웹캠 정리 중 에러: {e}")
-        
-        # 전방 웹캠 정리
-        if 'front_webcam' not in required_cameras and self.front_webcam_initialized:
-            try:
-                self.front_webcam.cleanup()
-                self.front_webcam_initialized = False
-                cleanup_count += 1
-                self.logger.info("🧹 전방 웹캠 리소스 정리 완료")
-            except Exception as e:
-                self.logger.warning(f"전방 웹캠 정리 중 에러: {e}")
-        
-        # 전방 뎁스 정리
-        if 'front_depth' not in required_cameras and self.front_depth_initialized:
-            try:
-                self.front_depth.cleanup()
-                self.front_depth_initialized = False
-                cleanup_count += 1
-                self.logger.info("🧹 전방 뎁스 카메라 리소스 정리 완료")
-            except Exception as e:
-                self.logger.warning(f"전방 뎁스 정리 중 에러: {e}")
-        
-        if cleanup_count > 0:
-            self.logger.info(f"💾 GPU 리소스 절약: {cleanup_count}개 카메라 정리 완료")
+        return success or len(required_cameras) == 0
     
     def _initialize_front_webcam(self):
         """전방 웹캠만 초기화"""
@@ -1270,7 +1352,7 @@ class VSNode(Node):
         # 현재 선택된 카메라들 (모드별로 변경됨)
         self.current_camera = None
         self.current_depth_camera = None
-        self.current_camera_name = "없음"
+        self.current_camera_name = "None"
         
         # 이미지 처리 옵션
         self.flip_horizontal = True  # 좌우반전을 기본으로 켜기
@@ -1329,21 +1411,22 @@ class VSNode(Node):
             202: 202, # ROOM_202
         }
         
-        # VS 모드 상태 관리 (전방 대기모드로 시작)
-        self.current_mode_id = 6
+        # VS 모드 상태 관리 - 전방/후방 독립적으로 관리
+        self.current_front_mode_id = 6  # 전방 대기모드로 시작
+        self.current_rear_mode_id = 0   # 후방 대기모드로 시작
         self.mode_names = {
-            0: "대기모드 (후방)",
-            1: "등록모드 (후방)", 
-            2: "추적모드 (후방)",
-            3: "엘리베이터 외부 모드 (전방)",
-            4: "엘리베이터 내부 모드 (전방)",
-            5: "일반모드 (전방)",
-            6: "대기모드 (전방)",
-            100: "배송 시뮬레이션 모드",
-            101: "호출 시뮬레이션 모드",
-            102: "길안내 시뮬레이션 모드",
-            103: "복귀 시뮬레이션 모드",
-            104: "엘리베이터 시뮬레이션 모드"
+            0: "Standby Mode (Rear)",
+            1: "Registration Mode (Rear)", 
+            2: "Tracking Mode (Rear)",
+            3: "Elevator External Mode (Front)",
+            4: "Elevator Internal Mode (Front)",
+            5: "Normal Mode (Front)",
+            6: "Standby Mode (Front)",
+            100: "Delivery Simulation Mode",
+            101: "Call Simulation Mode",
+            102: "Guide Simulation Mode",
+            103: "Return Simulation Mode",
+            104: "Elevator Simulation Mode"
         }
         
         # 시뮬레이션 모드별 시나리오 카운터
@@ -1355,15 +1438,15 @@ class VSNode(Node):
             104: 0   # 엘리베이터 시뮬레이션
         }
         
-        # 현재 모드에 필요한 카메라만 초기화 (GPU 리소스 절약)
-        self.camera_initialized = True  # 대기모드는 항상 지원
-        self.camera_manager.initialize_cameras_for_mode(self.current_mode_id)
-        self.get_logger().info("🚀 모드 기반 동적 카메라 시스템 초기화 완료")
-        self.get_logger().info("📌 각 대기모드(0: 후방, 6: 전방)는 카메라 없이도 VS 서비스 제공")
-        self.get_logger().info("💾 GPU 리소스 절약: 필요한 카메라만 활성화")
+        # 모든 카메라 활성화 (대기모드에서도 GUI 제공)
+        self.camera_initialized = True
+        self.get_logger().info("🚀 모든 카메라 활성화 초기화 시작")
+        self.get_logger().info("📌 대기모드에서도 카메라와 GUI가 항상 활성화됩니다")
+        self.get_logger().info("💡 실시간 영상 확인 가능 - 리소스 소모 증가")
             
-        # 현재 모드에 맞는 카메라 선택 (카메라 없어도 시도)
-        self.update_camera_for_current_mode()
+        # 전방/후방 카메라 모두 활성화
+        self.update_front_camera()  # 전방 카메라 초기화 (대기모드 6번)
+        self.update_rear_camera()   # 후방 카메라 초기화 (대기모드 0번)
         
         # ROS2 서비스들 (/vs/command/*)
         self.get_logger().info("VS 서비스 인터페이스 초기화 중...")
@@ -1429,79 +1512,51 @@ class VSNode(Node):
         self.get_logger().info("구현된 토픽 2개: tracking_event, registered")
         self.get_logger().info("ArUco 마커 기반 위치 감지 시스템 활성화")
         self.get_logger().info("🎯 GPU 리소스 절약형 동적 카메라 VS Node 초기화 완료!")
-        self.get_logger().info(f"🚀 시작 모드: {self.mode_names[self.current_mode_id]} (ID: {self.current_mode_id})")
+        self.get_logger().info(f"🚀 시작 모드: 전방 {self.mode_names[self.current_front_mode_id]} (ID: {self.current_front_mode_id}), 후방 {self.mode_names[self.current_rear_mode_id]} (ID: {self.current_rear_mode_id})")
         
         # 모드별 카메라 요구사항 요약 출력
         self.get_logger().info("=" * 60)
-        self.get_logger().info("📋 모드별 카메라 리소스 사용 계획")
+        self.get_logger().info("📋 모드별 카메라 사용 계획 (항상 활성화)")
         self.get_logger().info("=" * 60)
-        self.get_logger().info("후방 관련: 0(대기) → 없음, 1(등록) → 후방웹캠, 2(추적) → 후방웹캠")
-        self.get_logger().info("전방 관련: 3(엘외부) → 전방웹캠, 4(엘내부) → 전방웹캠, 5(일반) → 전방웹캠+뎁스, 6(대기) → 없음")
-        self.get_logger().info("💡 모드 변경 시 불필요한 카메라는 자동으로 정리되어 GPU 리소스를 절약합니다")
+        self.get_logger().info("후방 관련: 0(대기) → 후방웹캠, 1(등록) → 후방웹캠, 2(추적) → 후방웹캠")
+        self.get_logger().info("전방 관련: 3(엘외부) → 전방웹캠+뎁스, 4(엘내부) → 전방웹캠+뎁스, 5(일반) → 전방웹캠+뎁스, 6(대기) → 전방웹캠+뎁스")
+        self.get_logger().info("💡 모든 모드에서 카메라와 GUI가 활성화되어 실시간 영상 확인 가능합니다")
         self.get_logger().info("=" * 60)
     
     def update_camera_for_current_mode(self):
-        """현재 모드에 맞는 카메라와 모델 선택 (동적 카메라 관리)"""
+        """전방/후방 카메라 독립적 업데이트 (호환성 유지)"""
         try:
-            mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
-            old_camera_name = self.current_camera_name
-            
-            # 1. 모드에 필요한 카메라 동적 초기화/정리
-            self.camera_manager.initialize_cameras_for_mode(self.current_mode_id)
-            
-            # 2. 카메라 업데이트
-            camera, depth_camera, camera_name = self.camera_manager.get_camera_for_mode(self.current_mode_id)
-            
-            self.current_camera = camera
-            self.current_depth_camera = depth_camera
-            self.current_camera_name = camera_name
-            
-            # 3. 모델 업데이트
-            model_success = self.model_detector.set_model_for_mode(self.current_mode_id)
-            model_info = self.model_detector.get_current_model_info()
-            
-            # 4. 결과 로그
-            if camera:
-                self.get_logger().info(f"📷 카메라 변경: {old_camera_name} → {camera_name} (모드: {mode_name})")
-            else:
-                if self.current_mode_id in [0, 6]:  # 대기모드
-                    self.get_logger().info(f"🔄 {mode_name}: 카메라 없이 VS 서비스 제공 중")
-                else:
-                    self.get_logger().warning(f"⚠️ 모드 {mode_name}용 카메라가 없습니다")
-            
-            if model_info['is_active']:
-                current_classes = ', '.join(model_info['class_names'][:3])  # 처음 3개만 표시
-                if len(model_info['class_names']) > 3:
-                    current_classes += "..."
-                self.get_logger().info(f"🤖 사용 중인 모델: {model_info['model_name']} (클래스: {current_classes})")
-            else:
-                self.get_logger().info(f"🤖 모델 비활성화 (모드 {mode_name})")
+            # 전방과 후방 카메라를 각각 초기화 (독립적 관리)
+            self.update_front_camera()
+            self.update_rear_camera()
                 
         except Exception as e:
-            self.get_logger().error(f"카메라/모델 선택 중 에러: {e}")
+            self.get_logger().error(f"카메라 업데이트 에러: {e}")
             self.current_camera = None
             self.current_depth_camera = None
-            self.current_camera_name = "에러"
+            self.current_camera_name = "Error"
     
-    def detect_and_update_location(self) -> int:
+    def detect_and_update_location(self, input_image: np.ndarray = None) -> int:
         """ArUco 마커를 감지하여 위치 업데이트 및 현재 위치 반환"""
         if self.aruco_detector is None:
             self.get_logger().debug("ArUco 시스템이 초기화되지 않음")
             return self.last_detected_location_id
         
         try:
-            # 현재 카메라 프레임 획득
-            with self.camera.frame_lock:
-                current_color = self.camera.current_color
+            # 입력 이미지가 제공되면 사용, 없으면 현재 카메라 프레임 사용
+            if input_image is not None:
+                current_color = input_image
+            else:
+                # 현재 카메라 프레임 획득
+                with self.camera.frame_lock:
+                    current_color = self.camera.current_color
             
             if current_color is None:
                 self.get_logger().debug("카메라 프레임이 없음")
                 return self.last_detected_location_id
             
-            # 좌우반전 적용 (A키 테스트와 동일하게)
+            # 좌우반전은 이미 적용되었다고 가정 (main에서 처리)
             processed_image = current_color.copy()
-            if self.flip_horizontal:
-                processed_image = cv2.flip(processed_image, 1)
             
             # 그레이스케일 변환
             gray = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
@@ -1749,7 +1804,7 @@ class VSNode(Node):
                 
                 if current_color is not None:
                     # 다중 모델로 객체 탐지 (현재 모드 전달)
-                    detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_mode_id)
+                    detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_front_mode_id)
                     
                     # 'button' 클래스 객체들만 필터링
                     detected_buttons = [obj for obj in detected_objects if obj.get('class_name') == 'button']
@@ -1834,8 +1889,8 @@ class VSNode(Node):
     def publish_tracking_event(self, robot_id: int, tracking_event_id: int, task_id: int = 1):
         """추적 이벤트 발행 (추적모드에서만 동작)"""
         try:
-            if self.current_mode_id != 2:
-                current_mode = self.mode_names.get(self.current_mode_id, "알 수 없음")
+            if self.current_rear_mode_id != 2:
+                current_mode = self.mode_names.get(self.current_rear_mode_id, "Unknown")
                 self.get_logger().warning(f"추적 이벤트 발행 실패: 현재 모드가 '{current_mode}'입니다")
                 return False
             
@@ -1864,8 +1919,8 @@ class VSNode(Node):
     def publish_registered_event(self, robot_id: int):
         """추적 대상 등록 완료 이벤트 발행 (등록모드에서만 동작)"""
         try:
-            if self.current_mode_id != 1:
-                current_mode = self.mode_names.get(self.current_mode_id, "알 수 없음")
+            if self.current_rear_mode_id != 1:
+                current_mode = self.mode_names.get(self.current_rear_mode_id, "Unknown")
                 self.get_logger().warning(f"등록 완료 이벤트 발행 실패: 현재 모드가 '{current_mode}'입니다")
                 return False
             
@@ -1890,11 +1945,11 @@ class VSNode(Node):
             self.get_logger().info(f"추적 시뮬레이션 시작: robot_id={robot_id}")
             
             # 등록모드로 자동 전환
-            old_mode_id = self.current_mode_id
-            old_mode_name = self.mode_names.get(old_mode_id, "알 수 없음")
+            old_mode_id = self.current_rear_mode_id
+            old_mode_name = self.mode_names.get(old_mode_id, "Unknown")
             
             self.get_logger().info(f"자동 모드 전환: {old_mode_name} → 등록모드")
-            self.current_mode_id = 1
+            self.current_rear_mode_id = 1
             
             time.sleep(1)
             
@@ -1907,7 +1962,7 @@ class VSNode(Node):
             
             # 추적모드로 자동 전환
             self.get_logger().info("자동 모드 전환: 등록모드 → 추적모드")
-            self.current_mode_id = 2
+            self.current_rear_mode_id = 2
             
             time.sleep(1)
             
@@ -1928,16 +1983,16 @@ class VSNode(Node):
             
             # 원래 모드로 복원
             time.sleep(1)
-            if old_mode_id != self.current_mode_id:
+            if old_mode_id != self.current_rear_mode_id:
                 self.get_logger().info(f"모드 복원: 추적모드 → {old_mode_name}")
-                self.current_mode_id = old_mode_id
+                self.current_rear_mode_id = old_mode_id
             
             self.get_logger().info("추적 시뮬레이션 완료")
         
         threading.Thread(target=tracking_simulation, daemon=True).start()
     
     def set_vs_mode_callback(self, request, response):
-        """VS 모드 설정 처리"""
+        """VS 모드 설정 처리 - 전방/후방 독립적 관리"""
         try:
             self.get_logger().info(f"VS 모드 설정 요청: robot_id={request.robot_id}, mode_id={request.mode_id}")
             
@@ -1947,20 +2002,36 @@ class VSNode(Node):
                 response.success = False
                 return response
             
-            old_mode = self.mode_names.get(self.current_mode_id, "알 수 없음")
-            new_mode = self.mode_names[request.mode_id]
+            # 전방/후방 모드 구분
+            is_front_mode = request.mode_id in [3, 4, 5, 6]
+            is_rear_mode = request.mode_id in [0, 1, 2]
             
-            self.current_mode_id = request.mode_id
+            if is_front_mode:
+                old_mode_id = self.current_front_mode_id
+                old_mode = self.mode_names.get(old_mode_id, "Unknown")
+                new_mode = self.mode_names[request.mode_id]
+                
+                self.current_front_mode_id = request.mode_id
+                self.get_logger().info(f"전방 모드 변경: {old_mode} → {new_mode}")
+                
+                # 전방 카메라만 업데이트
+                self.update_front_camera()
+                
+            elif is_rear_mode:
+                old_mode_id = self.current_rear_mode_id
+                old_mode = self.mode_names.get(old_mode_id, "Unknown")
+                new_mode = self.mode_names[request.mode_id]
+                
+                self.current_rear_mode_id = request.mode_id
+                self.get_logger().info(f"후방 모드 변경: {old_mode} → {new_mode}")
+                
+                # 후방 카메라만 업데이트
+                self.update_rear_camera()
             
             response.robot_id = request.robot_id
             response.success = True
             
-            self.get_logger().info(f"VS 모드 변경: {old_mode} → {new_mode}")
-            
-            # 모드 변경에 따른 카메라 업데이트
-            self.update_camera_for_current_mode()
-            
-            # 시뮬레이션 모드 초기화
+            # 시뮬레이션 모드 초기화 (전방/후방 구분 없이 처리)
             if request.mode_id in self.simulation_counters:
                 self.simulation_counters[request.mode_id] = 0
                 
@@ -1970,6 +2041,151 @@ class VSNode(Node):
             response.success = False
         
         return response
+    
+    def get_active_mode_id(self):
+        """현재 활성 모드 ID 반환 (전방 우선, 대기모드가 아닌 경우)"""
+        # 전방이 대기모드가 아니면 전방 모드 반환
+        if self.current_front_mode_id != 6:
+            return self.current_front_mode_id
+        # 후방이 대기모드가 아니면 후방 모드 반환  
+        if self.current_rear_mode_id != 0:
+            return self.current_rear_mode_id
+        # 둘 다 대기모드면 전방 모드 반환
+        return self.current_front_mode_id
+    
+    def get_active_mode_name(self):
+        """현재 활성 모드 이름 반환"""
+        mode_id = self.get_active_mode_id()
+        return self.mode_names.get(mode_id, f"ID_{mode_id}")
+    
+    def get_active_cameras(self):
+        """현재 활성화된 카메라들을 반환 (전방/후방 모두 포함)"""
+        active_cameras = []
+        
+        # 전방 카메라 체크
+        if hasattr(self, 'current_camera') and self.current_camera is not None:
+            # 모든 전방 모드에서 웹캠과 뎁스를 별도 창으로 분리 (카메라는 항상 켜두기)
+            if self.current_front_mode_id in [3, 4, 5, 6]:
+                # 웹캠 창
+                if self.current_front_mode_id == 3:
+                    webcam_name = 'Front USB Webcam (Elevator Out)'
+                elif self.current_front_mode_id == 4:
+                    webcam_name = 'Front USB Webcam (Elevator In)'
+                elif self.current_front_mode_id == 5:
+                    webcam_name = 'Front USB Webcam (ArUco)'
+                else:  # mode_id == 6
+                    webcam_name = 'Front USB Webcam (Standby)'
+                    
+                active_cameras.append({
+                    'camera': self.current_camera,
+                    'depth_camera': None,
+                    'name': webcam_name,
+                    'mode_id': self.current_front_mode_id,
+                    'type': 'front_webcam'
+                })
+                
+                # 뎁스 카메라 창
+                if hasattr(self, 'current_depth_camera') and self.current_depth_camera is not None:
+                    if self.current_front_mode_id == 3:
+                        depth_name = 'Front Depth Camera (Elevator Out)'
+                    elif self.current_front_mode_id == 4:
+                        depth_name = 'Front Depth Camera (Elevator In)'
+                    elif self.current_front_mode_id == 5:
+                        depth_name = 'Front Depth Camera (YOLO)'
+                    else:  # mode_id == 6
+                        depth_name = 'Front Depth Camera (Standby)'
+                        
+                    active_cameras.append({
+                        'camera': self.current_depth_camera,
+                        'depth_camera': self.current_depth_camera,
+                        'name': depth_name,
+                        'mode_id': self.current_front_mode_id,
+                        'type': 'front_depth'
+                    })
+            else:
+                # 다른 전방 모드들은 기존 방식 (혹시 있다면)
+                active_cameras.append({
+                    'camera': self.current_camera,
+                    'depth_camera': getattr(self, 'current_depth_camera', None),
+                    'name': getattr(self, 'current_camera_name', 'Front Camera'),
+                    'mode_id': self.current_front_mode_id,
+                    'type': 'front'
+                })
+        
+        # 후방 카메라 체크
+        if hasattr(self, 'current_rear_camera') and self.current_rear_camera is not None:
+            active_cameras.append({
+                'camera': self.current_rear_camera,
+                'depth_camera': None,  # 후방은 뎁스 카메라 없음
+                'name': getattr(self, 'current_rear_camera_name', 'Rear Camera'),
+                'mode_id': self.current_rear_mode_id,
+                'type': 'rear'
+            })
+        
+        return active_cameras
+    
+    def update_front_camera(self):
+        """전방 카메라와 모델 업데이트"""
+        try:
+            mode_name = self.mode_names.get(self.current_front_mode_id, f"ID_{self.current_front_mode_id}")
+            old_camera_name = getattr(self, 'current_front_camera_name', "No Camera")
+            
+            # 전방 카메라 초기화
+            self.camera_manager.initialize_cameras_for_mode(self.current_front_mode_id)
+            
+            # 전방 카메라 업데이트
+            camera, depth_camera, camera_name = self.camera_manager.get_camera_for_mode(self.current_front_mode_id)
+            
+            self.current_camera = camera  # 메인 카메라 (호환성)
+            self.current_depth_camera = depth_camera
+            self.current_camera_name = camera_name
+            
+            # 전방 모델 업데이트
+            self.model_detector.set_model_for_mode(self.current_front_mode_id)
+            model_info = self.model_detector.get_current_model_info()
+            
+            # 결과 로그
+            if camera:
+                self.get_logger().info(f"📷 전방 카메라: {old_camera_name} → {camera_name} (모드: {mode_name})")
+            else:
+                self.get_logger().warning(f"⚠️ 전방 모드 {mode_name}용 카메라가 없습니다")
+            
+            if model_info['is_active']:
+                current_classes = ', '.join(model_info['class_names'][:3])
+                if len(model_info['class_names']) > 3:
+                    current_classes += "..."
+                self.get_logger().info(f"�� 전방 모델: {model_info['model_name']} (클래스: {current_classes})")
+            else:
+                self.get_logger().info(f"🤖 전방 모델 비활성화")
+                
+        except Exception as e:
+            self.get_logger().error(f"전방 카메라 업데이트 에러: {e}")
+    
+    def update_rear_camera(self):
+        """후방 카메라 업데이트 (후방은 모델 사용하지 않음)"""
+        try:
+            mode_name = self.mode_names.get(self.current_rear_mode_id, f"ID_{self.current_rear_mode_id}")
+            old_camera_name = getattr(self, 'current_rear_camera_name', "No Camera")
+            
+            # 후방 카메라 초기화
+            self.camera_manager.initialize_cameras_for_mode(self.current_rear_mode_id)
+            
+            # 후방 카메라 직접 확인 및 설정 (모든 모드에서 카메라 사용)
+            if self.camera_manager.rear_webcam_initialized:
+                self.current_rear_camera = self.camera_manager.rear_webcam
+                if self.current_rear_mode_id == 0:  # 후방 대기모드
+                    self.current_rear_camera_name = "Rear Webcam (Standby)"
+                else:  # 등록 모드(1), 추적 모드(2)
+                    self.current_rear_camera_name = "Rear Webcam"
+                
+                self.get_logger().info(f"📷 후방 카메라: {old_camera_name} → {self.current_rear_camera_name} (모드: {mode_name})")
+            else:
+                self.current_rear_camera = None
+                self.current_rear_camera_name = "None"
+                self.get_logger().warning(f"⚠️ 후방 모드 {mode_name}용 카메라가 없습니다")
+                
+        except Exception as e:
+            self.get_logger().error(f"후방 카메라 업데이트 에러: {e}")
     
     def elevator_width_callback(self, request, response):
         """엘리베이터 입구 너비 감지 처리"""
@@ -2076,7 +2292,7 @@ class VSNode(Node):
             response.success = True
             
             # 시뮬레이션 모드별 위치 시나리오 처리
-            if self.current_mode_id == 100:  # 배송 시뮬레이션
+            if self.get_active_mode_id() == 100:  # 배송 시뮬레이션
                 counter = self.simulation_counters[100]
                 if counter == 0:
                     location_id = 2  # RES_PICKUP
@@ -2091,7 +2307,7 @@ class VSNode(Node):
                 self.simulation_counters[100] += 1
                 response.location_id = location_id
                 
-            elif self.current_mode_id == 103:  # 복귀 시뮬레이션
+            elif self.get_active_mode_id() == 103:  # 복귀 시뮬레이션
                 counter = self.simulation_counters[103]
                 if counter == 0:
                     location_id = 0  # LOB_WAITING
@@ -2103,7 +2319,7 @@ class VSNode(Node):
                 self.simulation_counters[103] += 1
                 response.location_id = location_id
                 
-            elif self.current_mode_id == 5:  # 일반 주행 모드 - ArUco 마커 기반 위치
+            elif self.current_front_mode_id == 5:  # 일반 주행 모드 - ArUco 마커 기반 위치
                 current_location = self.detect_and_update_location()
                 response.location_id = current_location
                 
@@ -2123,7 +2339,7 @@ class VSNode(Node):
                     
             else:  # 기타 모드 - 기본 위치 반환
                 response.location_id = self.last_detected_location_id  # 마지막 알려진 위치 유지
-                mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
+                mode_name = self.get_active_mode_name()
                 self.get_logger().info(f"위치 서비스: {mode_name}에서는 ArUco 사용 안함 (마지막 위치 유지)")
                 
         except Exception as e:
@@ -2215,24 +2431,70 @@ class VSNode(Node):
         
         return image
 
-    def _add_info_text(self, image: np.ndarray, objects: List[dict]):
+    def _add_info_text(self, image: np.ndarray, objects: List[dict], custom_title: str = None):
         """다중 모델 탐지 결과 및 시스템 정보를 영상에 표시"""
         import cv2
         
         # 현재 모드 정보
-        mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
+        mode_name = self.get_active_mode_name()
         
-        # 상단에 제목
-        cv2.putText(image, f"Roomie Vision System v3 - {mode_name}", (10, 30), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+        # 상단에 제목 (custom_title이 있으면 사용)
+        if custom_title:
+            cv2.putText(image, f"Roomie VS - {custom_title}", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+        else:
+            cv2.putText(image, f"Roomie Vision System v3 - {mode_name}", (10, 30), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
         
+        # 현재 모드 ID 추출 (custom_title에서 카메라 타입 유추)
+        current_mode_id = self.get_active_mode_id()
+        
+        # custom_title에서 카메라 타입 판단
+        is_webcam = "Webcam" in (custom_title or "")
+        is_depth = "Depth" in (custom_title or "")
+        is_rear = "Rear" in (custom_title or "")
+        
+        # custom_title에서 모드 추출
+        if "Elevator Out" in (custom_title or ""):
+            current_mode_id = 3
+        elif "Elevator In" in (custom_title or ""):
+            current_mode_id = 4
+        elif "ArUco" in (custom_title or "") or "YOLO" in (custom_title or ""):
+            current_mode_id = 5
+        elif "Standby" in (custom_title or ""):
+            current_mode_id = 6 if not is_rear else 0
+        else:
+            current_mode_id = self.get_active_mode_id()  # 폴백
+        
+        # 실제 모델 적용 여부 판단 (카메라 타입 + 모드 조합)
+        model_applied = False
+        if is_webcam and current_mode_id in [3, 4]:  # 엘리베이터 모드의 웹캠
+            model_applied = True
+        elif is_depth and current_mode_id == 5:  # 일반 모드의 뎁스
+            model_applied = True
+            
         # 현재 모델 상태 및 설정 표시
-        model_info = self.model_detector.get_current_model_info()
-        model_status = "✅" if model_info['is_active'] else "❌"
-        current_model = model_info['model_name'] or "None"
+        if model_applied:  # 실제로 모델이 적용되는 경우
+            model_info = self.model_detector.get_current_model_info()
+            # 안전한 모델 이름 표시 (한글 문제 방지)
+            raw_model_name = model_info['model_name']
+            if raw_model_name == 'normal':
+                current_model = "Normal"
+            elif raw_model_name == 'elevator':
+                current_model = "Elevator" 
+            elif raw_model_name is None:
+                current_model = "None"
+            else:
+                current_model = str(raw_model_name)
+        else:  # 모델이 적용되지 않는 경우 (영상만 표시)
+            current_model = "Off"
+            
         flip_status = "ON" if self.flip_horizontal else "OFF"
         
-        cv2.putText(image, f"Model:{current_model} {model_status} | Camera:{self.current_camera_name} | Flip:{flip_status} | Conf:{self.confidence_threshold}", 
+        # 카메라 이름은 custom_title에서 추출하거나 기본값 사용
+        camera_name_display = custom_title if custom_title else self.current_camera_name
+        
+        cv2.putText(image, f"Model:{current_model} | Camera:{camera_name_display} | Flip:{flip_status} | Conf:{self.confidence_threshold}", 
                    (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # 탐지된 객체 수
@@ -2268,11 +2530,11 @@ class VSNode(Node):
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         
         # ArUco 마커 시각화 추가 (모드 5에서만)
-        if self.current_mode_id == 5:
+        if self.current_front_mode_id == 5:
             self._add_aruco_visualization(image)
         
         # 현재 위치 정보 표시 (모드 5에서만)
-        if self.current_mode_id == 5:
+        if self.current_front_mode_id == 5:
             location_names = {
                 0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
                 4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
@@ -2309,57 +2571,94 @@ def main(args=None):
                 
                 # GUI 처리를 우선순위로
                 try:
-                    # 현재 모드에 맞는 카메라에서 프레임 획득
-                    depth_image, color_image = None, None
+                    active_cameras = node.get_active_cameras()
                     
-                    if node.current_camera:
-                        try:
-                            depth_image, color_image = node.current_camera.get_frames()
-                        except Exception as e:
-                            if frame_count % 100 == 1:  # 주기적으로만 로그 출력
-                                node.get_logger().warning(f"기본 카메라 프레임 획득 실패: {e}")
-                    
-                    # 추가 뎁스 카메라가 있으면 뎁스만 다시 획득
-                    if node.current_depth_camera and node.current_depth_camera != node.current_camera:
-                        try:
-                            additional_depth, _ = node.current_depth_camera.get_frames()
-                            if additional_depth is not None:
-                                depth_image = additional_depth
-                        except Exception as e:
+                    for camera_info in active_cameras:
+                        camera = camera_info['camera']
+                        depth_camera = camera_info['depth_camera']
+                        camera_name = camera_info['name']
+                        camera_type = camera_info['type']
+                        mode_id = camera_info['mode_id']
+                        
+                        depth_image, color_image = None, None
+                        
+                        # 메인 카메라에서 프레임 획득
+                        if camera:
+                            try:
+                                depth_image, color_image = camera.get_frames()
+                            except Exception as e:
+                                if frame_count % 100 == 1:
+                                    node.get_logger().warning(f"{camera_name} 프레임 획득 실패: {e}")
+                        
+                        # 추가 뎁스 카메라가 있으면 뎁스만 다시 획득
+                        if depth_camera and depth_camera != camera:
+                            try:
+                                additional_depth, _ = depth_camera.get_frames()
+                                if additional_depth is not None:
+                                    depth_image = additional_depth
+                            except Exception as e:
+                                if frame_count % 100 == 1:
+                                    node.get_logger().warning(f"{camera_name} 뎁스 카메라 프레임 획득 실패: {e}")
+                        
+                        # 이미지가 없으면 다음 카메라로
+                        if color_image is None:
                             if frame_count % 100 == 1:
-                                node.get_logger().warning(f"추가 뎁스 카메라 프레임 획득 실패: {e}")
-                    
-                    # 이미지 좌우반전
-                    if node.flip_horizontal:
+                                node.get_logger().warning(f"❌ {camera_name}: color_image가 None입니다")
+                            continue
+                        
+                        # 이미지 좌우반전
+                        if node.flip_horizontal:
+                            if color_image is not None:
+                                color_image = cv2.flip(color_image, 1)
+                            if depth_image is not None:
+                                depth_image = cv2.flip(depth_image, 1)
+                        
+                        # ArUco 마커 자동 감지 (일반 모드의 전방 웹캠에서만)
+                        if color_image is not None and camera_type == 'front_webcam' and mode_id == 5:
+                            node.detect_and_update_location()
+                        
+                        # 객체 탐지 및 시각화
+                        objects = []
                         if color_image is not None:
-                            color_image = cv2.flip(color_image, 1)
-                        if depth_image is not None:
-                            depth_image = cv2.flip(depth_image, 1)
-                    
-                    # ArUco 마커 자동 감지 (모드 5: 일반 주행에서만)
-                    if color_image is not None and node.current_mode_id == 5:
-                        node.detect_and_update_location()
-                    
-                    # 객체 탐지 및 시각화
-                    objects = []
-                    if color_image is not None:
-                        objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, node.current_mode_id)
-                        
-                        display_image = color_image.copy()
-                        if objects:
-                            display_image = node._draw_objects_on_image(display_image, objects)
-                        node._add_info_text(display_image, objects)
-                        
-                        # GUI 표시 (헤드리스 모드가 아닐 때만)
-                        if not node.headless_mode:
-                            cv2.imshow('Roomie VS RGB (YOLO Enhanced)', display_image)
-                    
-                    if depth_image is not None:
-                        depth_normalized = cv2.normalize(depth_image, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
-                        depth_colored = cv2.applyColorMap(depth_normalized, cv2.COLORMAP_JET)
-                        # GUI 표시 (헤드리스 모드가 아닐 때만)
-                        if not node.headless_mode:
-                            cv2.imshow('Roomie VS Depth', depth_colored)
+                            # 모드별 + 카메라 타입별 세분화
+                            if camera_type == 'front_webcam':
+                                if mode_id in [3, 4]:  # 엘리베이터 모드: 웹캠에 엘리베이터 YOLO
+                                    objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                elif mode_id == 5:  # 일반 모드: ArUco만 (이미 위에서 처리)
+                                    pass
+                                elif mode_id == 6:  # 대기 모드: 영상만
+                                    pass
+                            elif camera_type == 'front_depth':
+                                if mode_id == 5:  # 일반 모드: 뎁스에 일반 YOLO
+                                    objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                elif mode_id in [3, 4, 6]:  # 엘리베이터/대기 모드: 뎁스는 영상만
+                                    pass
+                            elif camera_type in ['rear', 'front']:
+                                # 후방 카메라나 기타 전방 카메라: 영상만
+                                pass
+                            
+                            display_image = color_image.copy()
+                            if objects:
+                                display_image = node._draw_objects_on_image(display_image, objects)
+                            node._add_info_text(display_image, objects, camera_name)
+                            
+                            # GUI 표시 (헤드리스 모드가 아닐 때만)
+                            if not node.headless_mode:
+                                # 창 이름을 카메라 타입 기준으로 고정 (모드 변경 시 창 재사용)
+                                if camera_type == 'front_webcam':
+                                    window_name = 'Roomie VS - Front Webcam'
+                                elif camera_type == 'front_depth':
+                                    window_name = 'Roomie VS - Front Depth'
+                                elif camera_type in ['rear', 'front']:
+                                    if 'Rear' in camera_name:
+                                        window_name = 'Roomie VS - Rear Webcam'
+                                    else:
+                                        window_name = 'Roomie VS - Front Webcam'
+                                else:
+                                    window_name = f'Roomie VS - {camera_type}'
+                                
+                                cv2.imshow(window_name, display_image)
+                                cv2.waitKey(1)
                     
                     # 키 처리 (헤드리스 모드가 아닐 때만)
                     if not node.headless_mode:
@@ -2372,7 +2671,7 @@ def main(args=None):
                             node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
                             node.simulate_tracking_sequence(robot_id=1, task_id=1)
                         elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트
-                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            current_mode = node.get_active_mode_name()
                             node.get_logger().info(f"'T' 키 눌림 - 추적 이벤트 발행 시도 (현재: {current_mode})")
                             import random
                             event_id = random.choice([0, 1, 2, 3])
@@ -2380,14 +2679,21 @@ def main(args=None):
                             if not success:
                                 node.get_logger().info("추적 이벤트를 발행하려면 '1t' 명령으로 추적모드로 변경하세요")
                         elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트
-                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            current_mode = node.get_active_mode_name()
                             node.get_logger().info(f"'G' 키 눌림 - 등록 완료 이벤트 발행 시도 (현재: {current_mode})")
                             success = node.publish_registered_event(robot_id=1)
                             if not success:
                                 node.get_logger().info("등록 완료 이벤트를 발행하려면 '1r' 명령으로 등록모드로 변경하세요")
                         elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
                             model_info = node.model_detector.get_current_model_info()
-                            current_model = model_info['model_name'] or "None"
+                            # 안전한 모델 이름 표시
+                            raw_model_name = model_info['model_name']
+                            if raw_model_name == 'normal':
+                                current_model = "Normal"
+                            elif raw_model_name == 'elevator':
+                                current_model = "Elevator"
+                            else:
+                                current_model = raw_model_name or "None"
                             
                             if objects:
                                 button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
@@ -2454,14 +2760,21 @@ def main(args=None):
                             node.get_logger().info(f"'C' 키 눌림 - 신뢰도 임계값: {current_conf:.2f} → {node.confidence_threshold:.2f}")
 
                         elif key == ord('m') or key == ord('M'):  # M키: 현재 모드 확인
-                            current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
+                            current_mode = node.get_active_mode_name()
                             model_info = node.model_detector.get_current_model_info()
                             model_status = "✅" if model_info['is_active'] else "❌"
-                            current_model = model_info['model_name'] or "None"
+                            # 안전한 모델 이름 표시
+                            raw_model_name = model_info['model_name']
+                            if raw_model_name == 'normal':
+                                current_model = "Normal"
+                            elif raw_model_name == 'elevator':
+                                current_model = "Elevator"
+                            else:
+                                current_model = raw_model_name or "None"
                             aruco_status = "✅" if node.aruco_dict else "❌"
                             
                             node.get_logger().info(f"'M' 키 눌림 - 현재 상태:")
-                            node.get_logger().info(f"  VS 모드: {current_mode} (mode_id={node.current_mode_id})")
+                            node.get_logger().info(f"  VS 모드 - 전방: {node.mode_names[node.current_front_mode_id]} (ID:{node.current_front_mode_id}), 후방: {node.mode_names[node.current_rear_mode_id]} (ID:{node.current_rear_mode_id})")
                             node.get_logger().info(f"  현재 모델: {current_model} {model_status}")
                             node.get_logger().info(f"  사용 가능한 모델: {model_info['available_models']}")
                             node.get_logger().info(f"  현재 카메라: {node.current_camera_name}")
