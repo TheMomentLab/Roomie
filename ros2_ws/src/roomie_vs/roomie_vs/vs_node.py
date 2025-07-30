@@ -226,6 +226,768 @@ class OpenNI2Camera:
         except Exception as e:
             self.logger.warning(f"카메라 정리 중 에러: {e}")
 
+class WebCamCamera:
+    """일반 웹캠을 위한 카메라 클래스"""
+    
+    def __init__(self, logger, camera_id=0):
+        self.logger = logger
+        self.camera_id = camera_id
+        self.is_running = False
+        self.cap = None
+        
+        # 현재 프레임
+        self.current_color = None
+        self.frame_lock = threading.Lock()
+        
+    def initialize(self) -> bool:
+        """웹캠 카메라 초기화"""
+        try:
+            self.logger.info(f"웹캠 카메라 초기화 시작... (camera_id={self.camera_id})")
+            
+            self.cap = cv2.VideoCapture(self.camera_id)
+            if not self.cap.isOpened():
+                self.logger.error(f"웹캠 {self.camera_id} 열기 실패")
+                return False
+            
+            # 해상도 설정 (640x480)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            
+            # 테스트 프레임 읽기
+            ret, frame = self.cap.read()
+            if not ret:
+                self.logger.error("웹캠에서 프레임 읽기 실패")
+                return False
+            
+            self.is_running = True
+            height, width = frame.shape[:2]
+            self.logger.info(f"웹캠 카메라 초기화 완료: {width}x{height}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"웹캠 카메라 초기화 실패: {e}")
+            return False
+    
+    def get_frames(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+        """웹캠에서 프레임 획득 (depth는 None 반환)"""
+        if not self.is_running or self.cap is None:
+            raise RuntimeError("웹캠이 초기화되지 않았습니다")
+        
+        try:
+            ret, color_image = self.cap.read()
+            if not ret:
+                self.logger.warning("웹캠 프레임 읽기 실패")
+                return None, None
+            
+            # 현재 프레임 저장
+            with self.frame_lock:
+                self.current_color = color_image.copy()
+            
+            # depth는 없으므로 None 반환
+            return None, color_image
+            
+        except Exception as e:
+            self.logger.error(f"웹캠 프레임 획득 실패: {e}")
+            raise RuntimeError(f"웹캠 프레임 획득 실패: {e}")
+    
+    def cleanup(self):
+        """웹캠 정리"""
+        self.is_running = False
+        
+        try:
+            if self.cap:
+                self.cap.release()
+                self.cap = None
+                
+            self.logger.info(f"웹캠 카메라 정리 완료 (camera_id={self.camera_id})")
+            
+        except Exception as e:
+            self.logger.warning(f"웹캠 정리 중 에러: {e}")
+
+class MultiCameraManager:
+    """멀티 카메라 시스템 관리 클래스"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        
+        # 전방 카메라들
+        self.front_webcam = WebCamCamera(logger, camera_id=1)  # 외부 USB 웹캠 (전방)
+        self.front_depth = OpenNI2Camera(logger)              # 뎁스 카메라
+        
+        # 후방 카메라
+        self.rear_webcam = WebCamCamera(logger, camera_id=0)   # 내장 웹캠 (후방)
+        
+        # 초기화 상태
+        self.front_webcam_initialized = False
+        self.front_depth_initialized = False
+        self.rear_webcam_initialized = False
+        
+    def initialize_all_cameras(self):
+        """모든 카메라 독립적 초기화 (레거시 메서드 - 모드 기반 초기화로 대체됨)"""
+        self.logger.info("📌 레거시 전체 카메라 초기화 - 현재는 모드 기반 동적 초기화 사용")
+        return True  # 대기모드는 항상 지원하므로 True
+    
+    def _initialize_front_cameras(self):
+        """전방 카메라 시스템 초기화"""
+        self.logger.info("🔧 전방 카메라 시스템 초기화...")
+        front_success = False
+        
+        # 전방 웹캠 초기화
+        try:
+            if self.front_webcam.initialize():
+                self.front_webcam_initialized = True
+                self.logger.info("✅ 전방 웹캠 초기화 성공")
+                front_success = True
+            else:
+                self.logger.warning("⚠️ 전방 웹캠 초기화 실패")
+        except Exception as e:
+            self.logger.warning(f"전방 웹캠 초기화 중 에러: {e}")
+        
+        # 전방 뎁스 카메라 초기화
+        try:
+            if self.front_depth.initialize():
+                self.front_depth_initialized = True
+                self.logger.info("✅ 전방 뎁스 카메라 초기화 성공")
+                front_success = True
+            else:
+                self.logger.warning("⚠️ 전방 뎁스 카메라 초기화 실패")
+        except Exception as e:
+            self.logger.warning(f"전방 뎁스 카메라 초기화 중 에러: {e}")
+            
+        return front_success
+    
+    def _initialize_rear_camera(self):
+        """후방 카메라 시스템 초기화"""
+        self.logger.info("🔧 후방 카메라 시스템 초기화...")
+        
+        # 후방 웹캠 초기화
+        try:
+            if self.rear_webcam.initialize():
+                self.rear_webcam_initialized = True
+                self.logger.info("✅ 후방 웹캠 초기화 성공")
+                return True
+            else:
+                self.logger.warning("⚠️ 후방 웹캠 초기화 실패")
+                return False
+        except Exception as e:
+            self.logger.warning(f"후방 웹캠 초기화 중 에러: {e}")
+            return False
+    
+    def get_camera_for_mode(self, mode_id):
+        """모드에 따른 카메라 선택 (대기모드는 카메라 없이도 안정적 동작)"""
+        if mode_id in [0, 1, 2]:  # 후방 관련 모드들
+            if mode_id == 0:  # 후방 대기모드
+                # 대기모드는 카메라 없이도 VS 서비스 제공
+                if self.rear_webcam_initialized:
+                    return self.rear_webcam, None, "후방 웹캠 (대기모드)"
+                else:
+                    self.logger.info("후방 대기모드: 카메라 없이 VS 서비스만 제공")
+                    return None, None, "후방 대기모드 (카메라 없음)"
+            else:  # 등록모드(1), 추적모드(2)
+                if self.rear_webcam_initialized:
+                    return self.rear_webcam, None, "후방 웹캠"
+                else:
+                    self.logger.warning(f"후방 웹캠이 초기화되지 않아 모드 {mode_id} 사용 불가")
+                    return None, None, "없음"
+                
+        elif mode_id in [3, 4, 5, 6]:  # 전방 관련 모드들
+            if mode_id == 6:  # 전방 대기모드
+                # 대기모드는 카메라 없이도 VS 서비스 제공
+                if self.front_webcam_initialized:
+                    return self.front_webcam, None, "전방 웹캠 (대기모드)"
+                else:
+                    self.logger.info("전방 대기모드: 카메라 없이 VS 서비스만 제공")
+                    return None, None, "전방 대기모드 (카메라 없음)"
+            elif mode_id == 5:  # 일반 주행 모드 (웹캠 + 뎁스)
+                webcam = self.front_webcam if self.front_webcam_initialized else None
+                depth = self.front_depth if self.front_depth_initialized else None
+                
+                if webcam and depth:
+                    return webcam, depth, "전방 웹캠 + 뎁스"
+                elif webcam:
+                    self.logger.warning("뎁스 카메라 없이 웹캠만 사용")
+                    return webcam, None, "전방 웹캠만"
+                elif depth:
+                    self.logger.warning("웹캠 없이 뎁스 카메라만 사용")
+                    return depth, None, "뎁스만"
+                else:
+                    self.logger.error("일반 주행 모드용 카메라가 없음")
+                    return None, None, "없음"
+            else:  # 엘리베이터 외부(3), 내부(4) 모드
+                if self.front_webcam_initialized:
+                    return self.front_webcam, None, "전방 웹캠"
+                else:
+                    self.logger.warning(f"전방 웹캠이 초기화되지 않아 모드 {mode_id} 사용 불가")
+                    return None, None, "없음"
+        else:
+            self.logger.warning(f"알 수 없는 모드 ID: {mode_id}")
+            return None, None, "없음"
+    
+    def cleanup_all_cameras(self):
+        """모든 카메라 정리"""
+        self.logger.info("모든 카메라 정리 시작...")
+        
+        try:
+            self.front_webcam.cleanup()
+        except Exception as e:
+            self.logger.warning(f"전방 웹캠 정리 중 에러: {e}")
+            
+        try:
+            self.front_depth.cleanup()
+        except Exception as e:
+            self.logger.warning(f"전방 뎁스 정리 중 에러: {e}")
+            
+        try:
+            self.rear_webcam.cleanup()
+        except Exception as e:
+            self.logger.warning(f"후방 웹캠 정리 중 에러: {e}")
+        
+        self.logger.info("모든 카메라 정리 완료!")
+    
+    def get_required_cameras_for_mode(self, mode_id):
+        """모드별 필요한 카메라 목록 반환"""
+        camera_requirements = {
+            # 후방 관련 모드
+            0: [],                    # 후방 대기: 카메라 없이도 VS 서비스 제공
+            1: ['rear_webcam'],       # 등록 모드: 후방 웹캠만
+            2: ['rear_webcam'],       # 추적 모드: 후방 웹캠만
+            
+            # 전방 관련 모드  
+            3: ['front_webcam'],      # 엘리베이터 외부: 전방 웹캠만
+            4: ['front_webcam'],      # 엘리베이터 내부: 전방 웹캠만
+            5: ['front_webcam', 'front_depth'],  # 일반 주행: 전방 웹캠 + 뎁스
+            6: [],                    # 전방 대기: 카메라 없이도 VS 서비스 제공
+            
+            # 시뮬레이션 모드들 (카메라 불필요)
+            100: [], 101: [], 102: [], 103: [], 104: []
+        }
+        return camera_requirements.get(mode_id, [])
+    
+    def initialize_cameras_for_mode(self, mode_id):
+        """모드에 필요한 카메라만 초기화 (GPU 리소스 절약)"""
+        required_cameras = self.get_required_cameras_for_mode(mode_id)
+        
+        self.logger.info(f"🎯 모드 {mode_id}에 필요한 카메라: {required_cameras if required_cameras else '없음 (대기모드)'}")
+        
+        # 먼저 모든 카메라를 정리 (이전 모드에서 사용하던 카메라들)
+        self._cleanup_unused_cameras(required_cameras)
+        
+        # 필요한 카메라만 초기화
+        success = True
+        initialized_cameras = []
+        
+        if 'rear_webcam' in required_cameras:
+            if not self.rear_webcam_initialized:
+                if self._initialize_rear_camera():
+                    initialized_cameras.append('후방 웹캠')
+                else:
+                    success = False
+                    
+        if 'front_webcam' in required_cameras:
+            if not self.front_webcam_initialized:
+                if self._initialize_front_webcam():
+                    initialized_cameras.append('전방 웹캠')
+                else:
+                    success = False
+                    
+        if 'front_depth' in required_cameras:
+            if not self.front_depth_initialized:
+                if self._initialize_front_depth():
+                    initialized_cameras.append('전방 뎁스')
+                else:
+                    success = False
+        
+        # 결과 로그
+        if required_cameras:
+            if initialized_cameras:
+                self.logger.info(f"✅ 모드 {mode_id} 카메라 초기화 완료: {', '.join(initialized_cameras)}")
+            else:
+                self.logger.warning(f"⚠️ 모드 {mode_id} 필요 카메라 초기화 실패")
+        else:
+            self.logger.info(f"🟡 모드 {mode_id}: 대기모드 - 카메라 없이 VS 서비스 제공")
+            
+        return success or len(required_cameras) == 0  # 대기모드는 항상 성공
+    
+    def _cleanup_unused_cameras(self, required_cameras):
+        """현재 모드에 불필요한 카메라들을 정리하여 리소스 절약"""
+        cleanup_count = 0
+        
+        # 후방 웹캠 정리
+        if 'rear_webcam' not in required_cameras and self.rear_webcam_initialized:
+            try:
+                self.rear_webcam.cleanup()
+                self.rear_webcam_initialized = False
+                cleanup_count += 1
+                self.logger.info("🧹 후방 웹캠 리소스 정리 완료")
+            except Exception as e:
+                self.logger.warning(f"후방 웹캠 정리 중 에러: {e}")
+        
+        # 전방 웹캠 정리
+        if 'front_webcam' not in required_cameras and self.front_webcam_initialized:
+            try:
+                self.front_webcam.cleanup()
+                self.front_webcam_initialized = False
+                cleanup_count += 1
+                self.logger.info("🧹 전방 웹캠 리소스 정리 완료")
+            except Exception as e:
+                self.logger.warning(f"전방 웹캠 정리 중 에러: {e}")
+        
+        # 전방 뎁스 정리
+        if 'front_depth' not in required_cameras and self.front_depth_initialized:
+            try:
+                self.front_depth.cleanup()
+                self.front_depth_initialized = False
+                cleanup_count += 1
+                self.logger.info("🧹 전방 뎁스 카메라 리소스 정리 완료")
+            except Exception as e:
+                self.logger.warning(f"전방 뎁스 정리 중 에러: {e}")
+        
+        if cleanup_count > 0:
+            self.logger.info(f"💾 GPU 리소스 절약: {cleanup_count}개 카메라 정리 완료")
+    
+    def _initialize_front_webcam(self):
+        """전방 웹캠만 초기화"""
+        try:
+            if self.front_webcam.initialize():
+                self.front_webcam_initialized = True
+                self.logger.info("✅ 전방 웹캠 초기화 성공")
+                return True
+            else:
+                self.logger.warning("⚠️ 전방 웹캠 초기화 실패")
+                return False
+        except Exception as e:
+            self.logger.warning(f"전방 웹캠 초기화 중 에러: {e}")
+            return False
+    
+    def _initialize_front_depth(self):
+        """전방 뎁스 카메라만 초기화"""
+        try:
+            if self.front_depth.initialize():
+                self.front_depth_initialized = True
+                self.logger.info("✅ 전방 뎁스 카메라 초기화 성공")
+                return True
+            else:
+                self.logger.warning("⚠️ 전방 뎁스 카메라 초기화 실패")
+                return False
+        except Exception as e:
+            self.logger.warning(f"전방 뎁스 카메라 초기화 중 에러: {e}")
+            return False
+
+class MultiModelDetector:
+    """다중 YOLO 모델을 지원하는 탐지 클래스"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        self.models = {}
+        self.current_model_name = None
+        self.current_model = None
+        
+        # 모델별 클래스 정의
+        self.model_classes = {
+            'normal': ['person', 'chair', 'door'],  # 일반 주행용: 사람, 의자, 유리문
+            'elevator': ['button', 'direction_light', 'display', 'door']  # 엘리베이터용: 버튼, 방향등, 디스플레이, 문
+        }
+        
+        # 모델별 ID 매핑
+        self.model_id_maps = {
+            'normal': {
+                'person': 'PERSON',
+                'chair': 'CHAIR', 
+                'door': 'DOOR'
+            },
+            'elevator': {
+                'button': 'BUTTON',
+                'direction_light': 'DIRECTION_LIGHT',
+                'display': 'DISPLAY',
+                'door': 'DOOR'
+            }
+        }
+        
+        # 모델 초기화
+        self._initialize_models()
+        
+    def _initialize_models(self):
+        """모든 YOLO 모델 초기화"""
+        self.logger.info("다중 YOLO 모델 초기화 시작...")
+        
+        try:
+            from ultralytics import YOLO
+            
+            # 1. 일반 주행용 모델 (model_normal.pt)
+            normal_model_path = self._find_model('model_normal.pt')
+            if normal_model_path:
+                try:
+                    self.models['normal'] = YOLO(normal_model_path)
+                    self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ 일반 주행 모델 로딩 실패: {e}")
+            else:
+                # 일반 주행용 모델이 없으면 COCO 사전훈련 모델 사용
+                try:
+                    self.models['normal'] = YOLO('yolov8n.pt')
+                    self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
+                except Exception as e:
+                    self.logger.warning(f"⚠️ COCO 모델도 로딩 실패: {e}")
+            
+            # 2. 엘리베이터용 모델 (best.pt 또는 model_elevator.pt)
+            elevator_paths = ['best.pt', 'model_elevator.pt']
+            elevator_loaded = False
+            
+            for model_file in elevator_paths:
+                elevator_model_path = self._find_model(model_file)
+                if elevator_model_path:
+                    try:
+                        self.models['elevator'] = YOLO(elevator_model_path)
+                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공: {elevator_model_path}")
+                        elevator_loaded = True
+                        break
+                    except Exception as e:
+                        self.logger.warning(f"⚠️ 엘리베이터 모델 로딩 실패 ({model_file}): {e}")
+                        
+            if not elevator_loaded:
+                self.logger.warning("⚠️ 엘리베이터용 모델을 찾을 수 없습니다")
+            
+            # 초기화 결과
+            loaded_models = list(self.models.keys())
+            self.logger.info(f"모델 초기화 완료: {loaded_models} ({len(loaded_models)}/2개)")
+            
+            # 기본 모델 설정
+            if 'elevator' in self.models:
+                self.current_model_name = 'elevator'
+                self.current_model = self.models['elevator']
+            elif 'normal' in self.models:
+                self.current_model_name = 'normal'
+                self.current_model = self.models['normal']
+            
+            return len(self.models) > 0
+                
+        except ImportError:
+            self.logger.error("ultralytics 패키지가 필요합니다: pip install ultralytics")
+            raise ImportError("ultralytics 패키지를 설치하세요")
+        except Exception as e:
+            self.logger.error(f"다중 모델 초기화 실패: {e}")
+            return False
+    
+    def _find_model(self, model_filename):
+        """모델 파일 찾기"""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        possible_dirs = [
+            os.path.join(script_dir, "..", "training"),
+            os.path.join(script_dir, "..", "models"),
+            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "training"),
+            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "models"),
+            os.path.join(os.getcwd(), "ros2_ws", "src", "roomie_vs", "training"),
+            os.path.join(os.getcwd(), "ros2_ws", "src", "roomie_vs", "models"),
+            "ros2_ws/src/roomie_vs/training",
+            "ros2_ws/src/roomie_vs/models"
+        ]
+        
+        for search_dir in possible_dirs:
+            if os.path.exists(search_dir):
+                model_path = os.path.join(search_dir, model_filename)
+                if os.path.exists(model_path):
+                    self.logger.debug(f"모델 발견: {model_path}")
+                    return model_path
+        
+        self.logger.debug(f"모델을 찾을 수 없음: {model_filename}")
+        return None
+    
+    def set_model_for_mode(self, mode_id):
+        """모드에 따른 모델 선택"""
+        try:
+            if mode_id == 5:  # 일반 주행 모드
+                if 'normal' in self.models:
+                    old_model = self.current_model_name
+                    self.current_model_name = 'normal'
+                    self.current_model = self.models['normal']
+                    if old_model != 'normal':
+                        self.logger.info(f"🤖 모델 변경: {old_model} → normal (일반 주행용)")
+                    return True
+                else:
+                    self.logger.warning("일반 주행용 모델이 없습니다")
+                    return False
+                    
+            elif mode_id in [3, 4]:  # 엘리베이터 모드
+                if 'elevator' in self.models:
+                    old_model = self.current_model_name
+                    self.current_model_name = 'elevator'
+                    self.current_model = self.models['elevator']
+                    if old_model != 'elevator':
+                        self.logger.info(f"🤖 모델 변경: {old_model} → elevator (엘리베이터용)")
+                    return True
+                else:
+                    self.logger.warning("엘리베이터용 모델이 없습니다")
+                    return False
+            else:
+                # 다른 모드는 모델 사용 안함
+                if self.current_model_name:
+                    self.logger.info(f"🤖 모델 비활성화 (모드 {mode_id})")
+                    self.current_model_name = None
+                    self.current_model = None
+                return True
+                
+        except Exception as e:
+            self.logger.error(f"모델 선택 중 에러: {e}")
+            return False
+    
+    def detect_objects(self, color_image: np.ndarray, depth_image: np.ndarray, conf_threshold: float = 0.7, mode_id: int = 0) -> List[dict]:
+        """현재 선택된 모델로 객체 탐지 (모드별 버튼 인식 포함)"""
+        if color_image is None or self.current_model is None:
+            return []
+            
+        try:
+            objects = self._detect_with_current_model(color_image, depth_image, conf_threshold)
+            
+            # 모드별 버튼 인식 처리
+            if mode_id == 3:  # 엘리베이터 외부 - button_recog_1
+                objects = self._apply_button_recog_1(objects)
+            elif mode_id == 4:  # 엘리베이터 내부 - button_recog_2  
+                objects = self._apply_button_recog_2(objects)
+                
+            return objects
+        except Exception as e:
+            self.logger.error(f"객체 탐지 중 에러: {e}")
+            return []
+    
+    def _detect_with_current_model(self, color_image: np.ndarray, depth_image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
+        """현재 모델을 사용한 객체 탐지"""
+        try:
+            results = self.current_model.predict(
+                color_image, 
+                conf=conf_threshold,
+                verbose=False
+            )
+            
+            objects = []
+            if results and len(results) > 0:
+                result = results[0]
+                
+                if result.boxes is not None and len(result.boxes) > 0:
+                    boxes = result.boxes.xyxy.cpu().numpy()
+                    confs = result.boxes.conf.cpu().numpy()
+                    classes = result.boxes.cls.cpu().numpy()
+                    
+                    current_class_names = self.model_classes.get(self.current_model_name, [])
+                    current_id_map = self.model_id_maps.get(self.current_model_name, {})
+                    
+                    for box, conf, cls in zip(boxes, confs, classes):
+                        x1, y1, x2, y2 = box.astype(int)
+                        center_x = int((x1 + x2) / 2)
+                        center_y = int((y1 + y2) / 2)
+                        width = x2 - x1
+                        height = y2 - y1
+                        radius = int(max(width, height) / 2)
+                        
+                        # 클래스 정보
+                        class_id = int(cls)
+                        
+                        # COCO 모델의 경우 클래스 매핑
+                        if self.current_model_name == 'normal' and 'normal' not in self.models:
+                            # COCO 클래스 이름들
+                            coco_names = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 
+                                         'truck', 'boat', 'traffic light', 'fire hydrant', 'stop sign', 
+                                         'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 
+                                         'cow', 'elephant', 'bear', 'zebra', 'giraffe', 'backpack', 'umbrella', 
+                                         'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 
+                                         'sports ball', 'kite', 'baseball bat', 'baseball glove', 'skateboard', 
+                                         'surfboard', 'tennis racket', 'bottle', 'wine glass', 'cup', 'fork', 
+                                         'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 
+                                         'broccoli', 'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 
+                                         'couch', 'potted plant', 'bed', 'dining table', 'toilet', 'tv', 
+                                         'laptop', 'mouse', 'remote', 'keyboard', 'cell phone', 'microwave', 
+                                         'oven', 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase', 
+                                         'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+                            
+                            if class_id < len(coco_names):
+                                class_name = coco_names[class_id]
+                                # 관심 있는 객체만 필터링
+                                if class_name not in ['person', 'chair']:
+                                    continue  # 사람과 의자만 탐지
+                            else:
+                                class_name = f"unknown_{class_id}"
+                        else:
+                            # 커스텀 모델의 경우
+                            if class_id < len(current_class_names):
+                                class_name = current_class_names[class_id]
+                            else:
+                                class_name = f"unknown_{class_id}"
+                        
+                        # Depth 정보
+                        depth_value = depth_image[center_y, center_x] if depth_image is not None else 1000
+                        
+                        # 객체별 특별 처리
+                        is_pressed = False
+                        object_id = current_id_map.get(class_name, class_name.upper())
+                        
+                        if class_name == 'button' and depth_image is not None:
+                            is_pressed = self._check_button_pressed(depth_image, center_x, center_y, radius)
+                        
+                        objects.append({
+                            'center': (center_x, center_y),
+                            'radius': radius,
+                            'depth_mm': int(depth_value),
+                            'is_pressed': is_pressed,
+                            'class_name': class_name,
+                            'class_id': class_id,
+                            'object_id': object_id,
+                            'confidence': float(conf),
+                            'bbox': (x1, y1, x2, y2),
+                            'is_button': class_name == 'button',
+                            'model_name': self.current_model_name
+                        })
+            
+            self.logger.debug(f"{self.current_model_name} 모델로 {len(objects)}개 객체 탐지")
+            return objects
+            
+        except Exception as e:
+            self.logger.error(f"{self.current_model_name} 모델 탐지 에러: {e}")
+            return []
+    
+    def _check_button_pressed(self, depth_image: np.ndarray, cx: int, cy: int, radius: int) -> bool:
+        """버튼 눌림 상태 확인 (기존 YOLOButtonDetector와 동일)"""
+        try:
+            center_depth = depth_image[cy, cx]
+            if center_depth <= 0:
+                return False
+            
+            y1, y2 = max(0, cy-radius), min(depth_image.shape[0], cy+radius)
+            x1, x2 = max(0, cx-radius), min(depth_image.shape[1], cx+radius)
+            
+            surrounding_region = depth_image[y1:y2, x1:x2]
+            valid_depths = surrounding_region[surrounding_region > 0]
+            
+            if valid_depths.size < 5:
+                return False
+                
+            surrounding_depth = np.mean(valid_depths)
+            
+            # 중심이 주변보다 깊으면 눌린 것으로 판단
+            return center_depth > surrounding_depth + 10  # 10mm 차이
+            
+        except Exception:
+            return False
+    
+    def _apply_button_recog_1(self, objects: List[dict]) -> List[dict]:
+        """button_recog_1: 엘리베이터 외부 - 상하 위치 기반 분류"""
+        button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
+        
+        if len(button_objects) < 2:
+            return objects  # 버튼이 2개 미만이면 원본 반환
+            
+        # 버튼들을 Y 좌표 기준으로 정렬 (위에서 아래로)
+        button_objects.sort(key=lambda x: x['center'][1])
+        
+        updated_objects = []
+        
+        for obj in objects:
+            if obj.get('class_name') == 'button':
+                center_y = obj['center'][1]
+                
+                # 상위 50%는 상행버튼, 하위 50%는 하행버튼
+                if center_y <= button_objects[len(button_objects)//2]['center'][1]:
+                    obj['button_id'] = 101  # 상행버튼
+                    obj['floor_type'] = 'up'
+                else:
+                    obj['button_id'] = 100  # 하행버튼  
+                    obj['floor_type'] = 'down'
+                    
+                obj['recognition_method'] = 'button_recog_1'
+                
+            updated_objects.append(obj)
+            
+        return updated_objects
+    
+    def _apply_button_recog_2(self, objects: List[dict]) -> List[dict]:
+        """button_recog_2: 엘리베이터 내부 - 위치 기반 층수 매핑"""
+        button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
+        
+        if len(button_objects) == 0:
+            return objects
+            
+        # 엘리베이터 내부 버튼 배치 매핑 (상대 위치 기반)
+        # 102  |  1   |  4   |  7   | 10  |
+        # 103  | 13   |  3   |  6   |  9  | 12
+        #      | 14   |  2   |  5   |  8  | 11
+        
+        button_layout = {
+            # (col, row): button_id
+            (0, 0): 102,  # 열기
+            (0, 1): 103,  # 닫기
+            (1, 0): 1,    # 1층
+            (1, 1): 13,   # B1층
+            (1, 2): 14,   # B2층
+            (2, 0): 4,    # 4층
+            (2, 1): 3,    # 3층
+            (2, 2): 2,    # 2층
+            (3, 0): 7,    # 7층
+            (3, 1): 6,    # 6층
+            (3, 2): 5,    # 5층
+            (4, 0): 10,   # 10층
+            (4, 1): 9,    # 9층
+            (4, 2): 8,    # 8층
+            (5, 1): 12,   # 12층
+            (5, 2): 11,   # 11층
+        }
+        
+        # 버튼들의 위치를 기반으로 격자 생성
+        x_coords = [obj['center'][0] for obj in button_objects]
+        y_coords = [obj['center'][1] for obj in button_objects]
+        
+        if len(set(x_coords)) < 2 or len(set(y_coords)) < 2:
+            # 격자를 만들 수 없으면 원본 반환
+            return objects
+            
+        # X, Y 좌표를 열/행으로 변환
+        x_sorted = sorted(set(x_coords))
+        y_sorted = sorted(set(y_coords))
+        
+        updated_objects = []
+        
+        for obj in objects:
+            if obj.get('class_name') == 'button':
+                center_x, center_y = obj['center']
+                
+                # 가장 가까운 격자점 찾기
+                col = min(range(len(x_sorted)), key=lambda i: abs(x_sorted[i] - center_x))
+                row = min(range(len(y_sorted)), key=lambda i: abs(y_sorted[i] - center_y))
+                
+                # 매핑 테이블에서 button_id 찾기
+                if (col, row) in button_layout:
+                    button_id = button_layout[(col, row)]
+                    obj['button_id'] = button_id
+                    
+                    # 버튼 종류 분류
+                    if button_id in [100, 101]:
+                        obj['floor_type'] = 'direction'
+                    elif button_id in [102, 103]:
+                        obj['floor_type'] = 'control'
+                    elif button_id in [13, 14]:
+                        obj['floor_type'] = 'basement'
+                    else:
+                        obj['floor_type'] = 'floor'
+                        
+                else:
+                    # 매핑되지 않은 위치 - 기본값
+                    obj['button_id'] = f"unknown_{col}_{row}"
+                    obj['floor_type'] = 'unknown'
+                    
+                obj['recognition_method'] = 'button_recog_2'
+                obj['grid_position'] = (col, row)
+                
+            updated_objects.append(obj)
+            
+        return updated_objects
+
+    def get_current_model_info(self):
+        """현재 모델 정보 반환"""
+        return {
+            'model_name': self.current_model_name,
+            'available_models': list(self.models.keys()),
+            'class_names': self.model_classes.get(self.current_model_name, []),
+            'is_active': self.current_model is not None
+        }
+
 class YOLOButtonDetector:
     """YOLO 기반 엘리베이터 객체 탐지 클래스"""
     
@@ -402,9 +1164,14 @@ class VSNode(Node):
     def __init__(self):
         super().__init__('vs_node')
         
-        # 카메라와 버튼 탐지기 초기화
-        self.camera = OpenNI2Camera(self.get_logger())
-        self.button_detector = YOLOButtonDetector(self.get_logger())
+        # 멀티 카메라 매니저와 다중 모델 탐지기 초기화
+        self.camera_manager = MultiCameraManager(self.get_logger())
+        self.model_detector = MultiModelDetector(self.get_logger())
+        
+        # 현재 선택된 카메라들 (모드별로 변경됨)
+        self.current_camera = None
+        self.current_depth_camera = None
+        self.current_camera_name = "없음"
         
         # 이미지 처리 옵션
         self.flip_horizontal = True  # 좌우반전을 기본으로 켜기
@@ -500,8 +1267,8 @@ class VSNode(Node):
             202: 202, # ROOM_202
         }
         
-        # VS 모드 상태 관리
-        self.current_mode_id = 0
+        # VS 모드 상태 관리 (전방 대기모드로 시작)
+        self.current_mode_id = 6
         self.mode_names = {
             0: "대기모드 (후방)",
             1: "등록모드 (후방)", 
@@ -509,6 +1276,7 @@ class VSNode(Node):
             3: "엘리베이터 외부 모드 (전방)",
             4: "엘리베이터 내부 모드 (전방)",
             5: "일반모드 (전방)",
+            6: "대기모드 (전방)",
             100: "배송 시뮬레이션 모드",
             101: "호출 시뮬레이션 모드",
             102: "길안내 시뮬레이션 모드",
@@ -525,14 +1293,15 @@ class VSNode(Node):
             104: 0   # 엘리베이터 시뮬레이션
         }
         
-        # 카메라 초기화
-        self.camera_initialized = False
-        if self.camera.initialize():
-            self.camera_initialized = True
-            self.get_logger().info("OpenNI2 Astra 카메라 초기화 성공")
-        else:
-            self.get_logger().error("OpenNI2 Astra 카메라 초기화 실패")
-            raise RuntimeError("실제 카메라 초기화 실패")
+        # 현재 모드에 필요한 카메라만 초기화 (GPU 리소스 절약)
+        self.camera_initialized = True  # 대기모드는 항상 지원
+        self.camera_manager.initialize_cameras_for_mode(self.current_mode_id)
+        self.get_logger().info("🚀 모드 기반 동적 카메라 시스템 초기화 완료")
+        self.get_logger().info("📌 각 대기모드(0: 후방, 6: 전방)는 카메라 없이도 VS 서비스 제공")
+        self.get_logger().info("💾 GPU 리소스 절약: 필요한 카메라만 활성화")
+            
+        # 현재 모드에 맞는 카메라 선택 (카메라 없어도 시도)
+        self.update_camera_for_current_mode()
         
         # ROS2 서비스들 (/vs/command/*)
         self.get_logger().info("VS 서비스 인터페이스 초기화 중...")
@@ -597,7 +1366,60 @@ class VSNode(Node):
         self.get_logger().info("구현된 서비스 7개: set_vs_mode, elevator_width, button_status, elevator_status, door_status, space_availability, location")
         self.get_logger().info("구현된 토픽 2개: tracking_event, registered")
         self.get_logger().info("ArUco 마커 기반 위치 감지 시스템 활성화")
-        self.get_logger().info("OpenNI2 기반 VS Node 초기화 완료!")
+        self.get_logger().info("🎯 GPU 리소스 절약형 동적 카메라 VS Node 초기화 완료!")
+        self.get_logger().info(f"🚀 시작 모드: {self.mode_names[self.current_mode_id]} (ID: {self.current_mode_id})")
+        
+        # 모드별 카메라 요구사항 요약 출력
+        self.get_logger().info("=" * 60)
+        self.get_logger().info("📋 모드별 카메라 리소스 사용 계획")
+        self.get_logger().info("=" * 60)
+        self.get_logger().info("후방 관련: 0(대기) → 없음, 1(등록) → 후방웹캠, 2(추적) → 후방웹캠")
+        self.get_logger().info("전방 관련: 3(엘외부) → 전방웹캠, 4(엘내부) → 전방웹캠, 5(일반) → 전방웹캠+뎁스, 6(대기) → 없음")
+        self.get_logger().info("💡 모드 변경 시 불필요한 카메라는 자동으로 정리되어 GPU 리소스를 절약합니다")
+        self.get_logger().info("=" * 60)
+    
+    def update_camera_for_current_mode(self):
+        """현재 모드에 맞는 카메라와 모델 선택 (동적 카메라 관리)"""
+        try:
+            mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
+            old_camera_name = self.current_camera_name
+            
+            # 1. 모드에 필요한 카메라 동적 초기화/정리
+            self.camera_manager.initialize_cameras_for_mode(self.current_mode_id)
+            
+            # 2. 카메라 업데이트
+            camera, depth_camera, camera_name = self.camera_manager.get_camera_for_mode(self.current_mode_id)
+            
+            self.current_camera = camera
+            self.current_depth_camera = depth_camera
+            self.current_camera_name = camera_name
+            
+            # 3. 모델 업데이트
+            model_success = self.model_detector.set_model_for_mode(self.current_mode_id)
+            model_info = self.model_detector.get_current_model_info()
+            
+            # 4. 결과 로그
+            if camera:
+                self.get_logger().info(f"📷 카메라 변경: {old_camera_name} → {camera_name} (모드: {mode_name})")
+            else:
+                if self.current_mode_id in [0, 6]:  # 대기모드
+                    self.get_logger().info(f"🔄 {mode_name}: 카메라 없이 VS 서비스 제공 중")
+                else:
+                    self.get_logger().warning(f"⚠️ 모드 {mode_name}용 카메라가 없습니다")
+            
+            if model_info['is_active']:
+                current_classes = ', '.join(model_info['class_names'][:3])  # 처음 3개만 표시
+                if len(model_info['class_names']) > 3:
+                    current_classes += "..."
+                self.get_logger().info(f"🤖 사용 중인 모델: {model_info['model_name']} (클래스: {current_classes})")
+            else:
+                self.get_logger().info(f"🤖 모델 비활성화 (모드 {mode_name})")
+                
+        except Exception as e:
+            self.get_logger().error(f"카메라/모델 선택 중 에러: {e}")
+            self.current_camera = None
+            self.current_depth_camera = None
+            self.current_camera_name = "에러"
     
     def detect_and_update_location(self) -> int:
         """ArUco 마커를 감지하여 위치 업데이트 및 현재 위치 반환"""
@@ -864,8 +1686,8 @@ class VSNode(Node):
                         current_depth = cv2.flip(current_depth, 1)
                 
                 if current_color is not None:
-                    # YOLO로 엘리베이터 객체 탐지
-                    detected_objects = self.button_detector.detect_buttons(current_color, current_depth, self.confidence_threshold)
+                    # 다중 모델로 객체 탐지 (현재 모드 전달)
+                    detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_mode_id)
                     
                     # 'button' 클래스 객체들만 필터링
                     detected_buttons = [obj for obj in detected_objects if obj.get('class_name') == 'button']
@@ -1073,6 +1895,9 @@ class VSNode(Node):
             
             self.get_logger().info(f"VS 모드 변경: {old_mode} → {new_mode}")
             
+            # 모드 변경에 따른 카메라 업데이트
+            self.update_camera_for_current_mode()
+            
             # 시뮬레이션 모드 초기화
             if request.mode_id in self.simulation_counters:
                 self.simulation_counters[request.mode_id] = 0
@@ -1216,7 +2041,7 @@ class VSNode(Node):
                 self.simulation_counters[103] += 1
                 response.location_id = location_id
                 
-            else:  # 일반 모드 - ArUco 마커 기반 위치
+            elif self.current_mode_id == 5:  # 일반 주행 모드 - ArUco 마커 기반 위치
                 current_location = self.detect_and_update_location()
                 response.location_id = current_location
                 
@@ -1230,9 +2055,14 @@ class VSNode(Node):
                 # 마지막 감지 시간 정보 포함
                 if self.last_detection_time:
                     time_diff = (self.get_clock().now() - self.last_detection_time).nanoseconds / 1e9
-                    self.get_logger().info(f"현재 위치: {location_name} (마지막 감지: {time_diff:.1f}초 전)")
+                    self.get_logger().info(f"현재 위치: {location_name} (ArUco 기반, 마지막 감지: {time_diff:.1f}초 전)")
                 else:
-                    self.get_logger().info(f"현재 위치: {location_name} (초기값)")
+                    self.get_logger().info(f"현재 위치: {location_name} (ArUco 기반, 초기값)")
+                    
+            else:  # 기타 모드 - 기본 위치 반환
+                response.location_id = self.last_detected_location_id  # 마지막 알려진 위치 유지
+                mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
+                self.get_logger().info(f"위치 서비스: {mode_name}에서는 ArUco 사용 안함 (마지막 위치 유지)")
                 
         except Exception as e:
             self.get_logger().error(f"위치 감지 에러: {e}")
@@ -1242,66 +2072,122 @@ class VSNode(Node):
         
         return response
 
-    def _draw_buttons_on_image(self, image: np.ndarray, buttons: List[dict]) -> np.ndarray:
+    def _draw_objects_on_image(self, image: np.ndarray, objects: List[dict]) -> np.ndarray:
         """YOLO로 탐지된 객체들을 이미지에 시각화"""
         import cv2
         
-        for i, button in enumerate(buttons):
-            center = button['center']
-            is_pressed = button['is_pressed']
-            depth_mm = button['depth_mm']
-            class_name = button.get('class_name', f'btn_{i+1}')
-            confidence = button.get('confidence', 1.0)
-            bbox = button.get('bbox', None)
+        # 객체 타입별 색상 정의
+        color_map = {
+            'person': (255, 0, 255),      # 보라색
+            'chair': (0, 255, 255),       # 노란색  
+            'door': (255, 255, 0),        # 청록색
+            'button': (0, 255, 0),        # 초록색
+            'direction_light': (255, 165, 0),  # 주황색
+            'display': (0, 165, 255),     # 오렌지색
+        }
+        
+        for i, obj in enumerate(objects):
+            center = obj['center']
+            is_pressed = obj.get('is_pressed', False)
+            depth_mm = obj['depth_mm']
+            class_name = obj.get('class_name', f'obj_{i+1}')
+            confidence = obj.get('confidence', 1.0)
+            bbox = obj.get('bbox', None)
+            model_name = obj.get('model_name', 'unknown')
             
             # YOLO 바운딩박스 그리기
             if bbox and len(bbox) == 4:
                 x1, y1, x2, y2 = bbox
-                color = (0, 255, 0) if not is_pressed else (255, 0, 0)
+                
+                # 객체별 색상 선택 (버튼은 눌림 상태에 따라)
+                if class_name == 'button' and is_pressed:
+                    color = (0, 0, 255)  # 빨간색 (눌린 버튼)
+                else:
+                    color = color_map.get(class_name, (128, 128, 128))  # 기본 회색
+                
                 cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
                 
                 # 클래스 이름과 신뢰도 표시
-                label = f"{class_name}: {confidence:.2f}"
+                if class_name == 'button' and 'button_id' in obj:
+                    button_id = obj['button_id']
+                    recognition_method = obj.get('recognition_method', '')
+                    if isinstance(button_id, int):
+                        if button_id == 100:
+                            label = f"하행버튼: {confidence:.2f}"
+                        elif button_id == 101:
+                            label = f"상행버튼: {confidence:.2f}"
+                        elif button_id == 102:
+                            label = f"열기버튼: {confidence:.2f}"
+                        elif button_id == 103:
+                            label = f"닫기버튼: {confidence:.2f}"
+                        elif button_id == 13:
+                            label = f"B1층: {confidence:.2f}"
+                        elif button_id == 14:
+                            label = f"B2층: {confidence:.2f}"
+                        else:
+                            label = f"{button_id}층: {confidence:.2f}"
+                    else:
+                        label = f"{button_id}: {confidence:.2f}"
+                else:
+                    label = f"{class_name}: {confidence:.2f}"
+                    
                 cv2.putText(image, label, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
-                # 거리 정보 표시
-                distance_text = f"{depth_mm}mm"
-                cv2.putText(image, distance_text, (center[0]-20, center[1]+30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                # 모델 이름 표시 (작게)
+                model_text = f"[{model_name}]"
+                cv2.putText(image, model_text, (x1, y1-30), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
                 
-                # 눌림 상태 표시
-                if is_pressed:
+                # 거리 정보 표시
+                if depth_mm > 0:
+                    distance_text = f"{depth_mm}mm"
+                    cv2.putText(image, distance_text, (center[0]-20, center[1]+30), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                
+                # 버튼 눌림 상태 표시
+                if class_name == 'button' and is_pressed:
                     pressed_text = "PRESSED"
                     cv2.putText(image, pressed_text, (center[0]-30, center[1]+50), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         
         return image
 
-    def _add_info_text(self, image: np.ndarray, buttons: List[dict]):
-        """YOLO 탐지 결과 및 시스템 정보를 영상에 표시"""
+    def _add_info_text(self, image: np.ndarray, objects: List[dict]):
+        """다중 모델 탐지 결과 및 시스템 정보를 영상에 표시"""
         import cv2
         
+        # 현재 모드 정보
+        mode_name = self.mode_names.get(self.current_mode_id, f"ID_{self.current_mode_id}")
+        
         # 상단에 제목
-        cv2.putText(image, "Roomie Vision System v2 (Elevator Objects)", (10, 30), 
+        cv2.putText(image, f"Roomie Vision System v3 - {mode_name}", (10, 30), 
                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
         
-        # YOLO 모델 상태 및 설정 표시
-        model_status = "✅" if self.button_detector.yolo_model else "❌"
+        # 현재 모델 상태 및 설정 표시
+        model_info = self.model_detector.get_current_model_info()
+        model_status = "✅" if model_info['is_active'] else "❌"
+        current_model = model_info['model_name'] or "None"
         flip_status = "ON" if self.flip_horizontal else "OFF"
-        cv2.putText(image, f"YOLO {model_status} | Flip:{flip_status} | Conf:{self.confidence_threshold}(High)", (10, 60), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+        
+        cv2.putText(image, f"Model:{current_model} {model_status} | Camera:{self.current_camera_name} | Flip:{flip_status} | Conf:{self.confidence_threshold}", 
+                   (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
         
         # 탐지된 객체 수
-        cv2.putText(image, f"Objects Detected: {len(buttons)}", (10, 85), 
+        cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 85), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
         
-        # 탐지된 엘리베이터 객체 분류 표시
-        if buttons:
+        # 탐지된 객체 분류 표시
+        if objects:
             object_counts = {}
-            for btn in buttons:
-                class_name = btn.get('class_name', 'unknown')
+            model_counts = {}
+            
+            for obj in objects:
+                class_name = obj.get('class_name', 'unknown') 
+                model_name = obj.get('model_name', 'unknown')
+                
                 object_counts[class_name] = object_counts.get(class_name, 0) + 1
+                model_counts[model_name] = model_counts.get(model_name, 0) + 1
             
             if object_counts:
                 counts_text = ", ".join([f"{k}:{v}" for k, v in object_counts.items()])
@@ -1310,8 +2196,8 @@ class VSNode(Node):
         
         # 눌린 버튼 표시
         pressed_buttons = []
-        for btn in buttons:
-            if btn['is_pressed'] and btn.get('class_name') == 'button':
+        for obj in objects:
+            if obj.get('is_pressed', False) and obj.get('class_name') == 'button':
                 pressed_buttons.append("BUTTON")
         
         if pressed_buttons:
@@ -1319,27 +2205,29 @@ class VSNode(Node):
             cv2.putText(image, pressed_text, (10, 135), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
         
-        # ArUco 마커 시각화 추가
-        self._add_aruco_visualization(image)
+        # ArUco 마커 시각화 추가 (모드 5에서만)
+        if self.current_mode_id == 5:
+            self._add_aruco_visualization(image)
         
-        # 현재 위치 정보 표시
-        location_names = {
-            0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
-            4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
-            102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
-        }
-        current_location_name = location_names.get(self.last_detected_location_id, f"ID_{self.last_detected_location_id}")
-        cv2.putText(image, f"Current Location: {current_location_name}", (10, 210), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 128, 0), 2)
+        # 현재 위치 정보 표시 (모드 5에서만)
+        if self.current_mode_id == 5:
+            location_names = {
+                0: "LOB_WAITING", 1: "LOB_CALL", 2: "RES_PICKUP", 3: "RES_CALL",
+                4: "SUP_PICKUP", 5: "ELE_1", 6: "ELE_2", 101: "ROOM_101",
+                102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
+            }
+            current_location_name = location_names.get(self.last_detected_location_id, f"ID_{self.last_detected_location_id}")
+            cv2.putText(image, f"Current Location: {current_location_name}", (10, 210), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 128, 0), 2)
         
         # 종료 안내
         cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-20), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
 
     def __del__(self):
-        """소멸자 - 카메라 정리"""
-        if hasattr(self, 'camera'):
-            self.camera.cleanup()
+        """소멸자 - 멀티 카메라 시스템 정리"""
+        if hasattr(self, 'camera_manager'):
+            self.camera_manager.cleanup_all_cameras()
 
 def main(args=None):
     rclpy.init(args=args)
@@ -1359,8 +2247,25 @@ def main(args=None):
                 
                 # GUI 처리를 우선순위로
                 try:
-                    # 프레임 획득
-                    depth_image, color_image = node.camera.get_frames()
+                    # 현재 모드에 맞는 카메라에서 프레임 획득
+                    depth_image, color_image = None, None
+                    
+                    if node.current_camera:
+                        try:
+                            depth_image, color_image = node.current_camera.get_frames()
+                        except Exception as e:
+                            if frame_count % 100 == 1:  # 주기적으로만 로그 출력
+                                node.get_logger().warning(f"기본 카메라 프레임 획득 실패: {e}")
+                    
+                    # 추가 뎁스 카메라가 있으면 뎁스만 다시 획득
+                    if node.current_depth_camera and node.current_depth_camera != node.current_camera:
+                        try:
+                            additional_depth, _ = node.current_depth_camera.get_frames()
+                            if additional_depth is not None:
+                                depth_image = additional_depth
+                        except Exception as e:
+                            if frame_count % 100 == 1:
+                                node.get_logger().warning(f"추가 뎁스 카메라 프레임 획득 실패: {e}")
                     
                     # 이미지 좌우반전
                     if node.flip_horizontal:
@@ -1369,19 +2274,19 @@ def main(args=None):
                         if depth_image is not None:
                             depth_image = cv2.flip(depth_image, 1)
                     
-                    # ArUco 마커 자동 감지 (매 프레임마다)
-                    if color_image is not None:
+                    # ArUco 마커 자동 감지 (모드 5: 일반 주행에서만)
+                    if color_image is not None and node.current_mode_id == 5:
                         node.detect_and_update_location()
                     
-                    # 버튼 탐지 및 시각화
-                    buttons = []
+                    # 객체 탐지 및 시각화
+                    objects = []
                     if color_image is not None:
-                        buttons = node.button_detector.detect_buttons(color_image, depth_image, node.confidence_threshold)
+                        objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, node.current_mode_id)
                         
                         display_image = color_image.copy()
-                        if buttons:
-                            display_image = node._draw_buttons_on_image(display_image, buttons)
-                        node._add_info_text(display_image, buttons)
+                        if objects:
+                            display_image = node._draw_objects_on_image(display_image, objects)
+                        node._add_info_text(display_image, objects)
                         
                         cv2.imshow('Roomie VS RGB (YOLO Enhanced)', display_image)
                     
@@ -1412,31 +2317,59 @@ def main(args=None):
                         success = node.publish_registered_event(robot_id=1)
                         if not success:
                             node.get_logger().info("등록 완료 이벤트를 발행하려면 '1r' 명령으로 등록모드로 변경하세요")
-                    elif key == ord('b') or key == ord('B'):  # B키: 엘리베이터 객체 탐지 결과 출력
-                        if buttons:
-                            button_objects = [btn for btn in buttons if btn.get('class_name') == 'button']
-                            other_objects = [btn for btn in buttons if btn.get('class_name') != 'button']
+                    elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
+                        model_info = node.model_detector.get_current_model_info()
+                        current_model = model_info['model_name'] or "None"
+                        
+                        if objects:
+                            button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
+                            other_objects = [obj for obj in objects if obj.get('class_name') != 'button']
                             
-                            node.get_logger().info(f"'B' 키 눌림 - 엘리베이터 객체 탐지 결과:")
-                            node.get_logger().info(f"  전체 객체: {len(buttons)}개")
+                            node.get_logger().info(f"'B' 키 눌림 - 객체 탐지 결과 (모델: {current_model}):")
+                            node.get_logger().info(f"  전체 객체: {len(objects)}개")
                             node.get_logger().info(f"  버튼: {len(button_objects)}개")
-                            node.get_logger().info(f"  환경객체: {len(other_objects)}개")
+                            node.get_logger().info(f"  기타 객체: {len(other_objects)}개")
                             
                             if button_objects:
                                 node.get_logger().info("  탐지된 버튼들:")
-                                for i, btn in enumerate(button_objects):
-                                    confidence = btn.get('confidence', 1.0)
-                                    pressed = "눌림" if btn['is_pressed'] else "안눌림"
-                                    node.get_logger().info(f"    {i+1}. button - 신뢰도:{confidence:.2f}, {pressed}, {btn['depth_mm']}mm")
+                                for i, obj in enumerate(button_objects):
+                                    confidence = obj.get('confidence', 1.0)
+                                    pressed = "눌림" if obj.get('is_pressed', False) else "안눌림"
+                                    model_name = obj.get('model_name', 'unknown')
+                                    button_id = obj.get('button_id', 'unknown')
+                                    recognition_method = obj.get('recognition_method', 'none')
+                                    floor_type = obj.get('floor_type', 'unknown')
+                                    
+                                    # 버튼 이름 변환
+                                    if isinstance(button_id, int):
+                                        if button_id == 100:
+                                            button_name = "하행버튼"
+                                        elif button_id == 101:
+                                            button_name = "상행버튼"
+                                        elif button_id == 102:
+                                            button_name = "열기버튼"
+                                        elif button_id == 103:
+                                            button_name = "닫기버튼"
+                                        elif button_id == 13:
+                                            button_name = "B1층"
+                                        elif button_id == 14:
+                                            button_name = "B2층"
+                                        else:
+                                            button_name = f"{button_id}층"
+                                    else:
+                                        button_name = str(button_id)
+                                    
+                                    node.get_logger().info(f"    {i+1}. {button_name} ({model_name}/{recognition_method}) - 신뢰도:{confidence:.2f}, {pressed}, {obj['depth_mm']}mm")
                             
                             if other_objects:
-                                node.get_logger().info("  환경 객체들:")
-                                for i, btn in enumerate(other_objects):
-                                    class_name = btn.get('class_name', 'unknown')
-                                    confidence = btn.get('confidence', 1.0)
-                                    node.get_logger().info(f"    {i+1}. {class_name} - 신뢰도:{confidence:.2f}, {btn['depth_mm']}mm")
+                                node.get_logger().info("  기타 객체들:")
+                                for i, obj in enumerate(other_objects):
+                                    class_name = obj.get('class_name', 'unknown')
+                                    confidence = obj.get('confidence', 1.0)
+                                    model_name = obj.get('model_name', 'unknown')
+                                    node.get_logger().info(f"    {i+1}. {class_name} ({model_name}) - 신뢰도:{confidence:.2f}, {obj['depth_mm']}mm")
                         else:
-                            node.get_logger().info("'B' 키 눌림 - 탐지된 엘리베이터 객체가 없습니다")
+                            node.get_logger().info(f"'B' 키 눌림 - 탐지된 객체가 없습니다 (모델: {current_model})")
                     elif key == ord('f') or key == ord('F'):  # F키: 좌우반전 토글
                         node.flip_horizontal = not node.flip_horizontal
                         status = "켜짐" if node.flip_horizontal else "꺼짐"
@@ -1454,12 +2387,16 @@ def main(args=None):
 
                     elif key == ord('m') or key == ord('M'):  # M키: 현재 모드 확인
                         current_mode = node.mode_names.get(node.current_mode_id, "알 수 없음")
-                        model_loaded = "✅" if node.button_detector.yolo_model else "❌"
+                        model_info = node.model_detector.get_current_model_info()
+                        model_status = "✅" if model_info['is_active'] else "❌"
+                        current_model = model_info['model_name'] or "None"
                         aruco_status = "✅" if node.aruco_dict else "❌"
                         
                         node.get_logger().info(f"'M' 키 눌림 - 현재 상태:")
                         node.get_logger().info(f"  VS 모드: {current_mode} (mode_id={node.current_mode_id})")
-                        node.get_logger().info(f"  YOLO 모델: {model_loaded}")
+                        node.get_logger().info(f"  현재 모델: {current_model} {model_status}")
+                        node.get_logger().info(f"  사용 가능한 모델: {model_info['available_models']}")
+                        node.get_logger().info(f"  현재 카메라: {node.current_camera_name}")
                         node.get_logger().info(f"  ArUco 시스템: {aruco_status}")
                         node.get_logger().info(f"  좌우반전: {'ON' if node.flip_horizontal else 'OFF'}")
                         node.get_logger().info(f"  신뢰도 임계값: {node.confidence_threshold}")
@@ -1473,12 +2410,14 @@ def main(args=None):
                         current_location_name = location_names.get(node.last_detected_location_id, f"ID_{node.last_detected_location_id}")
                         node.get_logger().info(f"  현재 위치: {current_location_name}")
                         
-                        supported_classes = node.button_detector.class_names
-                        node.get_logger().info(f"  감지 가능한 객체: {supported_classes}")
-                        node.get_logger().info(f"  버튼 클래스: button")
+                        if model_info['is_active']:
+                            supported_classes = model_info['class_names']
+                            node.get_logger().info(f"  감지 가능한 객체: {supported_classes}")
+                        else:
+                            node.get_logger().info(f"  감지 가능한 객체: 없음 (모델 비활성화)")
                         
                         node.get_logger().info("후방 카메라 모드: 0(대기), 1(등록), 2(추적)")
-                        node.get_logger().info("전방 카메라 모드: 3(엘리베이터 외부), 4(엘리베이터 내부), 5(일반)")
+                        node.get_logger().info("전방 카메라 모드: 3(엘리베이터 외부), 4(엘리베이터 내부), 5(일반), 6(대기)")
                         node.get_logger().info("시뮬레이션 모드: 100(배송), 101(호출), 102(길안내), 103(복귀), 104(엘리베이터)")
                         node.get_logger().info("키보드: A(ArUco테스트), F(좌우반전), C(신뢰도조정)")
                     elif key == ord('a') or key == ord('A'):  # A키: ArUco 감지 테스트
@@ -1508,8 +2447,8 @@ def main(args=None):
             node.get_logger().info("사용자에 의해 중단되었습니다")
         finally:
             # 정리
-            if hasattr(node, 'camera'):
-                node.camera.cleanup()
+            if hasattr(node, 'camera_manager'):
+                node.camera_manager.cleanup_all_cameras()
             
             cv2.destroyAllWindows()
             node.destroy_node()
