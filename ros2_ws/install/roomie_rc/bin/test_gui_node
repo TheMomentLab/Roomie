@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/home/jay/venv/roomie_venv/bin/python3
 # EASY-INSTALL-ENTRY-SCRIPT: 'roomie-rc==0.0.0','console_scripts','test_gui_node'
 import re
 import sys
