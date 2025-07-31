@@ -1,0 +1,9 @@
+# ElevatorWidth.srv
+# Request
+int32 robot_id
+---
+# Response
+int32 robot_id
+bool success
+float32 left_boundary
+float32 right_boundary 

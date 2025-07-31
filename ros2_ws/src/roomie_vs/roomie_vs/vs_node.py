@@ -907,8 +907,10 @@ class MultiModelDetector:
             
             # 모드별 버튼 인식 처리
             if mode_id == 3:  # 엘리베이터 외부 - button_recog_1
+                self.logger.debug(f"모드 {mode_id}: button_recog_1 적용 (외부 - UP/DOWN)")
                 objects = self._apply_button_recog_1(objects)
             elif mode_id == 4:  # 엘리베이터 내부 - button_recog_2  
+                self.logger.debug(f"모드 {mode_id}: button_recog_2 적용 (내부 - 층수)")
                 objects = self._apply_button_recog_2(objects)
                 
             return objects
@@ -1062,14 +1064,26 @@ class MultiModelDetector:
         
         for obj in objects:
             if obj.get('class_name') == 'button':
+                # 정렬된 버튼 리스트에서 현재 버튼의 인덱스 찾기
                 center_y = obj['center'][1]
+                button_index = None
+                for i, btn in enumerate(button_objects):
+                    if btn['center'][1] == center_y and btn['center'][0] == obj['center'][0]:
+                        button_index = i
+                        break
                 
-                # 상위 50%는 상행버튼, 하위 50%는 하행버튼
-                if center_y <= button_objects[len(button_objects)//2]['center'][1]:
-                    obj['button_id'] = 101  # 상행버튼
-                    obj['floor_type'] = 'up'
+                # 상위 50% 인덱스는 UP, 하위 50% 인덱스는 DOWN
+                if button_index is not None:
+                    mid_index = len(button_objects) // 2
+                    if button_index < mid_index:
+                        obj['button_id'] = 101  # 상행버튼 (UP)
+                        obj['floor_type'] = 'up'
+                    else:
+                        obj['button_id'] = 100  # 하행버튼 (DOWN)
+                        obj['floor_type'] = 'down'
                 else:
-                    obj['button_id'] = 100  # 하행버튼  
+                    # 매칭 실패시 기본값
+                    obj['button_id'] = 100  # 하행버튼
                     obj['floor_type'] = 'down'
                     
                 obj['recognition_method'] = 'button_recog_1'
@@ -1079,81 +1093,79 @@ class MultiModelDetector:
         return updated_objects
     
     def _apply_button_recog_2(self, objects: List[dict]) -> List[dict]:
-        """button_recog_2: 엘리베이터 내부 - 위치 기반 층수 매핑"""
+        """button_recog_2: 엘리베이터 내부 - 상대적 위치 기반 매핑"""
         button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
         
         if len(button_objects) == 0:
             return objects
             
-        # 엘리베이터 내부 버튼 배치 매핑 (상대 위치 기반)
-        # 102  |  1   |  4   |  7   | 10  |
-        # 103  | 13   |  3   |  6   |  9  | 12
-        #      | 14   |  2   |  5   |  8  | 11
+        # X 좌표를 기준으로 정렬
+        button_objects.sort(key=lambda obj: obj['center'][0])
         
-        button_layout = {
-            # (col, row): button_id
-            (0, 0): 102,  # 열기
-            (0, 1): 103,  # 닫기
-            (1, 0): 1,    # 1층
-            (1, 1): 13,   # B1층
-            (1, 2): 14,   # B2층
-            (2, 0): 4,    # 4층
-            (2, 1): 3,    # 3층
-            (2, 2): 2,    # 2층
-            (3, 0): 7,    # 7층
-            (3, 1): 6,    # 6층
-            (3, 2): 5,    # 5층
-            (4, 0): 10,   # 10층
-            (4, 1): 9,    # 9층
-            (4, 2): 8,    # 8층
-            (5, 1): 12,   # 12층
-            (5, 2): 11,   # 11층
-        }
+        # 왼쪽부터 2-3-3-3-... 패턴으로 그룹 할당
+        group_pattern = [2, 3, 3, 3, 3, 3]  # 필요시 확장 가능
+        button_groups = []
+        start_idx = 0
         
-        # 버튼들의 위치를 기반으로 격자 생성
-        x_coords = [obj['center'][0] for obj in button_objects]
-        y_coords = [obj['center'][1] for obj in button_objects]
-        
-        if len(set(x_coords)) < 2 or len(set(y_coords)) < 2:
-            # 격자를 만들 수 없으면 원본 반환
-            return objects
+        for group_size in group_pattern:
+            if start_idx >= len(button_objects):
+                break
+            end_idx = min(start_idx + group_size, len(button_objects))
+            group = button_objects[start_idx:end_idx]
+            if group:  # 빈 그룹이 아닌 경우만
+                # Y 좌표로 각 그룹 내에서 정렬
+                group.sort(key=lambda obj: obj['center'][1])
+                button_groups.append(group)
+            start_idx = end_idx
             
-        # X, Y 좌표를 열/행으로 변환
-        x_sorted = sorted(set(x_coords))
-        y_sorted = sorted(set(y_coords))
+        # 각 그룹별 버튼 ID 매핑
+        group_mappings = [
+            # 그룹 0: 특수 버튼 (열기/닫기)
+            [102, 103],  # [열기, 닫기]
+            # 그룹 1: 1층, B1, B2
+            [1, 13, 14],  # [1층, B1, B2]
+            # 그룹 2: 4, 3, 2층
+            [4, 3, 2],
+            # 그룹 3: 7, 6, 5층  
+            [7, 6, 5],
+            # 그룹 4: 10, 9, 8층
+            [10, 9, 8],
+            # 그룹 5: 12, 11층 등
+            [12, 11, 15]  # 확장 가능
+        ]
         
         updated_objects = []
         
         for obj in objects:
             if obj.get('class_name') == 'button':
-                center_x, center_y = obj['center']
-                
-                # 가장 가까운 격자점 찾기
-                col = min(range(len(x_sorted)), key=lambda i: abs(x_sorted[i] - center_x))
-                row = min(range(len(y_sorted)), key=lambda i: abs(y_sorted[i] - center_y))
-                
-                # 매핑 테이블에서 button_id 찾기
-                if (col, row) in button_layout:
-                    button_id = button_layout[(col, row)]
-                    obj['button_id'] = button_id
-                    
-                    # 버튼 종류 분류
-                    if button_id in [100, 101]:
-                        obj['floor_type'] = 'direction'
-                    elif button_id in [102, 103]:
-                        obj['floor_type'] = 'control'
-                    elif button_id in [13, 14]:
-                        obj['floor_type'] = 'basement'
-                    else:
-                        obj['floor_type'] = 'floor'
+                # 어느 그룹에 속하는지 찾기
+                found = False
+                for group_idx, group in enumerate(button_groups):
+                    for button_idx, button_obj in enumerate(group):
+                        if button_obj is obj:  # 같은 객체인지 확인
+                            if group_idx < len(group_mappings) and button_idx < len(group_mappings[group_idx]):
+                                button_id = group_mappings[group_idx][button_idx]
+                                obj['button_id'] = button_id
+                                
+                                # 버튼 종류 분류
+                                if button_id in [102, 103]:
+                                    obj['floor_type'] = 'control'
+                                elif button_id in [13, 14]:
+                                    obj['floor_type'] = 'basement'
+                                else:
+                                    obj['floor_type'] = 'floor'
+                                    
+                                obj['recognition_method'] = 'button_recog_2'
+                                obj['group_info'] = f"G{group_idx}B{button_idx}"
+                                found = True
+                                break
+                    if found:
+                        break
                         
-                else:
-                    # 매핑되지 않은 위치 - 기본값
-                    obj['button_id'] = f"unknown_{col}_{row}"
+                if not found:
+                    obj['button_id'] = 'unmapped'
                     obj['floor_type'] = 'unknown'
-                    
-                obj['recognition_method'] = 'button_recog_2'
-                obj['grid_position'] = (col, row)
+                    obj['recognition_method'] = 'button_recog_2'
                 
             updated_objects.append(obj)
             
@@ -1355,7 +1367,7 @@ class VSNode(Node):
         self.current_camera_name = "None"
         
         # 이미지 처리 옵션
-        self.flip_horizontal = True  # 좌우반전을 기본으로 켜기
+        self.flip_horizontal = False  # 객체 인식을 위해 좌우반전 끄기 (실제 위치 그대로)
         self.confidence_threshold = 0.7
         
         # 헤드리스 모드 설정 (GUI 없이 동작)
@@ -2243,19 +2255,54 @@ class VSNode(Node):
         return response
     
     def door_status_callback(self, request, response):
-        """문 열림 감지 처리"""
+        """문 열림 감지 처리 - 객체 감지 기반"""
         try:
             self.get_logger().info(f"문 상태 감지 요청: robot_id={request.robot_id}")
             
-            import random
-            dummy_door_opened = random.choice([True, False])
+            # 현재 활성 카메라에서 이미지 가져오기
+            current_color = None
+            current_depth = None
             
+            # 전면 카메라 사용 (문 감지에 적합)
+            if self.current_front_camera:
+                color_frame, depth_frame = self.current_front_camera.get_frames()
+                if color_frame is not None:
+                    current_color = color_frame
+                    current_depth = depth_frame
+            
+            # 카메라에서 이미지를 가져올 수 없는 경우 실패 반환
+            if current_color is None:
+                self.get_logger().warn("카메라에서 이미지를 가져올 수 없음 - 문 상태 감지 실패")
+                response.robot_id = request.robot_id
+                response.success = False
+                response.door_opened = False
+                return response
+            
+            # 객체 감지 수행
+            detected_objects = self.model_detector.detect_objects(
+                current_color, 
+                current_depth, 
+                self.confidence_threshold, 
+                self.current_front_mode_id
+            )
+            
+            # door 객체가 감지되었는지 확인
+            door_detected = False
+            door_count = 0
+            
+            for obj in detected_objects:
+                if obj['class_name'] == 'door':
+                    door_detected = True
+                    door_count += 1
+                    self.get_logger().info(f"문 객체 감지됨: 신뢰도={obj['confidence']:.2f}, 위치=({obj['center'][0]}, {obj['center'][1]})")
+            
+            # 문이 감지되면 열림, 감지되지 않으면 닫힘으로 판단
             response.robot_id = request.robot_id
             response.success = True
-            response.door_opened = dummy_door_opened
+            response.door_opened = door_detected
             
-            door_str = "열림" if dummy_door_opened else "닫힘"
-            self.get_logger().info(f"문 상태: {door_str}")
+            door_str = "열림" if door_detected else "닫힘"
+            self.get_logger().info(f"문 상태: {door_str} (감지된 문 객체 수: {door_count})")
                 
         except Exception as e:
             self.get_logger().error(f"문 상태 감지 에러: {e}")
@@ -2270,15 +2317,14 @@ class VSNode(Node):
         try:
             self.get_logger().info(f"공간 가용성 감지 요청: robot_id={request.robot_id}")
             
-            import random
-            dummy_space_available = random.choice([True, False])
+            # 항상 공간이 확보된 것으로 반환
+            space_available = True
             
             response.robot_id = request.robot_id
             response.success = True
-            response.space_availability = dummy_space_available
+            response.space_availability = space_available
             
-            space_str = "확보됨" if dummy_space_available else "확보 안됨"
-            self.get_logger().info(f"공간 가용성: {space_str}")
+            self.get_logger().info(f"공간 가용성: 확보됨 (항상 True 반환)")
                 
         except Exception as e:
             self.get_logger().error(f"공간 가용성 감지 에러: {e}")
@@ -2391,29 +2437,38 @@ class VSNode(Node):
                 cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
                 
                 # 클래스 이름과 신뢰도 표시
-                if class_name == 'button' and 'button_id' in obj:
-                    button_id = obj['button_id']
-                    recognition_method = obj.get('recognition_method', '')
-                    if isinstance(button_id, int):
-                        if button_id == 100:
-                            label = f"하행버튼: {confidence:.2f}"
-                        elif button_id == 101:
-                            label = f"상행버튼: {confidence:.2f}"
-                        elif button_id == 102:
-                            label = f"열기버튼: {confidence:.2f}"
-                        elif button_id == 103:
-                            label = f"닫기버튼: {confidence:.2f}"
-                        elif button_id == 13:
-                            label = f"B1층: {confidence:.2f}"
+                if class_name == 'button':
+                    # 매핑된 버튼 ID 표시
+                    button_id = obj.get('button_id', 'unknown')
+                    floor_type = obj.get('floor_type', 'unknown')
+                    group_info = obj.get('group_info', '')
+                    
+                    if button_id == 102:
+                        label = "OPEN"
+                    elif button_id == 103:
+                        label = "CLOSE"
+                    elif button_id == 101:
+                        label = "UP"
+                    elif button_id == 100:
+                        label = "DOWN"
+                    elif floor_type == 'basement':
+                        if button_id == 13:
+                            label = "B1"
                         elif button_id == 14:
-                            label = f"B2층: {confidence:.2f}"
+                            label = "B2"
                         else:
-                            label = f"{button_id}층: {confidence:.2f}"
+                            label = f"B{button_id}"
+                    elif floor_type == 'floor' and isinstance(button_id, int):
+                        label = f"{button_id}F"
                     else:
-                        label = f"{button_id}: {confidence:.2f}"
+                        label = f"{button_id}"
+                    
+                    # 그룹 정보가 있으면 추가로 표시
+                    if group_info:
+                        label += f" ({group_info})"
                 else:
                     label = f"{class_name}: {confidence:.2f}"
-                    
+                
                 cv2.putText(image, label, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
                 
