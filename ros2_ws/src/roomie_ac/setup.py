@@ -20,7 +20,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'ac_node = roomie_ac.ac_node:main'
+            'ac_node = roomie_ac.ac_node:main',
+            'dummy_vision_service = roomie_ac.test.dummy_vision_service:main',
+            'test_vs_client = roomie_ac.test.test_vs_client_node:main',
         ],
     },
 )
