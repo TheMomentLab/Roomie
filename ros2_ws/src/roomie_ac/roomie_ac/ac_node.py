@@ -73,7 +73,12 @@ class ArmActionServer(Node):
         target_angles_deg = POSE_ANGLES_DEG.get(requested_pose)
 
         if target_angles_deg is not None:
+            # ======================= [디버깅 코드 추가] =======================
+            self.get_logger().info(f"==> [DEBUG] MotionController에 전달할 목표 각도: {target_angles_deg}")
             success = self.motion_controller.move_to_angles_deg(target_angles_deg)
+            self.get_logger().info(f"<== [DEBUG] MotionController로부터 반환된 결과: success={success}")
+            # =================================================================
+
             if success:
                 self.get_logger().info(f"'{requested_pose.name}' 자세로 이동 완료.")
                 goal_handle.succeed()
@@ -84,7 +89,7 @@ class ArmActionServer(Node):
         self.get_logger().error(msg)
         
         self.get_logger().info("안전 모드: 이동 실패로 초기 자세로 복귀합니다.")
-        self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.INIT])
+        self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
 
         goal_handle.abort()
         return SetPose.Result(success=False, message=msg)
@@ -158,7 +163,7 @@ class ArmActionServer(Node):
 
             # [수정] 실패 시 초기 자세로 복귀하는 로직 추가
             self.get_logger().info("안전 모드: 작업 실패로 초기 자세로 복귀합니다.")
-            self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.INIT])
+            self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
 
             goal_handle.abort()
             result.success = False

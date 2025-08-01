@@ -62,7 +62,8 @@ class VisionServiceClient(Node):
                     self.get_logger().info(f"VS로부터 응답 수신: success={response.success}")
                     if response.success:
                         for i, btn_id in enumerate(button_ids):
-                            self.get_logger().info(f"  버튼 {btn_id}: xs={response.xs[i]:.2f}, ys={response.ys[i]:.2f}, sizes={response.depths[i]:.2f}, pressed={response.is_pressed[i]}")
+                            # [BUG FIX] 'depths'가 아닌 'sizes' 필드를 사용하도록 수정했습니다.
+                            self.get_logger().info(f"  버튼 {btn_id}: xs={response.xs[i]:.3f}, ys={response.ys[i]:.3f}, sizes={response.sizes[i]:.4f}, pressed={response.is_pressed[i]}")
                     else:
                         self.get_logger().warn("VS 요청이 실패했습니다.")
                 return response

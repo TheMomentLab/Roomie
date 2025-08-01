@@ -15,6 +15,7 @@ import easyocr
 import numpy as np
 from std_msgs.msg import String
 from std_msgs.msg import Float32
+from . import config
 
 class YoloVisionService(Node):
     '''
@@ -32,18 +33,22 @@ class YoloVisionService(Node):
         self.ocr_pub = self.create_publisher(String, '/vs/button_status', 10)
         self.image_pub = self.create_publisher(Image, '/camera/image_raw', 10)
         self.bridge = CvBridge()
+        
         # 카메라 초기화
         self.cap = cv2.VideoCapture(4)
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 800)
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 600)
+        if not self.cap.isOpened():
+            self.get_logger().fatal("카메라를 열 수 없습니다. 장치 인덱스를 확인하세요.")
+            return
+            
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, config.IMAGE_WIDTH_PX)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, config.IMAGE_HEIGHT_PX)
 
         # 모델 로드
         self.model = YOLO('/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/best.pt')
         self.model.conf = 0.5
         self.model.iou = 0.5
-        self.last_x_pub = self.create_publisher(Float32, '/vs/last_button_x', 10)
-        self.last_y_pub = self.create_publisher(Float32, '/vs/last_button_y', 10)
-         # OCR 리더기
+        
+        # OCR 리더기
         self.reader = easyocr.Reader(['en'], gpu=True)
 
         # 버튼 상태 저장 dict
@@ -63,14 +68,18 @@ class YoloVisionService(Node):
         while self.running:
             ret, frame = self.cap.read()
             if not ret:
+                time.sleep(0.1)
                 continue
 
             h, w, _ = frame.shape
             results = self.model(frame)
             boxes = results[0].boxes
-            annotated = frame.copy()
+            annotated_frame = frame.copy()
 
             with self.lock:
+                # 새로운 감지 주기를 시작하기 전에 이전 데이터를 초기화할 수 있습니다.
+                # self.button_status_map.clear() 
+                
                 for box in boxes:
                     class_id = int(box.cls[0].item())
                     class_name = self.model.names[class_id]
@@ -79,57 +88,70 @@ class YoloVisionService(Node):
 
                     try:
                         button_id = int(class_name.split('_')[1])
-                    except:
+                    except (ValueError, IndexError):
                         continue
 
                     xmin, ymin, xmax, ymax = map(int, box.xyxy[0].tolist())
-                    roi = frame[ymin:ymax, xmin:xmax]
-
-                    text = self.reader.readtext(roi, detail=0)
-                    ocr_text = ''.join(filter(str.isdigit, ''.join(text))).strip()
+                    
+                    # [IMPROVEMENT] 거리 계산의 정확도를 위해 넓이가 아닌 '너비'를 사용합니다.
+                    # 바운딩 박스의 너비를 이미지 너비로 정규화합니다.
+                    button_width_px = xmax - xmin
+                    normalized_width = float(button_width_px) / w
 
                     x_center = ((xmin + xmax) / 2) / w
                     y_center = ((ymin + ymax) / 2) / h
-                    size = ((xmax - xmin) * (ymax - ymin)) / (w * h)
+
+                    # OCR은 필요할 때만 실행하여 성능을 최적화할 수 있습니다.
+                    # roi = frame[ymin:ymax, xmin:xmax]
+                    # text = self.reader.readtext(roi, detail=0)
+                    # ocr_text = ''.join(filter(str.isdigit, ''.join(text))).strip()
+                    ocr_text = "N/A" # OCR 비활성화 시
 
                     self.button_status_map[button_id] = {
                         "x": float(x_center),
                         "y": float(y_center),
-                        "size": float(size),
-                        "is_pressed": False,
+                        "size": normalized_width, # 'size' 필드에 정규화된 너비를 저장
+                        "is_pressed": False, # 이 값은 외부에서 업데이트 되어야 할 수 있음
                         "timestamp": self.get_clock().now().to_msg(),
                         "ocr": ocr_text
                     }
 
-                    # Publish
+                    # Publish for debugging
                     msg = String()
-                    msg.data = f"button_{button_id} x:{x_center:.3f} y:{y_center:.3f} size:{size:.3f} ocr:{ocr_text}"
+                    msg.data = f"button_{button_id} x:{x_center:.3f} y:{y_center:.3f} size:{normalized_width:.4f} ocr:{ocr_text}"
                     self.ocr_pub.publish(msg)
-                    image_msg = self.bridge.cv2_to_imgmsg(frame, encoding='bgr8')
-                    self.image_pub.publish(image_msg)
 
-                    cv2.putText(annotated, f'Btn {button_id}: {ocr_text}', (xmin, ymin - 5),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    cv2.rectangle(annotated, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
+                    cv2.putText(annotated_frame, f'Btn {button_id}', (xmin, ymin - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    cv2.rectangle(annotated_frame, (xmin, ymin), (xmax, ymax), (0, 255, 0), 2)
 
-            cv2.imshow("YOLO + OCR View", annotated)
-            cv2.waitKey(1)
-            time.sleep(0.5)
+            # 항상 최신 프레임을 게시
+            image_msg = self.bridge.cv2_to_imgmsg(annotated_frame, encoding='bgr8')
+            self.image_pub.publish(image_msg)
+
+            # GUI 창은 디버깅 시에만 표시하는 것이 좋습니다.
+            if config.DEBUG:
+                cv2.imshow("YOLO + OCR View", annotated_frame)
+                cv2.waitKey(1)
+            
+            time.sleep(0.1) # 루프 주기를 약간 줄여 반응성 향상
 
     def handle_request(self, request, response):
         xs, ys, sizes, is_pressed, timestamps = [], [], [], [], []
 
         with self.lock:
             for btn_id in request.button_ids:
-                status = self.button_status_map.get(btn_id, None)
+                status = self.button_status_map.get(btn_id)
 
                 if status:
                     xs.append(status["x"])
                     ys.append(status["y"])
+                    # [IMPROVEMENT] 'size'는 이제 정규화된 너비입니다.
                     sizes.append(status["size"])
                     is_pressed.append(status["is_pressed"])
                     timestamps.append(status["timestamp"])
                 else:
+                    # 버튼을 찾지 못한 경우
                     xs.append(0.0)
                     ys.append(0.0)
                     sizes.append(0.0)
@@ -137,18 +159,27 @@ class YoloVisionService(Node):
                     timestamps.append(self.get_clock().now().to_msg())
 
         response.robot_id = request.robot_id
-        response.success = True
+        # 요청된 모든 버튼 ID에 대해 응답을 생성했으므로 success는 True
+        # 단, 하나라도 못찾았으면 클라이언트에서 sizes의 0.0 값을 보고 판단해야 함
+        response.success = True 
         response.xs = xs
         response.ys = ys
         response.sizes = sizes
         response.is_pressed = is_pressed
         response.timestamp = timestamps
+        
+        if config.DEBUG:
+            self.get_logger().info(f"ButtonStatus 요청 처리 완료 for IDs: {request.button_ids}")
+
         return response
     
     def destroy_node(self):
         self.running = False
-        self.worker_thread.join()
-        self.cap.release()
+        if hasattr(self, 'worker_thread'):
+            self.worker_thread.join()
+        if hasattr(self, 'cap'):
+            self.cap.release()
+        cv2.destroyAllWindows()
         super().destroy_node()
 
 def main(args=None):
