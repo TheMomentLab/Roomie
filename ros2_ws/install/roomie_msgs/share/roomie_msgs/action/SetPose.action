@@ -1,9 +1,0 @@
-# Goal
-int32 robot_id
-int32 pose_id
----
-# Result
-int32 robot_id
-bool success
----
-# Feedback
