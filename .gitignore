@@ -205,3 +205,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific (Roomie)
+# Debug files and directories
+ros2_ws/src/roomie_vs/debug/
+debug/
+*.debug.jpg
+*.debug.png
+
+# ROS2 build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+install/
+log/
+build/
+
+# Temporary files
+*.tmp
+*.temp

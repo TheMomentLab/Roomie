@@ -11,6 +11,9 @@ import cv2
 import cv2.aruco as aruco
 from typing import Optional, Tuple, List
 
+# 디스플레이 OCR 모듈
+from .display_ocr import DisplayOCR, MultiModelOCR
+
 # ROS2 메시지 타입들
 from geometry_msgs.msg import Point
 
@@ -241,6 +244,7 @@ class WebCamCamera:
         
         # 현재 프레임
         self.current_color = None
+        self.current_depth = None  # 웹캠은 depth가 없지만 일관성을 위해 None으로 초기화
         self.frame_lock = threading.Lock()
         
     def initialize(self) -> bool:
@@ -752,26 +756,30 @@ class MultiModelDetector:
             if normal_model_path:
                 try:
                     self.models['normal'] = YOLO(normal_model_path)
+                    # 🚀 GPU 설정 추가
+                    self.models['normal'].to('cuda')
                     # 실제 모델 클래스 확인
                     if hasattr(self.models['normal'], 'names'):
                         actual_classes = list(self.models['normal'].names.values())
-                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
+                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공 (GPU): {normal_model_path}")
                         self.logger.info(f"📋 실제 클래스: {actual_classes}")
                     else:
-                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공: {normal_model_path}")
+                        self.logger.info(f"✅ 일반 주행 모델 로딩 성공 (GPU): {normal_model_path}")
                 except Exception as e:
                     self.logger.warning(f"⚠️ 일반 주행 모델 로딩 실패: {e}")
             else:
                 # 일반 주행용 모델이 없으면 COCO 사전훈련 모델 사용
                 try:
                     self.models['normal'] = YOLO('yolov8n.pt')
+                    # 🚀 GPU 설정 추가
+                    self.models['normal'].to('cuda')
                     # COCO 모델 클래스 확인
                     if hasattr(self.models['normal'], 'names'):
                         actual_classes = list(self.models['normal'].names.values())
-                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
+                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용 (GPU)")
                         self.logger.info(f"📋 COCO 클래스 (전체 {len(actual_classes)}개): person, chair 등만 필터링 사용")
                     else:
-                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용")
+                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용 (GPU)")
                 except Exception as e:
                     self.logger.warning(f"⚠️ COCO 모델도 로딩 실패: {e}")
             
@@ -780,13 +788,15 @@ class MultiModelDetector:
             if elevator_model_path:
                 try:
                     self.models['elevator'] = YOLO(elevator_model_path)
+                    # 🚀 GPU 설정 추가
+                    self.models['elevator'].to('cuda')
                     # 실제 모델 클래스 확인
                     if hasattr(self.models['elevator'], 'names'):
                         actual_classes = list(self.models['elevator'].names.values())
-                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공: {elevator_model_path}")
+                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공 (GPU): {elevator_model_path}")
                         self.logger.info(f"📋 실제 클래스: {actual_classes}")
                     else:
-                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공: {elevator_model_path}")
+                        self.logger.info(f"✅ 엘리베이터 모델 로딩 성공 (GPU): {elevator_model_path}")
                 except Exception as e:
                     self.logger.warning(f"⚠️ 엘리베이터 모델 로딩 실패: {e}")
             else:
@@ -924,6 +934,7 @@ class MultiModelDetector:
             results = self.current_model.predict(
                 color_image, 
                 conf=conf_threshold,
+                device='cuda',  # 🚀 GPU 사용
                 verbose=False
             )
             
@@ -1208,7 +1219,9 @@ class YOLOButtonDetector:
             model_path = self._find_best_model()
             if model_path:
                 self.yolo_model = YOLO(model_path)
-                self.logger.info(f"엘리베이터 감지 모델 로딩 성공: {model_path}")
+                # 🚀 GPU 설정 추가
+                self.yolo_model.to('cuda')
+                self.logger.info(f"엘리베이터 감지 모델 로딩 성공 (GPU): {model_path}")
                 return True
             else:
                 self.logger.error("엘리베이터 감지 YOLO 모델을 찾을 수 없습니다")
@@ -1271,6 +1284,7 @@ class YOLOButtonDetector:
             results = self.yolo_model.predict(
                 color_image, 
                 conf=conf_threshold,
+                device='cuda',  # 🚀 GPU 사용
                 verbose=False
             )
             
@@ -1361,6 +1375,40 @@ class VSNode(Node):
         self.camera_manager = MultiCameraManager(self.get_logger())
         self.model_detector = MultiModelDetector(self.get_logger())
         
+        # 🔥 최적화된 DisplayOCR 초기화 (EasyOCR만 사용, GPU 리소스 절약)
+        self.display_ocr = DisplayOCR(self.get_logger())
+        # EasyOCR test_all_models_on_roi와 동일한 단순 크롭 방식 사용
+        self.display_ocr.update_config(debug_mode=True, use_simple_crop=True)
+        
+        # OCR 주기 조절 설정 (리소스 절약)
+        self.ocr_counter = 0
+        self.ocr_skip_frames = 5  # 5프레임마다 한 번씩 OCR 수행 (기존보다 느리게)
+        self.last_ocr_objects = []  # 마지막 OCR 결과 캐싱
+        
+        # 🎮 GPU 리소스 모니터링 초기화
+        try:
+            from .gpu_monitor import GPUResourceMonitor
+            # GPU 메모리 제한: RTX 2060 6GB 중 4GB만 사용 허용
+            self.gpu_monitor = GPUResourceMonitor(
+                self.get_logger(), 
+                max_memory_mb=4096,  # 4GB 제한
+                check_interval=3.0   # 3초마다 체크
+            )
+            
+            # GPU 메모리 초과 시 대응 방법 설정
+            self.gpu_monitor.set_memory_exceeded_callback(self._on_gpu_memory_exceeded)
+            self.gpu_monitor.set_gpu_error_callback(self._on_gpu_error)
+            
+            # GPU 모니터링 시작
+            if self.gpu_monitor.start_monitoring():
+                self.get_logger().info("🎮 GPU 리소스 모니터링 활성화됨")
+            else:
+                self.get_logger().warning("⚠️ GPU 모니터링 시작 실패")
+                
+        except Exception as e:
+            self.get_logger().warning(f"⚠️ GPU 모니터링 초기화 실패: {e}")
+            self.gpu_monitor = None
+        
         # 현재 선택된 카메라들 (모드별로 변경됨)
         self.current_camera = None
         self.current_depth_camera = None
@@ -1415,6 +1463,15 @@ class VSNode(Node):
         # 마지막으로 감지된 위치 저장
         self.last_detected_location_id = 0  # 기본값: LOB_WAITING
         self.last_detection_time = None
+        
+        # 🚦 엘리베이터 방향 캐시
+        self.last_elevator_direction = 0  # 0: 상행, 1: 하행
+        self.last_direction_detection_time = None
+        
+        # 🔥 개선된 Direction Light 추적 (밝기 기반 + 소실 감지)
+        self.previous_direction_lights = []  # 이전 프레임의 direction light 객체들
+        self.direction_light_history = []    # 최근 5프레임의 개수 히스토리
+        self.brightness_threshold = 200      # 밝기 임계값 (0-255)
         
         # ArUco 마커 ID와 location_id 직접 매핑 (interface 문서 기준)
         self.aruco_to_location = {
@@ -1809,7 +1866,8 @@ class VSNode(Node):
                     return response
                 
                 with self.current_camera.frame_lock:
-                    current_depth = self.current_camera.current_depth
+                    # WebCamCamera에는 current_depth가 없으므로 안전하게 접근
+                    current_depth = getattr(self.current_camera, 'current_depth', None)
                     current_color = self.current_camera.current_color
                 
                 # 이미지 좌우반전
@@ -1823,8 +1881,11 @@ class VSNode(Node):
                     # 다중 모델로 객체 탐지 (현재 모드 전달)
                     detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_front_mode_id)
                     
+                    # 객체에 OCR 결과 추가 (display 객체만)
+                    enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
+                    
                     # 'button' 클래스 객체들만 필터링
-                    detected_buttons = [obj for obj in detected_objects if obj.get('class_name') == 'button']
+                    detected_buttons = [obj for obj in enhanced_objects if obj.get('class_name') == 'button']
                     
                     for i, button_id in enumerate(request.button_ids):
                         timestamp = self.get_clock().now().to_msg()
@@ -2229,21 +2290,91 @@ class VSNode(Node):
         return response
     
     def elevator_status_callback(self, request, response):
-        """엘리베이터 위치 및 방향 감지 처리"""
+        """엘리베이터 위치 및 방향 감지 처리 - display 객체 OCR 기반"""
         try:
             self.get_logger().info(f"엘리베이터 상태 감지 요청: robot_id={request.robot_id}")
             
-            import random
-            dummy_direction = random.choice([0, 1])
-            dummy_position = random.choice([1, 2, 3])
+            # 현재 활성 카메라에서 이미지 가져오기
+            current_color = None
+            current_depth = None
             
+            # 전면 카메라 사용 (엘리베이터 디스플레이 감지에 적합)
+            if self.current_camera:
+                color_frame, depth_frame = self.current_camera.get_frames()
+                if color_frame is not None:
+                    current_color = color_frame
+                    current_depth = depth_frame
+            
+            # 기본값 설정
+            detected_floor = 1  # 기본 1층
+            detected_direction = 0  # 기본 상행
+            success = False
+            
+            if current_color is not None:
+                # 객체 감지 수행
+                detected_objects = self.model_detector.detect_objects(
+                    current_color, 
+                    current_depth, 
+                    self.confidence_threshold, 
+                    self.current_front_mode_id
+                )
+                
+                # 객체에 OCR 결과 추가 (display 객체만)
+                enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
+                
+                # 'display' 객체에서 층수 정보 추출
+                display_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'display']
+                
+                if display_objects:
+                    for display_obj in display_objects:
+                        floor_number = display_obj.get('floor_number')
+                        floor_text = display_obj.get('ocr_text', '')
+                        ocr_success = display_obj.get('ocr_success', False)
+                        
+                        if floor_number is not None:
+                            detected_floor = floor_number
+                            success = True
+                            self.get_logger().info(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
+                            break  # 첫 번째 성공한 결과 사용
+                        elif ocr_success:
+                            self.get_logger().warn(f"층수 파싱 실패: '{floor_text}'")
+                        else:
+                            self.get_logger().debug(f"디스플레이 감지됨 (OCR 실패)")
+                else:
+                    self.get_logger().debug("display 객체가 감지되지 않음")
+            else:
+                self.get_logger().warn("카메라에서 이미지를 가져올 수 없음")
+            
+            # direction_light 객체로 방향 감지 - 색상 기반 방향 판단
+            if current_color is not None and 'enhanced_objects' in locals():
+                direction_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'direction_light']
+                if direction_objects:
+                    # 🚦 방향등 색상으로 정확한 방향 판단
+                    detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
+                    
+                    # 🎯 방향 캐시 업데이트
+                    self.last_elevator_direction = detected_direction
+                    self.last_direction_detection_time = self.get_clock().now()
+                    
+                    self.get_logger().info(f"방향등 기반 방향 감지: {len(direction_objects)}개 → {'상행' if detected_direction == 0 else '하행'} (캐시 업데이트)")
+                else:
+                    # 방향등이 감지되지 않으면 캐시된 방향 사용
+                    detected_direction = self.last_elevator_direction
+                    self.get_logger().info(f"방향등 미감지 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+            else:
+                # 이미지나 객체가 없으면 캐시된 방향 사용
+                detected_direction = self.last_elevator_direction
+                self.get_logger().info(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+            
+            # 응답 설정
             response.robot_id = request.robot_id
-            response.success = True
-            response.direction = dummy_direction
-            response.position = dummy_position
+            response.success = success
+            response.direction = detected_direction
+            response.position = detected_floor
             
-            direction_str = "상행" if dummy_direction == 0 else "하행"
-            self.get_logger().info(f"엘리베이터 상태: {direction_str}, {dummy_position}층")
+            direction_str = "상행" if detected_direction == 0 else "하행"
+            status_str = "OCR 성공" if success else "OCR 실패 (기본값 사용)"
+            self.get_logger().info(f"엘리베이터 상태: {direction_str}, {detected_floor}층 ({status_str})")
                 
         except Exception as e:
             self.get_logger().error(f"엘리베이터 상태 감지 에러: {e}")
@@ -2253,6 +2384,135 @@ class VSNode(Node):
             response.position = 1
         
         return response
+    
+    def _enhance_objects_with_ocr(self, color_image: np.ndarray, objects: List[dict]) -> List[dict]:
+        """객체 목록에서 display 객체들에 대해 OCR 수행하고 direction_light 객체들에 대해 색상 분석 수행"""
+        enhanced_objects = []
+        
+        # 방향등 위치 분석을 위해 먼저 direction_light 객체들을 찾아서 정렬
+        direction_lights = [obj for obj in objects if obj.get('class_name') == 'direction_light']
+        sorted_direction_lights = sorted(direction_lights, key=lambda x: x['center'][1]) if len(direction_lights) >= 2 else []
+        
+        for obj in objects:
+            enhanced_obj = obj.copy()
+            
+            # display 객체에 대해서만 OCR 수행
+            if obj.get('class_name') == 'display':
+                try:
+                    bbox = obj.get('bbox')
+                    if bbox:
+                        # 🔥 최적화된 EasyOCR 사용 (단순 크롭 + EasyOCR만)
+                        ocr_result = self.display_ocr.recognize_from_display_bbox_stable(color_image, bbox)
+                        floor_text = ocr_result.get('text', '?')
+                        confidence = ocr_result.get('confidence', 0.0)
+                        digit_bbox = ocr_result.get('digit_bbox', None)
+                        floor_number = None
+                        
+                        if floor_text and floor_text.strip() and floor_text != "?":
+                            floor_number = self._parse_floor_number(floor_text.strip())
+                        
+                        # OCR 결과를 객체에 저장
+                        enhanced_obj['ocr_text'] = floor_text if floor_text else ""
+                        enhanced_obj['floor_number'] = floor_number
+                        enhanced_obj['ocr_success'] = bool(floor_text and floor_text.strip() and floor_text != "?")
+                        enhanced_obj['ocr_confidence'] = confidence  # 신뢰도 추가
+                        enhanced_obj['digit_bbox'] = digit_bbox  # 🎯 숫자 영역 바운딩박스 추가
+                        
+                        # 성공 로그
+                        if floor_number is not None:
+                            self.get_logger().info(f"✅ 디스플레이 OCR 성공: '{floor_text}' -> {floor_number}층 (신뢰도: {confidence:.3f})")
+                        elif floor_text and floor_text != "?":
+                            self.get_logger().warn(f"❌ 층수 파싱 실패: '{floor_text}' (신뢰도: {confidence:.3f})")
+                        else:
+                            self.get_logger().debug(f"❌ OCR 인식 실패 (신뢰도: {confidence:.3f})")
+                        
+                except Exception as e:
+                    self.get_logger().error(f"DisplayOCR 에러: {e}")
+                    enhanced_obj['ocr_text'] = ""
+                    enhanced_obj['floor_number'] = None
+                    enhanced_obj['ocr_success'] = False
+                    enhanced_obj['ocr_confidence'] = 0.0
+                    enhanced_obj['digit_bbox'] = None
+            
+            # 🚦 direction_light 객체에 대해 색상 분석 및 위치 정보 추가
+            elif obj.get('class_name') == 'direction_light':
+                try:
+                    # 색상 분석
+                    detected_color = self._analyze_light_color(color_image, obj)
+                    brightness = self._get_light_brightness(color_image, obj)
+                    
+                    # 위치 분석 (위쪽/아래쪽 구분)
+                    light_position = 'unknown'
+                    if len(sorted_direction_lights) >= 2:
+                        current_obj_y = obj['center'][1]
+                        if current_obj_y == sorted_direction_lights[0]['center'][1]:
+                            light_position = 'upper'
+                        elif current_obj_y == sorted_direction_lights[-1]['center'][1]:
+                            light_position = 'lower'
+                        else:
+                            light_position = 'middle'
+                    
+                    # 색상 및 위치 정보를 객체에 저장
+                    enhanced_obj['light_color'] = detected_color
+                    enhanced_obj['light_brightness'] = brightness
+                    enhanced_obj['light_position'] = light_position
+                    
+                    # 디버그 로그
+                    self.get_logger().debug(f"🚦 방향등 분석: 위치={light_position}, 색상={detected_color}, 밝기={brightness:.1f}")
+                    
+                except Exception as e:
+                    self.get_logger().error(f"방향등 색상 분석 에러: {e}")
+                    enhanced_obj['light_color'] = 'UNKNOWN'
+                    enhanced_obj['light_brightness'] = 0.0
+                    enhanced_obj['light_position'] = 'unknown'
+            
+            enhanced_objects.append(enhanced_obj)
+        
+        return enhanced_objects
+    
+    def _parse_floor_number(self, floor_text: str) -> Optional[int]:
+        """OCR 텍스트에서 층수 추출"""
+        try:
+            # 공백 제거
+            text = floor_text.strip().upper()
+            
+            if not text:
+                return None
+            
+            # 지하층 처리 (B1, B2 등)
+            if text.startswith('B'):
+                basement_str = text[1:]
+                if basement_str.isdigit():
+                    return -int(basement_str)  # 지하는 음수로
+            
+            # 일반 층수 (숫자만 추출)
+            # "12F", "3층", "05" 등에서 숫자만 추출
+            numbers = ''.join(c for c in text if c.isdigit())
+            
+            if numbers:
+                floor_num = int(numbers)
+                # 합리적인 범위 체크 (지상 1~50층)
+                if 1 <= floor_num <= 50:
+                    return floor_num
+                elif floor_num == 0:
+                    return 1  # 0은 1층으로 간주
+            
+            # 특수 경우 처리
+            if text in ['G', 'GF', 'L']:  # Ground Floor, Lobby
+                return 1
+            
+            # 범위를 벗어나는 층수 처리
+            if numbers:
+                floor_num = int(numbers)
+                if floor_num > 50:
+                    return 50
+            
+            self.get_logger().debug(f"층수 파싱 실패: '{floor_text}' -> '{text}'")
+            return None
+            
+        except Exception as e:
+            self.get_logger().error(f"층수 파싱 에러: {e}")
+            return None
     
     def door_status_callback(self, request, response):
         """문 열림 감지 처리 - 객체 감지 기반"""
@@ -2264,8 +2524,8 @@ class VSNode(Node):
             current_depth = None
             
             # 전면 카메라 사용 (문 감지에 적합)
-            if self.current_front_camera:
-                color_frame, depth_frame = self.current_front_camera.get_frames()
+            if self.current_camera:
+                color_frame, depth_frame = self.current_camera.get_frames()
                 if color_frame is not None:
                     current_color = color_frame
                     current_depth = depth_frame
@@ -2466,28 +2726,137 @@ class VSNode(Node):
                     # 그룹 정보가 있으면 추가로 표시
                     if group_info:
                         label += f" ({group_info})"
+                elif class_name == 'display':
+                    # OCR 결과 가져오기
+                    floor_number = obj.get('floor_number', None)
+                    floor_text = obj.get('ocr_text', '')
+                    ocr_success = obj.get('ocr_success', False)
+                    digit_bbox = obj.get('digit_bbox', None)
+                    
+                    # 🎯 디스플레이 바운딩박스를 두껍게 표시 (YOLO가 감지한 전체 디스플레이 영역)
+                    cv2.rectangle(image, (x1, y1), (x2, y2), (0, 165, 255), 3)  # 주황색으로 더 두껍게
+                    
+                    # 📍 ROI 영역 표시 (좌우 중앙 30% 영역)
+                    display_width = x2 - x1
+                    display_height = y2 - y1
+                    roi_width = int(display_width * 0.3)
+                    center_x = (x1 + x2) // 2
+                    
+                    roi_x1 = center_x - roi_width // 2
+                    roi_x2 = center_x + roi_width // 2 
+                    roi_y1 = y1  # 상단 그대로
+                    roi_y2 = y2  # 하단 그대로
+                    
+                    # ROI 영역을 녹색 점선으로 표시
+                    cv2.rectangle(image, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 255, 0), 2)  # 녹색 실선
+                    
+                    # ROI 영역에 반투명 녹색 오버레이
+                    overlay = image.copy()
+                    cv2.rectangle(overlay, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 255, 0), -1)
+                    cv2.addWeighted(overlay, 0.1, image, 0.9, 0, image)
+                    
+                    # ROI 영역 위에 "OCR ROI (30%)" 표시  
+                    cv2.putText(image, "OCR ROI (30%)", (roi_x1, roi_y1-10), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                    
+                    # 🎯 OCR이 실제로 인식한 숫자 영역 표시 (digit_bbox)
+                    if digit_bbox and len(digit_bbox) == 4:
+                        dx1, dy1, dx2, dy2 = digit_bbox
+                        
+                        # 🔥 숫자 영역을 매우 명확하게 표시
+                        cv2.rectangle(image, (dx1-2, dy1-2), (dx2+2, dy2+2), (0, 0, 255), 4)  # 매우 두꺼운 빨간 박스
+                        
+                        # 숫자 영역에 십자선 표시 (정확한 위치 파악용)
+                        cv2.line(image, (dx1, (dy1+dy2)//2), (dx2, (dy1+dy2)//2), (0, 0, 255), 2)  # 가로선
+                        cv2.line(image, ((dx1+dx2)//2, dy1), ((dx1+dx2)//2, dy2), (0, 0, 255), 2)  # 세로선
+                        
+                        # 숫자 영역 크기 정보 표시
+                        digit_width = dx2 - dx1
+                        digit_height = dy2 - dy1
+                        cv2.putText(image, f"DIGIT: {digit_width}x{digit_height}", (dx1, dy1-15), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                        
+                        # 🎯 숫자 영역 내부에 강한 반투명 오버레이
+                        overlay = image.copy()
+                        cv2.rectangle(overlay, (dx1, dy1), (dx2, dy2), (0, 0, 255), -1)
+                        cv2.addWeighted(overlay, 0.3, image, 0.7, 0, image)
+                        
+                        # 인식된 텍스트를 숫자 영역 바로 아래 표시
+                        if floor_text and floor_text != "?":
+                            cv2.putText(image, f"READ: '{floor_text}'", (dx1, dy2+20), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                    else:
+                        # digit_bbox가 없는 경우 - OCR 실패 표시
+                        cv2.putText(image, "NO DIGIT DETECTED", (x1, y2+20), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                    
+                    # 디스플레이 라벨 (간단하게)
+                    if floor_text and floor_text != "?":
+                        label = f"DISPLAY: {floor_text}"
+                    elif floor_number is not None:
+                        label = f"DISPLAY: F{floor_number}"
+                    else:
+                        label = f"DISPLAY: {confidence:.2f}"
+                elif class_name == 'direction_light':
+                    # 🚦 방향등 정보 표시 (미리 계산된 정보 사용)
+                    light_position = obj.get('light_position', 'unknown')
+                    light_color = obj.get('light_color', 'UNKNOWN')
+                    light_brightness = obj.get('light_brightness', 0.0)
+                    
+                    # 위치에 따른 라벨과 색상 설정
+                    if light_position == 'upper':
+                        position_text = "UP"
+                        position_color = (0, 255, 0)  # 녹색
+                    elif light_position == 'lower':
+                        position_text = "DOWN"
+                        position_color = (0, 0, 255)  # 빨간색
+                    elif light_position == 'middle':
+                        position_text = "MID"
+                        position_color = (255, 255, 0)  # 노란색
+                    else:
+                        position_text = "UNKNOWN"
+                        position_color = (128, 128, 128)  # 회색
+                    
+                    # 색상에 따른 표시기
+                    if light_color == 'GREEN':
+                        color_indicator = "GREEN"
+                    elif light_color == 'RED':
+                        color_indicator = "RED"
+                    else:
+                        color_indicator = "OFF"
+                    
+                    # 최종 라벨 생성
+                    label = f"{position_text} LIGHT {color_indicator}"
+                    
+                    # 밝기 정보도 추가 표시
+                    brightness_text = f"({light_brightness:.0f})"
+                    cv2.putText(image, brightness_text, (x1, y2+15), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.3, position_color, 1)
+                    
+                    # 위치에 따른 색상 설정
+                    color = position_color
                 else:
                     label = f"{class_name}: {confidence:.2f}"
                 
                 cv2.putText(image, label, (x1, y1-10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 
                 # 모델 이름 표시 (작게)
                 model_text = f"[{model_name}]"
-                cv2.putText(image, model_text, (x1, y1-30), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
+                cv2.putText(image, model_text, (x1, y1-25), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
                 
                 # 거리 정보 표시
                 if depth_mm > 0:
                     distance_text = f"{depth_mm}mm"
-                    cv2.putText(image, distance_text, (center[0]-20, center[1]+30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
+                    cv2.putText(image, distance_text, (center[0]-20, center[1]+20), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
                 
                 # 버튼 눌림 상태 표시
                 if class_name == 'button' and is_pressed:
                     pressed_text = "PRESSED"
-                    cv2.putText(image, pressed_text, (center[0]-30, center[1]+50), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+                    cv2.putText(image, pressed_text, (center[0]-30, center[1]+35), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
         
         return image
 
@@ -2501,10 +2870,10 @@ class VSNode(Node):
         # 상단에 제목 (custom_title이 있으면 사용)
         if custom_title:
             cv2.putText(image, f"Roomie VS - {custom_title}", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         else:
             cv2.putText(image, f"Roomie Vision System v3 - {mode_name}", (10, 30), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
         
         # 현재 모드 ID 추출 (custom_title에서 카메라 타입 유추)
         current_mode_id = self.get_active_mode_id()
@@ -2555,11 +2924,11 @@ class VSNode(Node):
         camera_name_display = custom_title if custom_title else self.current_camera_name
         
         cv2.putText(image, f"Model:{current_model} | Camera:{camera_name_display} | Flip:{flip_status} | Conf:{self.confidence_threshold}", 
-                   (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
+                   (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
         
         # 탐지된 객체 수
-        cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 85), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 0), 2)
+        cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         
         # 탐지된 객체 분류 표시
         if objects:
@@ -2575,8 +2944,8 @@ class VSNode(Node):
             
             if object_counts:
                 counts_text = ", ".join([f"{k}:{v}" for k, v in object_counts.items()])
-                cv2.putText(image, f"Objects: {counts_text}", (10, 110), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 255, 128), 1)
+                cv2.putText(image, f"Objects: {counts_text}", (10, 90), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (128, 255, 128), 1)
         
         # 눌린 버튼 표시
         pressed_buttons = []
@@ -2586,8 +2955,8 @@ class VSNode(Node):
         
         if pressed_buttons:
             pressed_text = f"Pressed: {len(pressed_buttons)} button(s)"
-            cv2.putText(image, pressed_text, (10, 135), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)
+            cv2.putText(image, pressed_text, (10, 110), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
         
         # ArUco 마커 시각화 추가 (모드 5에서만)
         if self.current_front_mode_id == 5:
@@ -2601,17 +2970,405 @@ class VSNode(Node):
                 102: "ROOM_102", 201: "ROOM_201", 202: "ROOM_202"
             }
             current_location_name = location_names.get(self.last_detected_location_id, f"ID_{self.last_detected_location_id}")
-            cv2.putText(image, f"Current Location: {current_location_name}", (10, 210), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 128, 0), 2)
+            cv2.putText(image, f"Current Location: {current_location_name}", (10, 130), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 128, 0), 1)
+        
+        # 🏢 현재 엘리베이터 층수 표시 (엘리베이터 모드에서만) - 우하단 표시
+        if current_mode_id in [3, 4]:  # 엘리베이터 외부/내부 모드
+            current_floor = self.display_ocr.get_current_floor_display()
+            
+            # 화면 오른쪽 하단에 크게 표시
+            text_size = cv2.getTextSize(current_floor, cv2.FONT_HERSHEY_SIMPLEX, 1.2, 2)[0]
+            text_x = image.shape[1] - text_size[0] - 15  # 오른쪽 정렬
+            text_y = image.shape[0] - 90  # 하단에서 90픽셀 위 (방향 표시 공간 확보)
+            
+            # 큰 배경 박스
+            cv2.rectangle(image, (text_x-8, text_y-25), (text_x+text_size[0]+8, text_y+8), (0, 0, 0), -1)
+            cv2.rectangle(image, (text_x-8, text_y-25), (text_x+text_size[0]+8, text_y+8), (0, 255, 255), 2)
+            
+            # 현재 층수 텍스트 (크게)
+            cv2.putText(image, current_floor, (text_x, text_y), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 2)
+            
+            # 🚦 엘리베이터 방향 표시 (층수 아래에 크게)
+            direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
+            direction_color = (0, 255, 0) if self.last_elevator_direction == 0 else (0, 0, 255)  # UP: 초록, DOWN: 빨강
+            
+            # 방향 텍스트 크기 계산
+            dir_text_size = cv2.getTextSize(direction_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
+            dir_text_x = image.shape[1] - dir_text_size[0] - 15  # 오른쪽 정렬
+            dir_text_y = text_y + 45  # 층수 아래
+            
+            # 방향 배경 박스
+            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
+            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, 2)
+            
+            # 방향 텍스트
+            cv2.putText(image, direction_text, (dir_text_x, dir_text_y), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, direction_color, 2)
+            
+            # 마지막 감지 시간 표시 (작게)
+            if self.last_direction_detection_time:
+                time_diff = (self.get_clock().now() - self.last_direction_detection_time).nanoseconds / 1e9
+                time_text = f"({time_diff:.1f}초 전)"
+                cv2.putText(image, time_text, (dir_text_x, dir_text_y + 20), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
         
         # 종료 안내
-        cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-20), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
+        cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
+
+    def _on_gpu_memory_exceeded(self, used_memory: int, limit_memory: int, violation_count: int):
+        """🚨 GPU 메모리 제한 초과 시 호출되는 콜백"""
+        self.get_logger().error(f"🚨 GPU 메모리 한계 초과: {used_memory}MB > {limit_memory}MB (위반 #{violation_count})")
+        
+        # 🎯 단계별 대응 방법
+        if violation_count == 1:
+            # 1차: 경고만
+            self.get_logger().warning("⚠️ 1차 경고: GPU 메모리 사용량을 줄여주세요")
+            
+        elif violation_count == 2:
+            # 2차: EasyOCR CPU 모드로 전환
+            self.get_logger().warning("⚠️ 2차 대응: EasyOCR을 CPU 모드로 전환합니다")
+            try:
+                self.display_ocr.switch_to_cpu_mode()
+                self.get_logger().info("✅ EasyOCR CPU 모드 전환 완료")
+            except Exception as e:
+                self.get_logger().error(f"❌ CPU 모드 전환 실패: {e}")
+                
+        elif violation_count == 3:
+            # 3차: OCR 기능 완전 비활성화
+            self.get_logger().warning("⚠️ 3차 대응: OCR 기능을 비활성화합니다")
+            try:
+                self.display_ocr.disable_ocr()
+                self.get_logger().info("✅ OCR 기능 비활성화 완료")
+            except Exception as e:
+                self.get_logger().error(f"❌ OCR 비활성화 실패: {e}")
+                
+        elif violation_count >= 5:
+            # 최종: vs_node 강제 종료
+            self.get_logger().critical("🚨 최종 대응: GPU 메모리 한계 초과로 vs_node를 종료합니다!")
+            self.get_logger().critical(f"🚨 종료 사유: {violation_count}회 연속 GPU 메모리 제한 초과")
+            
+            try:
+                # GPU 모니터링 중지
+                if hasattr(self, 'gpu_monitor') and self.gpu_monitor:
+                    self.gpu_monitor.stop_monitoring()
+                
+                # 카메라 정리
+                if hasattr(self, 'camera_manager'):
+                    self.camera_manager.cleanup_all_cameras()
+                
+                # ROS2 노드 종료
+                self.destroy_node()
+                
+                # 프로세스 강제 종료
+                import os
+                import signal
+                os.kill(os.getpid(), signal.SIGTERM)
+                
+            except Exception as e:
+                self.get_logger().error(f"❌ 종료 처리 오류: {e}")
+                import sys
+                sys.exit(1)
+    
+    def _on_gpu_error(self, error: Exception):
+        """🚨 GPU 오류 시 호출되는 콜백"""
+        self.get_logger().error(f"🚨 GPU 오류 발생: {error}")
+        
+        # GPU 오류 시 자동으로 CPU 모드로 전환
+        try:
+            self.get_logger().warning("⚠️ GPU 오류로 인해 EasyOCR을 CPU 모드로 전환합니다")
+            self.display_ocr.switch_to_cpu_mode()
+            self.get_logger().info("✅ GPU 오류 대응: CPU 모드 전환 완료")
+        except Exception as e:
+            self.get_logger().error(f"❌ GPU 오류 대응 실패: {e}")
 
     def __del__(self):
         """소멸자 - 멀티 카메라 시스템 정리"""
+        # GPU 모니터링 정리
+        if hasattr(self, 'gpu_monitor') and self.gpu_monitor:
+            self.gpu_monitor.stop_monitoring()
+        
+        # 카메라 시스템 정리
         if hasattr(self, 'camera_manager'):
             self.camera_manager.cleanup_all_cameras()
+
+    def _detect_direction_by_lights(self, image: np.ndarray, direction_objects: List[dict]) -> int:
+        """🔥 밝기 기반 + 소실 감지 방향 판단 (개선된 버전)"""
+        try:
+            current_count = len(direction_objects)
+            
+            # 히스토리 관리 (최근 5프레임)
+            self.direction_light_history.append(current_count)
+            if len(self.direction_light_history) > 5:
+                self.direction_light_history.pop(0)
+            
+            self.get_logger().info(f"🔍 Direction Light: 현재 {current_count}개, 히스토리: {self.direction_light_history}")
+            
+            # 1단계: 소실 감지 방식 (가장 신뢰할 수 있는 방법)
+            if len(self.previous_direction_lights) > 0 and current_count < len(self.previous_direction_lights):
+                direction = self._detect_by_disappearance(image, direction_objects)
+                if direction != -1:  # 유효한 방향 감지
+                    self.previous_direction_lights = direction_objects.copy()
+                    return direction
+            
+            # 2단계: 밝기 기반 감지 (너무 밝은 것 = 켜진 것)
+            if current_count >= 2:
+                direction = self._detect_by_brightness_advanced(image, direction_objects)
+                if direction != -1:
+                    self.previous_direction_lights = direction_objects.copy()
+                    return direction
+            
+            # 3단계: 개수 변화 패턴 분석
+            if len(self.direction_light_history) >= 3:
+                direction = self._detect_by_count_pattern()
+                if direction != -1:
+                    self.previous_direction_lights = direction_objects.copy()
+                    return direction
+            
+            # 4단계: 기존 방향 유지
+            self.get_logger().warn("⚠️ 모든 감지 방법 실패, 기존 방향 유지")
+            self.previous_direction_lights = direction_objects.copy()
+            return self.last_elevator_direction
+            
+        except Exception as e:
+            self.get_logger().error(f"Direction light 감지 에러: {e}")
+            self.previous_direction_lights = direction_objects.copy()
+            return self.last_elevator_direction
+
+    def _analyze_light_color(self, image: np.ndarray, light_obj: dict) -> str:
+        """방향등 영역의 색상 분석"""
+        try:
+            bbox = light_obj.get('bbox')
+            if not bbox:
+                return 'UNKNOWN'
+            
+            x1, y1, x2, y2 = bbox
+            
+            # 방향등 영역 크롭
+            light_region = image[y1:y2, x1:x2]
+            
+            if light_region.size == 0:
+                return 'UNKNOWN'
+            
+            # BGR → HSV 변환
+            hsv = cv2.cvtColor(light_region, cv2.COLOR_BGR2HSV)
+            
+            # 녹색 범위 검출
+            green_mask = cv2.inRange(hsv, 
+                                   np.array([40, 50, 50]),    # 녹색 하한
+                                   np.array([80, 255, 255]))  # 녹색 상한
+            
+            # 빨간색 범위 검출
+            red_mask1 = cv2.inRange(hsv,
+                                   np.array([0, 50, 50]),     # 빨간색 하한1
+                                   np.array([10, 255, 255]))  # 빨간색 상한1
+            
+            red_mask2 = cv2.inRange(hsv,
+                                   np.array([170, 50, 50]),   # 빨간색 하한2  
+                                   np.array([180, 255, 255])) # 빨간색 상한2
+            
+            red_mask = cv2.bitwise_or(red_mask1, red_mask2)
+            
+            # 색상별 픽셀 수 계산
+            green_pixels = cv2.countNonZero(green_mask)
+            red_pixels = cv2.countNonZero(red_mask)
+            total_pixels = light_region.shape[0] * light_region.shape[1]
+            
+            # 비율 계산
+            green_ratio = green_pixels / total_pixels
+            red_ratio = red_pixels / total_pixels
+            
+            # 임계값 (전체 영역의 10% 이상이면 해당 색상으로 판단)
+            threshold = 0.1
+            
+            if green_ratio > threshold and green_ratio > red_ratio:
+                return 'GREEN'
+            elif red_ratio > threshold and red_ratio > green_ratio:
+                return 'RED'
+            else:
+                return 'UNKNOWN'
+                
+        except Exception as e:
+            self.get_logger().error(f"방향등 색상 분석 에러: {e}")
+            return 'UNKNOWN'
+
+    def _fallback_direction_by_brightness(self, image: np.ndarray, upper_light: dict, lower_light: dict) -> int:
+        """색상이 불분명할 때 밝기로 방향 판단"""
+        try:
+            upper_brightness = self._get_light_brightness(image, upper_light)
+            lower_brightness = self._get_light_brightness(image, lower_light)
+            
+            self.get_logger().info(f"방향등 밝기: 위쪽={upper_brightness:.2f}, 아래쪽={lower_brightness:.2f}")
+            
+            # 더 밝은 쪽이 켜진 것으로 가정
+            if upper_brightness > lower_brightness * 1.2:  # 20% 이상 차이
+                return 0  # 상행 (위쪽이 밝음)
+            elif lower_brightness > upper_brightness * 1.2:
+                return 1  # 하행 (아래쪽이 밝음)
+            else:
+                return 0  # 기본 상행
+                
+        except Exception as e:
+            self.get_logger().error(f"밝기 기반 방향 판단 에러: {e}")
+            return 0
+
+    def _get_light_brightness(self, image: np.ndarray, light_obj: dict) -> float:
+        """방향등의 평균 밝기 계산"""
+        try:
+            bbox = light_obj.get('bbox')
+            if not bbox:
+                return 0.0
+            
+            x1, y1, x2, y2 = bbox
+            light_region = image[y1:y2, x1:x2]
+            
+            if light_region.size == 0:
+                return 0.0
+            
+            # 그레이스케일 변환 후 평균 밝기
+            gray = cv2.cvtColor(light_region, cv2.COLOR_BGR2GRAY)
+            return np.mean(gray)
+            
+        except Exception as e:
+            return 0.0
+
+    def _detect_by_disappearance(self, image: np.ndarray, current_lights: List[dict]) -> int:
+        """소실 감지: 사라진 방향등의 위치로 방향 판단"""
+        try:
+            if not self.previous_direction_lights:
+                return -1
+            
+            # 이전 프레임과 비교하여 사라진 객체 찾기
+            prev_positions = [(obj['center'][1], obj) for obj in self.previous_direction_lights]
+            curr_positions = [obj['center'][1] for obj in current_lights]
+            
+            prev_positions.sort(key=lambda x: x[0])  # Y 좌표로 정렬
+            
+            disappeared_lights = []
+            for y_pos, prev_obj in prev_positions:
+                # 현재 프레임에서 비슷한 위치의 객체가 있는지 확인
+                found = False
+                for curr_y in curr_positions:
+                    if abs(y_pos - curr_y) < 50:  # 50픽셀 이내면 같은 객체로 간주
+                        found = True
+                        break
+                
+                if not found:
+                    disappeared_lights.append(prev_obj)
+            
+            if disappeared_lights:
+                # 사라진 방향등이 위쪽인지 아래쪽인지 판단
+                disappeared_y = [obj['center'][1] for obj in disappeared_lights]
+                avg_disappeared_y = sum(disappeared_y) / len(disappeared_y)
+                
+                # 전체 이미지 중앙과 비교
+                image_center_y = image.shape[0] // 2
+                
+                if avg_disappeared_y < image_center_y:
+                    self.get_logger().info("🔥 위쪽 방향등 소실 감지 → 상행 (위쪽이 켜짐)")
+                    return 0  # 상행
+                else:
+                    self.get_logger().info("🔥 아래쪽 방향등 소실 감지 → 하행 (아래쪽이 켜짐)")
+                    return 1  # 하행
+            
+            return -1
+            
+        except Exception as e:
+            self.get_logger().error(f"소실 감지 에러: {e}")
+            return -1
+
+    def _detect_by_brightness_advanced(self, image: np.ndarray, direction_objects: List[dict]) -> int:
+        """밝기 기반 감지: 너무 밝은 것은 감지 불가 = 켜진 것"""
+        try:
+            if len(direction_objects) < 2:
+                return -1
+            
+            # Y 좌표로 정렬 (위쪽, 아래쪽)
+            sorted_lights = sorted(direction_objects, key=lambda x: x['center'][1])
+            upper_light = sorted_lights[0]
+            lower_light = sorted_lights[-1]
+            
+            # 각 방향등 영역의 평균 밝기 계산
+            upper_brightness = self._get_light_brightness_advanced(image, upper_light)
+            lower_brightness = self._get_light_brightness_advanced(image, lower_light)
+            
+            self.get_logger().info(f"💡 방향등 밝기: 위쪽={upper_brightness:.1f}, 아래쪽={lower_brightness:.1f} (임계값: {self.brightness_threshold})")
+            
+            # 매우 밝은 영역은 켜진 것으로 판단
+            upper_too_bright = upper_brightness > self.brightness_threshold
+            lower_too_bright = lower_brightness > self.brightness_threshold
+            
+            if upper_too_bright and not lower_too_bright:
+                self.get_logger().info("🔥 위쪽 방향등이 매우 밝음 → 상행")
+                return 0  # 상행
+            elif lower_too_bright and not upper_too_bright:
+                self.get_logger().info("🔥 아래쪽 방향등이 매우 밝음 → 하행")
+                return 1  # 하행
+            elif upper_too_bright and lower_too_bright:
+                self.get_logger().warn("⚠️ 두 방향등 모두 너무 밝음, 밝기 차이로 판단")
+                # 더 밝은 쪽이 켜진 것
+                if upper_brightness > lower_brightness * 1.1:
+                    return 0  # 상행
+                elif lower_brightness > upper_brightness * 1.1:
+                    return 1  # 하행
+            
+            return -1
+            
+        except Exception as e:
+            self.get_logger().error(f"밝기 감지 에러: {e}")
+            return -1
+
+    def _detect_by_count_pattern(self) -> int:
+        """개수 패턴 분석: 갑작스런 감소는 켜진 것"""
+        try:
+            if len(self.direction_light_history) < 3:
+                return -1
+            
+            recent_counts = self.direction_light_history[-3:]  # 최근 3프레임
+            
+            # 2개 → 1개 또는 2개 → 0개 패턴 감지
+            if recent_counts[-2] >= 2 and recent_counts[-1] < recent_counts[-2]:
+                # 갑작스럽게 감소한 경우
+                self.get_logger().info(f"🔍 개수 패턴 분석: {recent_counts} → 방향등이 켜져서 감지 불가")
+                
+                # 히스토리를 기반으로 이전 방향 유지하되, 변화 가능성 고려
+                return self.last_elevator_direction
+            
+            return -1
+            
+        except Exception as e:
+            self.get_logger().error(f"패턴 분석 에러: {e}")
+            return -1
+
+    def _get_light_brightness_advanced(self, image: np.ndarray, light_obj: dict) -> float:
+        """방향등 영역의 평균 밝기 계산 (개선된 버전)"""
+        try:
+            bbox = light_obj.get('bbox')
+            if not bbox:
+                return 0.0
+            
+            x1, y1, x2, y2 = bbox
+            light_region = image[y1:y2, x1:x2]
+            
+            if light_region.size == 0:
+                return 0.0
+            
+            # BGR → Grayscale 변환
+            gray = cv2.cvtColor(light_region, cv2.COLOR_BGR2GRAY)
+            
+            # 상위 20% 픽셀의 평균 밝기 (가장 밝은 부분)
+            flat_pixels = gray.flatten()
+            flat_pixels.sort()
+            top_20_percent = flat_pixels[int(len(flat_pixels) * 0.8):]
+            
+            return float(np.mean(top_20_percent))
+            
+        except Exception as e:
+            self.get_logger().error(f"밝기 계산 에러: {e}")
+            return 0.0
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -2683,14 +3440,64 @@ def main(args=None):
                             # 모드별 + 카메라 타입별 세분화
                             if camera_type == 'front_webcam':
                                 if mode_id in [3, 4]:  # 엘리베이터 모드: 웹캠에 엘리베이터 YOLO
-                                    objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                    detected_objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                    
+                                    # 🎯 OCR 리소스 절약: 지정된 프레임 간격마다만 OCR 수행
+                                    node.ocr_counter += 1
+                                    if node.ocr_counter >= node.ocr_skip_frames:
+                                        objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        node.last_ocr_objects = objects  # 결과 캐싱
+                                        node.ocr_counter = 0  # 카운터 리셋
+                                        if frame_count % 100 == 1:
+                                            node.get_logger().info(f"🔄 OCR 수행됨 (매 {node.ocr_skip_frames}프레임마다)")
+                                    else:
+                                        # OCR 건너뛰고 이전 결과 재사용 (객체 감지는 계속)
+                                        objects = detected_objects.copy()
+                                        # 이전 OCR 결과가 있으면 병합
+                                        if hasattr(node, 'last_ocr_objects') and node.last_ocr_objects:
+                                            for old_obj in node.last_ocr_objects:
+                                                if old_obj.get('class_name') == 'display' and old_obj.get('ocr_text'):
+                                                    # 이전 OCR 결과를 현재 display 객체에 적용
+                                                    for new_obj in objects:
+                                                        if (new_obj.get('class_name') == 'display' and 
+                                                            not new_obj.get('ocr_text')):
+                                                            new_obj['ocr_text'] = old_obj.get('ocr_text', '')
+                                                            new_obj['floor_number'] = old_obj.get('floor_number')
+                                                            new_obj['ocr_success'] = old_obj.get('ocr_success', False)
+                                                            new_obj['digit_bbox'] = old_obj.get('digit_bbox')
+                                                            break
                                 elif mode_id == 5:  # 일반 모드: ArUco만 (이미 위에서 처리)
                                     pass
                                 elif mode_id == 6:  # 대기 모드: 영상만
                                     pass
                             elif camera_type == 'front_depth':
                                 if mode_id == 5:  # 일반 모드: 뎁스에 일반 YOLO
-                                    objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                    detected_objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
+                                    
+                                    # 🎯 OCR 리소스 절약: 지정된 프레임 간격마다만 OCR 수행 (뎁스 카메라용)
+                                    node.ocr_counter += 1
+                                    if node.ocr_counter >= node.ocr_skip_frames:
+                                        objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        node.last_ocr_objects = objects  # 결과 캐싱
+                                        node.ocr_counter = 0  # 카운터 리셋
+                                        if frame_count % 100 == 1:
+                                            node.get_logger().info(f"🔄 OCR 수행됨 (뎁스 카메라, 매 {node.ocr_skip_frames}프레임마다)")
+                                    else:
+                                        # OCR 건너뛰고 이전 결과 재사용 (객체 감지는 계속)
+                                        objects = detected_objects.copy()
+                                        # 이전 OCR 결과가 있으면 병합
+                                        if hasattr(node, 'last_ocr_objects') and node.last_ocr_objects:
+                                            for old_obj in node.last_ocr_objects:
+                                                if old_obj.get('class_name') == 'display' and old_obj.get('ocr_text'):
+                                                    # 이전 OCR 결과를 현재 display 객체에 적용
+                                                    for new_obj in objects:
+                                                        if (new_obj.get('class_name') == 'display' and 
+                                                            not new_obj.get('ocr_text')):
+                                                            new_obj['ocr_text'] = old_obj.get('ocr_text', '')
+                                                            new_obj['floor_number'] = old_obj.get('floor_number')
+                                                            new_obj['ocr_success'] = old_obj.get('ocr_success', False)
+                                                            new_obj['digit_bbox'] = old_obj.get('digit_bbox')
+                                                            break
                                 elif mode_id in [3, 4, 6]:  # 엘리베이터/대기 모드: 뎁스는 영상만
                                     pass
                             elif camera_type in ['rear', 'front']:
@@ -2777,19 +3584,19 @@ def main(args=None):
                                         # 버튼 이름 변환
                                         if isinstance(button_id, int):
                                             if button_id == 100:
-                                                button_name = "하행버튼"
+                                                button_name = "DOWN"
                                             elif button_id == 101:
-                                                button_name = "상행버튼"
+                                                button_name = "UP"
                                             elif button_id == 102:
-                                                button_name = "열기버튼"
+                                                button_name = "OPEN"
                                             elif button_id == 103:
-                                                button_name = "닫기버튼"
+                                                button_name = "CLOSE"
                                             elif button_id == 13:
-                                                button_name = "B1층"
+                                                button_name = "B1F"
                                             elif button_id == 14:
-                                                button_name = "B2층"
+                                                button_name = "B2F"
                                             else:
-                                                button_name = f"{button_id}층"
+                                                button_name = f"{button_id}F"
                                         else:
                                             button_name = str(button_id)
                                         
