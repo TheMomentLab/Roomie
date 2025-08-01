@@ -8,6 +8,8 @@ import tkinter as tk
 from tkinter import ttk
 import threading
 import os
+import struct
+import subprocess
 
 # FastRTPS 버퍼 크기 설정
 os.environ['RMW_FASTRTPS_USE_QOS_FROM_XML'] = '1'
@@ -63,6 +65,9 @@ class ArmPoseGUI(Node):
         button_frame = ttk.Frame(self.root)
         button_frame.pack(pady=20)
         
+        # robot_id 설정
+        self.robot_id = 0  # 기본값
+        
         # pose_id에 따른 버튼들
         poses = [
             (0, "초기자세 (Init)", "green"),
@@ -96,27 +101,29 @@ class ArmPoseGUI(Node):
     def _send_action_thread(self, pose_id):
         """액션을 발행하는 스레드 함수"""
         try:
-            # Goal 생성
-            goal_msg = SetPose.Goal()
-            goal_msg.robot_id = 0  # 기본값
-            goal_msg.pose_id = pose_id
+            # CLI 명령어 실행
+            cmd = f'ros2 action send_goal /arm/action/set_pose roomie_msgs/action/SetPose "{{robot_id: {self.robot_id}, pose_id: {pose_id}}}"'
             
             self.get_logger().info(f'🔄 pose_id {pose_id} 액션 발행')
-            self.get_logger().info(f'📤 전송 메시지: robot_id={goal_msg.robot_id}, pose_id={goal_msg.pose_id}')
-            self.get_logger().info(f'📤 RAW 메시지: {goal_msg}')
-            self.get_logger().info(f'📤 메시지 타입: {type(goal_msg)}')
-            self.get_logger().info(f'📤 메시지 속성: {dir(goal_msg)}')
+            self.get_logger().info(f'📤 CLI 명령어: {cmd}')
             
             # 상태 업데이트
             self.root.after(0, lambda: self.status_label.config(text=f"🔄 pose_id {pose_id} 액션 발행 중..."))
             
-            # 액션 발행
-            self._send_goal_future = self._action_client.send_goal_async(goal_msg)
-            self._send_goal_future.add_done_callback(self.goal_response_callback)
+            # CLI 명령어 실행
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+            
+            if result.returncode == 0:
+                self.get_logger().info('✅ CLI 명령어 실행 성공')
+                self.root.after(0, lambda: self.status_label.config(text="🎉 액션 완료!"))
+            else:
+                self.get_logger().error(f'❌ CLI 명령어 실행 실패: {result.stderr}')
+                self.root.after(0, lambda: self.status_label.config(text="❌ 액션 실패"))
             
         except Exception as e:
-            self.get_logger().error(f'Action send failed: {str(e)}')
-            self.root.after(0, lambda: self.status_label.config(text=f"오류: {str(e)}"))
+            error_msg = str(e)
+            self.get_logger().error(f'Action send failed: {error_msg}')
+            self.root.after(0, lambda: self.status_label.config(text=f"오류: {error_msg}"))
     
     def goal_response_callback(self, future):
         """Goal 응답 콜백"""
