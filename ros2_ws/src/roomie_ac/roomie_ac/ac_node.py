@@ -60,40 +60,36 @@ class ArmActionServer(Node):
             goal_handle.abort()
             return SetPose.Result(success=False, message=msg)
 
+        # ✅ 디버깅용 로그 추가
+        self.get_logger().info(f"[DEBUG] 수신된 pose_id: {goal_handle.request.pose_id}")
         try:
             requested_pose = Pose(goal_handle.request.pose_id)
-            self.get_logger().info(f"SetPose 목표 수신: '{requested_pose.name}'")
+            self.get_logger().info(f"[DEBUG] Enum 변환 결과: {requested_pose.name}")
         except ValueError:
-            msg = f"정의되지 않은 Pose ID 수신: {goal_handle.request.pose_id}"
-            self.get_logger().error(msg)
-            # [수정] 잘못된 입력에 대해서는 로봇을 움직이지 않고 즉시 종료합니다.
+            self.get_logger().error(f"[ERROR] 유효하지 않은 pose_id 수신: {goal_handle.request.pose_id}")
             goal_handle.abort()
-            return SetPose.Result(success=False, message=msg)
+            return SetPose.Result(success=False, message=f"정의되지 않은 pose_id: {goal_handle.request.pose_id}")
 
+        # 기존 로직 계속 유지
         target_angles_deg = POSE_ANGLES_DEG.get(requested_pose)
 
         if target_angles_deg is not None:
-            # ======================= [디버깅 코드 추가] =======================
             self.get_logger().info(f"==> [DEBUG] MotionController에 전달할 목표 각도: {target_angles_deg}")
             success = self.motion_controller.move_to_angles_deg(target_angles_deg)
             self.get_logger().info(f"<== [DEBUG] MotionController로부터 반환된 결과: success={success}")
-            # =================================================================
 
             if success:
                 self.get_logger().info(f"'{requested_pose.name}' 자세로 이동 완료.")
                 goal_handle.succeed()
                 return SetPose.Result(success=True, message="자세 이동 성공")
 
-        # [수정] '이동 실패' 시에만 초기 자세로 복귀합니다.
         msg = f"'{requested_pose.name}' 자세로 이동 실패."
         self.get_logger().error(msg)
-        
         self.get_logger().info("안전 모드: 이동 실패로 초기 자세로 복귀합니다.")
         self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
 
         goal_handle.abort()
         return SetPose.Result(success=False, message=msg)
-
 
     async def click_button_callback(self, goal_handle):
         """[지휘] ClickButton Action의 전체 시나리오를 지휘합니다."""
