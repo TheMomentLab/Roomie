@@ -14,7 +14,7 @@ bool TopicManager::init(rcl_node_t* node, rclc_executor_t* executor,
   
   rcl_allocator_t allocator = rcl_get_default_allocator();
   
-  Serial.println("토픽 매니저 초기화 시작...");
+  Serial.println("토픽 초기화 시작...");
   
   // RobotState 구독자 생성
   if (rclc_subscription_init_default(

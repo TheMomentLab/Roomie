@@ -10,6 +10,7 @@
             "includePath": [
                 "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/include",
                 "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/src",
+                "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                 "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/.pio/libdeps/esp32dev/ESP32Servo/src",
                 "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/.pio/libdeps/esp32dev/micro_ros_platformio",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
@@ -235,7 +236,6 @@
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/RainMaker/src",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
-                "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SimpleBLE/src",
                 "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
@@ -252,6 +252,7 @@
                 "path": [
                     "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/include",
                     "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/src",
+                    "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                     "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/.pio/libdeps/esp32dev/ESP32Servo/src",
                     "/home/jay/project_ws/ros-repo-2/esp32_firmware/io_controller/.pio/libdeps/esp32dev/micro_ros_platformio",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/WiFi/src",
@@ -477,7 +478,6 @@
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/RainMaker/src",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SD/src",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SD_MMC/src",
-                    "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPI/src",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SPIFFS/src",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/SimpleBLE/src",
                     "/home/jay/.platformio/packages/framework-arduinoespressif32/libraries/Ticker/src",
@@ -493,10 +493,6 @@
             "defines": [
                 "PLATFORMIO=60118",
                 "ARDUINO_ESP32_DEV",
-                "MICROROS_TRANSPORT_WIFI",
-                "RMW_UXRCE_DEFAULT_DOMAIN_ID=200",
-                "RCL_LOGGING_ENABLED",
-                "RCUTILS_ASSERT_ENABLED",
                 "HAVE_CONFIG_H",
                 "MBEDTLS_CONFIG_FILE=\"mbedtls/esp_config.h\"",
                 "UNITY_INCLUDE_CONFIG_H",
