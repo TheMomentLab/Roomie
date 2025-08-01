@@ -102,7 +102,7 @@ class ArmPoseGUI(Node):
         """액션을 발행하는 스레드 함수"""
         try:
             # CLI 명령어 실행
-            cmd = f'ros2 action send_goal /arm/action/set_pose roomie_msgs/action/SetPose "{{robot_id: {self.robot_id}, pose_id: {pose_id}}}"'
+            cmd = f"ros2 action send_goal /arm/action/set_pose roomie_msgs/action/SetPose '{{robot_id: {self.robot_id}, pose_id: {pose_id}}}'"
             
             self.get_logger().info(f'🔄 pose_id {pose_id} 액션 발행')
             self.get_logger().info(f'📤 CLI 명령어: {cmd}')

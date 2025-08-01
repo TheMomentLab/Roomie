@@ -21,10 +21,8 @@ from geometry_msgs.msg import Point
 from roomie_msgs.srv import (
     ButtonStatus, 
     SetVSMode,
-    ElevatorWidth,
     ElevatorStatus, 
     DoorStatus,
-    SpaceAvailability,
     Location
 )
 from roomie_msgs.msg import TrackingEvent, Registered
@@ -357,46 +355,95 @@ class WebCamCamera:
         if not available_cameras:
             return None
         
-        # 전방 USB 웹캠인 경우
+        # 전방 USB 웹캠인 경우 (HCAM01N 우선 선택)
         if "USB" in self.camera_name:
-            # 디바이스 이름에서 USB 웹캠 찾기
+            self.logger.info("🎯 전방 USB 웹캠 선택 로직 시작")
+            
+            # 1순위: HCAM01N 찾기
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                # USB 웹캠의 일반적인 키워드들
+                if 'hcam01n' in device_name:
+                    self.logger.info(f"✅ HCAM01N 전방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 2순위: 기존 USB 웹캠 키워드로 찾기
+            for camera in available_cameras:
+                device_name = camera['device_name'].lower()
                 usb_keywords = ['usb', 'webcam', 'c920', 'c922', 'c930', 'apc930', 'abko', 'logitech']
                 
                 if any(keyword in device_name for keyword in usb_keywords):
-                    self.logger.info(f"USB 웹캠으로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    self.logger.info(f"📹 USB 웹캠으로 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # USB 웹캠을 못 찾았으면 0번이 아닌 카메라 우선
+            # 3순위: ID 0 우선 (HCAM01N은 보통 ID 0)
             for camera in available_cameras:
-                if camera['id'] != 0:
-                    self.logger.warning(f"USB 웹캠 디바이스명 미매칭, ID 기반 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                if camera['id'] == 0:
+                    self.logger.warning(f"⚠️ ID 0 기반 전방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 그래도 없으면 첫 번째
-            self.logger.warning("USB 웹캠을 찾지 못해 첫 번째 카메라 사용")
+            # 4순위: 첫 번째 카메라
+            self.logger.warning("❌ 전방 USB 웹캠을 찾지 못함 - 첫 번째 카메라 사용")
             return available_cameras[0]
         
-        # 후방 내장 카메라인 경우
+        # 후방 내장 카메라인 경우 (HD Webcam 우선 선택)
         elif "Built-in" in self.camera_name:
-            # 디바이스 이름에서 내장 카메라 찾기
+            self.logger.info("🎯 후방 내장 카메라 선택 로직 시작")
+            
+            # 1순위: HD Webcam 찾기 (기존 내장카메라)
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                # 내장 카메라의 일반적인 키워드들
-                builtin_keywords = ['integrated', 'built-in', 'webcam', 'camera', 'hd']
-                
-                if camera['id'] == 0 or any(keyword in device_name for keyword in builtin_keywords):
-                    self.logger.info(f"내장 카메라로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                if 'hd webcam' in device_name:
+                    self.logger.info(f"✅ HD Webcam 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 내장 카메라가 없으면 첫 번째 사용 가능한 카메라
-            self.logger.warning("내장 카메라를 찾지 못해 첫 번째 카메라 사용")
+            # 2순위: 기존 내장 카메라 키워드로 찾기
+            for camera in available_cameras:
+                device_name = camera['device_name'].lower()
+                builtin_keywords = ['integrated', 'built-in', 'webcam', 'camera', 'hd']
+                
+                # HCAM01N 제외하고 내장카메라 찾기
+                if 'hcam01n' not in device_name and any(keyword in device_name for keyword in builtin_keywords):
+                    self.logger.info(f"📹 내장 카메라로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 3순위: ID 2 우선 (HD Webcam은 보통 ID 2)
+            for camera in available_cameras:
+                if camera['id'] == 2:
+                    self.logger.warning(f"⚠️ ID 2 기반 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 4순위: HCAM01N이 아닌 첫 번째 카메라
+            for camera in available_cameras:
+                device_name = camera['device_name'].lower()
+                if 'hcam01n' not in device_name:
+                    self.logger.warning(f"⚠️ 후방카메라 대체 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                    return camera
+            
+            # 5순위: 첫 번째 카메라
+            self.logger.warning("❌ 후방 내장 카메라를 찾지 못함 - 첫 번째 카메라 사용")
             return available_cameras[0]
         
         # 기본적으로 첫 번째 사용 가능한 카메라 선택
         return available_cameras[0]
+    
+    def _get_optimal_resolution(self, camera_id: int) -> tuple:
+        """카메라별 최적 해상도 반환"""
+        try:
+            # HCAM01N (ID 0)은 800x600 지원
+            if camera_id == 0:
+                # 디바이스 이름으로 한번 더 확인
+                device_name = self._get_camera_device_name(camera_id).lower()
+                if 'hcam01n' in device_name:
+                    self.logger.info(f"📐 HCAM01N 고해상도 설정: 800x600")
+                    return (800, 600)
+            
+            # 기본 해상도 640x480
+            self.logger.info(f"📐 기본 해상도 설정: 640x480 (camera_id={camera_id})")
+            return (640, 480)
+            
+        except Exception as e:
+            self.logger.warning(f"해상도 설정 오류: {e}, 기본값 사용")
+            return (640, 480)
     
     def _try_camera_id(self, camera_id: int) -> bool:
         """특정 camera_id로 웹캠 초기화 시도"""
@@ -409,9 +456,10 @@ class WebCamCamera:
                 cap.release()
                 return False
             
-            # 해상도 설정 (640x480)
-            cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            # 카메라별 최적 해상도 설정
+            width, height = self._get_optimal_resolution(camera_id)
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
             
             # 테스트 프레임 읽기
             ret, frame = cap.read()
@@ -424,11 +472,17 @@ class WebCamCamera:
             self.cap = cap
             self.actual_camera_id = camera_id
             self.is_running = True
-            height, width = frame.shape[:2]
+            actual_height, actual_width = frame.shape[:2]
             
             # 카메라 백엔드 정보 확인
             backend = cap.getBackendName()
-            self.logger.info(f"✅ {self.camera_name} 초기화 성공: camera_id={camera_id}, {width}x{height}, backend={backend}")
+            
+            # 설정된 해상도와 실제 해상도 비교
+            if actual_width == width and actual_height == height:
+                self.logger.info(f"✅ {self.camera_name} 초기화 성공: camera_id={camera_id}, {actual_width}x{actual_height}, backend={backend}")
+            else:
+                self.logger.warning(f"⚠️ {self.camera_name} 해상도 불일치: 요청({width}x{height}) → 실제({actual_width}x{actual_height}), camera_id={camera_id}, backend={backend}")
+            
             return True
             
         except Exception as e:
@@ -1468,10 +1522,39 @@ class VSNode(Node):
         self.last_elevator_direction = 0  # 0: 상행, 1: 하행
         self.last_direction_detection_time = None
         
+<<<<<<< Updated upstream
+        # 🔥 개선된 Direction Light 추적 (개별 위치 기반)
+        self.previous_direction_lights = []  # 이전 프레임의 direction light 객체들 (위치+밝기)
+        self.direction_light_history = []    # 최근 5프레임의 개수 히스토리
+        self.brightness_threshold = 180      # 밝기 임계값 (0-255, 조금 낮춤)
+        
+        # 🎯 방향등 위치 기억 시스템 (간헐적 감지 보강)
+        self.remembered_direction_positions = {
+            'upper': None,  # 기억된 위쪽 방향등 위치 
+            'lower': None   # 기억된 아래쪽 방향등 위치
+        }
+        self.last_position_update = None  # 마지막 위치 업데이트 시간
+        
+        # 🎯 밝기 변화 기반 깜빡임 감지 시스템
+        self.brightness_history = {
+            'upper': [],  # 위쪽 방향등 밝기 히스토리 (최근 10프레임)
+            'lower': []   # 아래쪽 방향등 밝기 히스토리
+        }
+        self.blink_detection_enabled = True
+        self.brightness_change_threshold_for_blink = 20  # 깜빡임 감지용 밝기 변화 임계값 (더 민감하게)
+        self.history_size = 10  # 히스토리 저장 프레임 수
+        self.last_blink_detected = False  # 마지막 방향 감지에서 깜빡임이 감지되었는지
+        self.brightness_change_threshold = 50  # 밝기 변화 감지 임계값 (안정성 우선)
+        self.position_tolerance = 50         # 같은 방향등으로 인식할 위치 허용 오차 (픽셀)
+        
+        # 🎯 마지막 감지된 객체들 저장 (L키 강제 학습용)
+        self.last_detected_objects = []
+=======
         # 🔥 개선된 Direction Light 추적 (밝기 기반 + 소실 감지)
         self.previous_direction_lights = []  # 이전 프레임의 direction light 객체들
         self.direction_light_history = []    # 최근 5프레임의 개수 히스토리
         self.brightness_threshold = 200      # 밝기 임계값 (0-255)
+>>>>>>> Stashed changes
         
         # ArUco 마커 ID와 location_id 직접 매핑 (interface 문서 기준)
         self.aruco_to_location = {
@@ -1534,11 +1617,7 @@ class VSNode(Node):
             self.set_vs_mode_callback
         )
         
-        self.elevator_width_service = self.create_service(
-            ElevatorWidth,
-            '/vs/command/elevator_width',
-            self.elevator_width_callback
-        )
+
         
         self.button_status_service = self.create_service(
             ButtonStatus, 
@@ -1558,11 +1637,7 @@ class VSNode(Node):
             self.door_status_callback
         )
         
-        self.space_availability_service = self.create_service(
-            SpaceAvailability,
-            '/vs/command/space_availability',
-            self.space_availability_callback
-        )
+
         
         self.location_service = self.create_service(
             Location,
@@ -1585,7 +1660,7 @@ class VSNode(Node):
         )
         
         self.get_logger().info("모든 VS 인터페이스 초기화 완료!")
-        self.get_logger().info("구현된 서비스 7개: set_vs_mode, elevator_width, button_status, elevator_status, door_status, space_availability, location")
+        self.get_logger().info("구현된 서비스 5개: set_vs_mode, button_status, elevator_status, door_status, location")
         self.get_logger().info("구현된 토픽 2개: tracking_event, registered")
         self.get_logger().info("ArUco 마커 기반 위치 감지 시스템 활성화")
         self.get_logger().info("🎯 GPU 리소스 절약형 동적 카메라 VS Node 초기화 완료!")
@@ -1836,35 +1911,25 @@ class VSNode(Node):
             pass
     
     def button_status_callback(self, request, response):
-        """버튼 상태 요청 처리"""
+        """버튼 상태 요청 처리 - 단일 버튼 감지"""
         try:
-            self.get_logger().info(f"버튼 상태 요청: robot_id={request.robot_id}, button_ids={request.button_ids}")
+            self.get_logger().info(f"버튼 상태 요청: robot_id={request.robot_id}, button_id={request.button_id}")
             
             response.robot_id = request.robot_id
-            n_buttons = len(request.button_ids)
+            response.button_id = request.button_id
             
-            if n_buttons == 0:
-                response.xs = []
-                response.ys = []
-                response.depths = []
-                response.is_pressed = []
-                response.timestamp = []
+            # 현재 프레임 획득
+            if self.current_camera is None:
+                self.get_logger().warning("현재 카메라가 설정되지 않음")
+                response.success = False
+                response.x = 0.0
+                response.y = 0.0
+                response.size = 0.0
+                response.is_pressed = False
+                response.timestamp = self.get_clock().now().to_msg()
                 return response
-
-            xs, ys, depths, is_pressed, timestamps = [], [], [], [], []
-            
-            try:
-                # 현재 프레임 획득
-                if self.current_camera is None:
-                    response.success = False
-                    response.message = "현재 카메라가 설정되지 않음"
-                    response.x = []
-                    response.y = []
-                    response.depth = []
-                    response.is_pressed = []
-                    response.timestamp = []
-                    return response
                 
+            try:
                 with self.current_camera.frame_lock:
                     # WebCamCamera에는 current_depth가 없으므로 안전하게 접근
                     current_depth = getattr(self.current_camera, 'current_depth', None)
@@ -1877,88 +1942,136 @@ class VSNode(Node):
                     if current_depth is not None:
                         current_depth = cv2.flip(current_depth, 1)
                 
-                if current_color is not None:
-                    # 다중 모델로 객체 탐지 (현재 모드 전달)
-                    detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_front_mode_id)
+                if current_color is None:
+                    self.get_logger().warning("카메라 프레임이 없음")
+                    response.success = False
+                    response.x = 0.0
+                    response.y = 0.0
+                    response.size = 0.0
+                    response.is_pressed = False
+                    response.timestamp = self.get_clock().now().to_msg()
+                    return response
+                
+                # 이미지 크기 정보
+                img_height, img_width = current_color.shape[:2]
+                
+                # 다중 모델로 객체 탐지 (현재 모드 전달)
+                detected_objects = self.model_detector.detect_objects(current_color, current_depth, self.confidence_threshold, self.current_front_mode_id)
+                
+                # 객체에 OCR 결과 추가 (display 객체만)
+                enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
+                
+                # 'button' 클래스 객체들만 필터링
+                detected_buttons = [obj for obj in enhanced_objects if obj.get('class_name') == 'button']
+                
+                # 버튼 개수에 따른 처리
+                if len(detected_buttons) == 0:
+                    # 버튼이 감지되지 않음
+                    self.get_logger().info("버튼이 감지되지 않음")
+                    response.success = False
+                    response.x = 0.0
+                    response.y = 0.0
+                    response.size = 0.0
+                    response.is_pressed = False
+                    response.timestamp = self.get_clock().now().to_msg()
                     
+<<<<<<< Updated upstream
+                elif len(detected_buttons) == 1:
+                    # 정확히 1개의 버튼이 감지됨
+                    btn = detected_buttons[0]
+                    center = btn['center']
+                    bbox = btn['bbox']
+=======
                     # 객체에 OCR 결과 추가 (display 객체만)
                     enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
                     
                     # 'button' 클래스 객체들만 필터링
                     detected_buttons = [obj for obj in enhanced_objects if obj.get('class_name') == 'button']
+>>>>>>> Stashed changes
                     
-                    for i, button_id in enumerate(request.button_ids):
-                        timestamp = self.get_clock().now().to_msg()
+                    # 좌표를 0~1 범위로 정규화
+                    x_norm = float(center[0] / img_width)
+                    y_norm = float(center[1] / img_height)
+                    
+                    # 버튼 크기를 0~1 범위로 정규화 (바운딩 박스의 면적 기준)
+                    bbox_width = bbox[2] - bbox[0]
+                    bbox_height = bbox[3] - bbox[1]
+                    bbox_area = bbox_width * bbox_height
+                    img_area = img_width * img_height
+                    size_norm = float(bbox_area / img_area)
+                    
+                    response.success = True
+                    response.x = x_norm
+                    response.y = y_norm
+                    response.size = size_norm
+                    response.is_pressed = bool(btn.get('is_pressed', False))
+                    response.timestamp = self.get_clock().now().to_msg()
+                    
+                    confidence = btn.get('confidence', 1.0)
+                    self.get_logger().info(f"버튼 탐지 성공: x={x_norm:.3f}, y={y_norm:.3f}, size={size_norm:.3f}, "
+                                         f"pressed={btn.get('is_pressed', False)}, conf={confidence:.2f}")
+                    
+                    # button_id 매칭 검증
+                    if request.button_id != 0:
+                        # 0이 아닌 경우: 특정 버튼 요청 → ID 매칭 필수
+                        detected_button_id = btn.get('button_id', -1)
                         
-                        if i < len(detected_buttons):
-                            btn = detected_buttons[i]
-                            center = btn['center']
+                        if detected_button_id == -1:
+                            # OCR로 button_id를 감지하지 못함
+                            self.get_logger().warning(f"요청된 button_id({request.button_id})에 대한 OCR 매칭 실패")
+                            response.success = False
+                            response.x = 0.0
+                            response.y = 0.0
+                            response.size = 0.0
+                            response.is_pressed = False
+                            response.timestamp = self.get_clock().now().to_msg()
+                            return response
                             
-                            # 3D 좌표로 변환
-                            x_3d = (center[0] - 320.0) / 570.3 * (btn['depth_mm'] / 1000.0)
-                            y_3d = (center[1] - 240.0) / 570.3 * (btn['depth_mm'] / 1000.0)
-                            z_3d = btn['depth_mm'] / 1000.0
-                            
-                            xs.append(float(x_3d))
-                            ys.append(float(y_3d))
-                            depths.append(float(z_3d))
-                            is_pressed.append(bool(btn['is_pressed']))
-                            timestamps.append(timestamp)
-                            
-                            confidence = btn.get('confidence', 1.0)
-                            self.get_logger().info(f"버튼 탐지 - button #{i+1}: "
-                                                 f"x={x_3d:.3f}, y={y_3d:.3f}, z={z_3d:.3f}, "
-                                                 f"pressed={btn['is_pressed']}, conf={confidence:.2f}")
+                        elif detected_button_id != request.button_id:
+                            # 요청된 ID와 다른 버튼이 감지됨
+                            self.get_logger().warning(f"❌ ID 불일치: 요청({request.button_id}) ≠ 감지({detected_button_id})")
+                            response.success = False
+                            response.x = 0.0
+                            response.y = 0.0
+                            response.size = 0.0
+                            response.is_pressed = False
+                            response.timestamp = self.get_clock().now().to_msg()
+                            return response
                         else:
-                            # 더미값 사용
-                            dummy_x = 0.1 + (len(xs) * 0.05)
-                            dummy_y = 0.2 + (len(xs) * 0.03)
-                            dummy_z = 1.0
-                            
-                            xs.append(float(dummy_x))
-                            ys.append(float(dummy_y))
-                            depths.append(float(dummy_z))
-                            is_pressed.append(bool(False))
-                            timestamps.append(timestamp)
-                            
-                            self.get_logger().info(f"요청된 버튼 #{i+1} 미탐지 - 더미값 사용")
+                            # ID 매칭 성공
+                            self.get_logger().info(f"✅ ID 매칭 성공: button_id={detected_button_id}")
+                    else:
+                        # button_id=0인 경우: 현재 유일하게 감지되는 버튼 (ID 매칭 불필요)
+                        self.get_logger().info("📍 유일 버튼 감지 모드 (ID 매칭 생략)")
                 else:
-                    self.get_logger().warning("카메라 프레임이 없음 - 더미값 사용")
-                    for i, button_id in enumerate(request.button_ids):
-                        xs.append(float(0.1 + i * 0.05))
-                        ys.append(float(0.2 + i * 0.03))
-                        depths.append(float(0.8 + i * 0.1))
-                        is_pressed.append(bool(False))
-                        timestamps.append(self.get_clock().now().to_msg())
-                        
+                    # 2개 이상의 버튼이 감지됨 - success=false
+                    self.get_logger().warning(f"버튼이 {len(detected_buttons)}개 감지됨 - 유일한 버튼이 아님")
+                    response.success = False
+                    response.x = 0.0
+                    response.y = 0.0
+                    response.size = 0.0
+                    response.is_pressed = False
+                    response.timestamp = self.get_clock().now().to_msg()
+                    
             except Exception as detection_error:
                 self.get_logger().error(f"버튼 탐지 중 에러: {detection_error}")
-                # 탐지 실패 시 더미값 사용
-                for i, button_id in enumerate(request.button_ids):
-                    xs.append(float(0.1 + i * 0.05))
-                    ys.append(float(0.2 + i * 0.03))
-                    depths.append(float(0.8 + i * 0.1))
-                    is_pressed.append(bool(False))
-                    timestamps.append(self.get_clock().now().to_msg())
-                    
-            response.success = True
-            response.xs = xs
-            response.ys = ys
-            response.depths = depths
-            response.is_pressed = is_pressed
-            response.timestamp = timestamps
-            
-            self.get_logger().info(f"엘리베이터 버튼 상태 응답 완료: {len(xs)}개 버튼")
+                response.success = False
+                response.x = 0.0
+                response.y = 0.0
+                response.size = 0.0
+                response.is_pressed = False
+                response.timestamp = self.get_clock().now().to_msg()
                 
         except Exception as e:
             self.get_logger().error(f"버튼 상태 서비스 에러: {e}")
             response.robot_id = request.robot_id
+            response.button_id = request.button_id
             response.success = False
-            response.xs = []
-            response.ys = []
-            response.depths = []
-            response.is_pressed = []
-            response.timestamp = []
+            response.x = 0.0
+            response.y = 0.0
+            response.size = 0.0
+            response.is_pressed = False
+            response.timestamp = self.get_clock().now().to_msg()
         
         return response
     
@@ -2265,29 +2378,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"후방 카메라 업데이트 에러: {e}")
     
-    def elevator_width_callback(self, request, response):
-        """엘리베이터 입구 너비 감지 처리"""
-        try:
-            self.get_logger().info(f"엘리베이터 너비 감지 요청: robot_id={request.robot_id}")
-            
-            dummy_left = -0.85
-            dummy_right = 0.85
-            
-            response.robot_id = request.robot_id
-            response.success = True
-            response.left_boundary = float(dummy_left)
-            response.right_boundary = float(dummy_right)
-            
-            self.get_logger().info(f"엘리베이터 너비: left={dummy_left:.3f}m, right={dummy_right:.3f}m")
-                
-        except Exception as e:
-            self.get_logger().error(f"엘리베이터 너비 감지 에러: {e}")
-            response.robot_id = request.robot_id
-            response.success = False
-            response.left_boundary = 0.0
-            response.right_boundary = 0.0
-        
-        return response
+
     
     def elevator_status_callback(self, request, response):
         """엘리베이터 위치 및 방향 감지 처리 - display 객체 OCR 기반"""
@@ -2334,7 +2425,11 @@ class VSNode(Node):
                         if floor_number is not None:
                             detected_floor = floor_number
                             success = True
+<<<<<<< Updated upstream
+                            self.get_logger().debug(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
+=======
                             self.get_logger().info(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
+>>>>>>> Stashed changes
                             break  # 첫 번째 성공한 결과 사용
                         elif ocr_success:
                             self.get_logger().warn(f"층수 파싱 실패: '{floor_text}'")
@@ -2349,6 +2444,35 @@ class VSNode(Node):
             if current_color is not None and 'enhanced_objects' in locals():
                 direction_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'direction_light']
                 if direction_objects:
+<<<<<<< Updated upstream
+                    # 🚦 방향등 실시간 감지 시도
+                    detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
+                    
+                    # 🎯 방향 업데이트 (깜빡임 감지 시 항상 업데이트)
+                    if detected_direction != -1:
+                        if (detected_direction != self.last_elevator_direction or self.last_blink_detected):
+                            # 방향 변경되었거나 깜빡임이 감지된 경우 업데이트
+                            self.last_elevator_direction = detected_direction
+                            self.last_direction_detection_time = self.get_clock().now()
+                            blink_info = " (깜빡임 감지)" if self.last_blink_detected else ""
+                            self.get_logger().info(f"🎯 방향등 기반 방향 업데이트: {len(direction_objects)}개 → {'상행' if detected_direction == 0 else '하행'}{blink_info}")
+                            
+                            # 🔄 깜빡임 처리 완료 후 플래그 초기화 (다음 깜빡임 감지를 위해)
+                            if self.last_blink_detected:
+                                self.last_blink_detected = False
+                                self.get_logger().info("🔄 깜빡임 감지 플래그 초기화 완료")
+                        else:
+                            # 방향 변화 없음 (깜빡임도 없음)
+                            detected_direction = self.last_elevator_direction
+                else:
+                    # 방향등이 감지되지 않으면 캐시된 방향 사용
+                    detected_direction = self.last_elevator_direction
+                    self.get_logger().debug(f"방향등 미감지 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+            else:
+                # 이미지나 객체가 없으면 캐시된 방향 사용
+                detected_direction = self.last_elevator_direction
+                self.get_logger().debug(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+=======
                     # 🚦 방향등 색상으로 정확한 방향 판단
                     detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
                     
@@ -2365,6 +2489,7 @@ class VSNode(Node):
                 # 이미지나 객체가 없으면 캐시된 방향 사용
                 detected_direction = self.last_elevator_direction
                 self.get_logger().info(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+>>>>>>> Stashed changes
             
             # 응답 설정
             response.robot_id = request.robot_id
@@ -2418,6 +2543,8 @@ class VSNode(Node):
                         enhanced_obj['ocr_confidence'] = confidence  # 신뢰도 추가
                         enhanced_obj['digit_bbox'] = digit_bbox  # 🎯 숫자 영역 바운딩박스 추가
                         
+<<<<<<< Updated upstream
+=======
                         # 성공 로그
                         if floor_number is not None:
                             self.get_logger().info(f"✅ 디스플레이 OCR 성공: '{floor_text}' -> {floor_number}층 (신뢰도: {confidence:.3f})")
@@ -2426,6 +2553,7 @@ class VSNode(Node):
                         else:
                             self.get_logger().debug(f"❌ OCR 인식 실패 (신뢰도: {confidence:.3f})")
                         
+>>>>>>> Stashed changes
                 except Exception as e:
                     self.get_logger().error(f"DisplayOCR 에러: {e}")
                     enhanced_obj['ocr_text'] = ""
@@ -2556,12 +2684,12 @@ class VSNode(Node):
                     door_count += 1
                     self.get_logger().info(f"문 객체 감지됨: 신뢰도={obj['confidence']:.2f}, 위치=({obj['center'][0]}, {obj['center'][1]})")
             
-            # 문이 감지되면 열림, 감지되지 않으면 닫힘으로 판단
+            # 문이 감지되지 않으면 열림, 감지되면 닫힘으로 판단
             response.robot_id = request.robot_id
             response.success = True
-            response.door_opened = door_detected
+            response.door_opened = not door_detected  # 🔥 로직 수정: 문이 안 보이면 열린 것
             
-            door_str = "열림" if door_detected else "닫힘"
+            door_str = "열림" if not door_detected else "닫힘"
             self.get_logger().info(f"문 상태: {door_str} (감지된 문 객체 수: {door_count})")
                 
         except Exception as e:
@@ -2572,27 +2700,7 @@ class VSNode(Node):
         
         return response
     
-    def space_availability_callback(self, request, response):
-        """엘리베이터 탑승/하차시 공간 확보 여부 감지 처리"""
-        try:
-            self.get_logger().info(f"공간 가용성 감지 요청: robot_id={request.robot_id}")
-            
-            # 항상 공간이 확보된 것으로 반환
-            space_available = True
-            
-            response.robot_id = request.robot_id
-            response.success = True
-            response.space_availability = space_available
-            
-            self.get_logger().info(f"공간 가용성: 확보됨 (항상 True 반환)")
-                
-        except Exception as e:
-            self.get_logger().error(f"공간 가용성 감지 에러: {e}")
-            response.robot_id = request.robot_id
-            response.success = False
-            response.space_availability = False
-        
-        return response
+
     
     def location_callback(self, request, response):
         """현재 위치 감지 처리"""
@@ -2644,14 +2752,14 @@ class VSNode(Node):
                 # 마지막 감지 시간 정보 포함
                 if self.last_detection_time:
                     time_diff = (self.get_clock().now() - self.last_detection_time).nanoseconds / 1e9
-                    self.get_logger().info(f"현재 위치: {location_name} (ArUco 기반, 마지막 감지: {time_diff:.1f}초 전)")
+                    self.get_logger().debug(f"현재 위치: {location_name} (ArUco 기반, 마지막 감지: {time_diff:.1f}초 전)")
                 else:
-                    self.get_logger().info(f"현재 위치: {location_name} (ArUco 기반, 초기값)")
+                    self.get_logger().debug(f"현재 위치: {location_name} (ArUco 기반, 초기값)")
                     
             else:  # 기타 모드 - 기본 위치 반환
                 response.location_id = self.last_detected_location_id  # 마지막 알려진 위치 유지
                 mode_name = self.get_active_mode_name()
-                self.get_logger().info(f"위치 서비스: {mode_name}에서는 ArUco 사용 안함 (마지막 위치 유지)")
+                self.get_logger().debug(f"위치 서비스: {mode_name}에서는 ArUco 사용 안함 (마지막 위치 유지)")
                 
         except Exception as e:
             self.get_logger().error(f"위치 감지 에러: {e}")
@@ -2736,6 +2844,8 @@ class VSNode(Node):
                     # 🎯 디스플레이 바운딩박스를 두껍게 표시 (YOLO가 감지한 전체 디스플레이 영역)
                     cv2.rectangle(image, (x1, y1), (x2, y2), (0, 165, 255), 3)  # 주황색으로 더 두껍게
                     
+<<<<<<< Updated upstream
+=======
                     # 📍 ROI 영역 표시 (좌우 중앙 30% 영역)
                     display_width = x2 - x1
                     display_height = y2 - y1
@@ -2759,10 +2869,15 @@ class VSNode(Node):
                     cv2.putText(image, "OCR ROI (30%)", (roi_x1, roi_y1-10), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
                     
+>>>>>>> Stashed changes
                     # 🎯 OCR이 실제로 인식한 숫자 영역 표시 (digit_bbox)
                     if digit_bbox and len(digit_bbox) == 4:
                         dx1, dy1, dx2, dy2 = digit_bbox
                         
+<<<<<<< Updated upstream
+                        # 🔥 숫자 영역 표시 (단순화)
+                        cv2.rectangle(image, (dx1, dy1), (dx2, dy2), (0, 0, 255), 2)  # 빨간 박스
+=======
                         # 🔥 숫자 영역을 매우 명확하게 표시
                         cv2.rectangle(image, (dx1-2, dy1-2), (dx2+2, dy2+2), (0, 0, 255), 4)  # 매우 두꺼운 빨간 박스
                         
@@ -2789,6 +2904,7 @@ class VSNode(Node):
                         # digit_bbox가 없는 경우 - OCR 실패 표시
                         cv2.putText(image, "NO DIGIT DETECTED", (x1, y2+20), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+>>>>>>> Stashed changes
                     
                     # 디스플레이 라벨 (간단하게)
                     if floor_text and floor_text != "?":
@@ -2825,6 +2941,12 @@ class VSNode(Node):
                     else:
                         color_indicator = "OFF"
                     
+<<<<<<< Updated upstream
+                    # 최종 라벨 생성 (단순화)
+                    label = f"{position_text}"  # "UP" 또는 "DOWN"만 표시
+                    
+                    # 방향등 오버레이 제거됨 (깔끔한 표시를 위해)
+=======
                     # 최종 라벨 생성
                     label = f"{position_text} LIGHT {color_indicator}"
                     
@@ -2832,6 +2954,7 @@ class VSNode(Node):
                     brightness_text = f"({light_brightness:.0f})"
                     cv2.putText(image, brightness_text, (x1, y2+15), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.3, position_color, 1)
+>>>>>>> Stashed changes
                     
                     # 위치에 따른 색상 설정
                     color = position_color
@@ -2841,6 +2964,11 @@ class VSNode(Node):
                 cv2.putText(image, label, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 
+<<<<<<< Updated upstream
+                # 모델 이름 표시 제거됨 (오버레이 정리)
+                
+                # 거리 정보 표시 제거됨 (오버레이 정리)
+=======
                 # 모델 이름 표시 (작게)
                 model_text = f"[{model_name}]"
                 cv2.putText(image, model_text, (x1, y1-25), 
@@ -2851,12 +2979,32 @@ class VSNode(Node):
                     distance_text = f"{depth_mm}mm"
                     cv2.putText(image, distance_text, (center[0]-20, center[1]+20), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
+>>>>>>> Stashed changes
                 
                 # 버튼 눌림 상태 표시
                 if class_name == 'button' and is_pressed:
                     pressed_text = "PRESSED"
                     cv2.putText(image, pressed_text, (center[0]-30, center[1]+35), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+<<<<<<< Updated upstream
+        
+        # 🎯 기억된 방향등 위치에 라벨 표시
+        if (self.remembered_direction_positions['upper'] and 
+            self.remembered_direction_positions['lower']):
+            
+            # 위쪽 방향등 위치에 "UP" 라벨 표시
+            upper_pos = self.remembered_direction_positions['upper']['center']
+            cv2.circle(image, (upper_pos[0], upper_pos[1]), 30, (0, 255, 0), 2)
+            cv2.putText(image, "UP", (upper_pos[0] - 15, upper_pos[1] + 5), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            
+            # 아래쪽 방향등 위치에 "DOWN" 라벨 표시
+            lower_pos = self.remembered_direction_positions['lower']['center']
+            cv2.circle(image, (lower_pos[0], lower_pos[1]), 30, (0, 0, 255), 2)
+            cv2.putText(image, "DOWN", (lower_pos[0] - 25, lower_pos[1] + 5), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+=======
+>>>>>>> Stashed changes
         
         return image
 
@@ -2929,6 +3077,61 @@ class VSNode(Node):
         # 탐지된 객체 수
         cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+<<<<<<< Updated upstream
+        
+        # 🔥 방향등 기억된 위치 정보 표시
+        if (self.remembered_direction_positions['upper'] and self.remembered_direction_positions['lower']):
+            upper_pos = self.remembered_direction_positions['upper']['center']
+            lower_pos = self.remembered_direction_positions['lower']['center']
+            cv2.putText(image, f"Remembered Positions - UP: ({upper_pos[0]},{upper_pos[1]}) | DOWN: ({lower_pos[0]},{lower_pos[1]}) - TRACKING MODE", 
+                       (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+        else:
+            cv2.putText(image, "No Direction Light Positions Remembered - Waiting for 2 Lights...", 
+                       (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+        
+                # 🔥 기억된 위치에서 현재 밝기 정보 표시
+        if (self.remembered_direction_positions['upper'] and 
+            self.remembered_direction_positions['lower'] and 
+            image is not None):
+            
+            # 기억된 위치에서 실시간 밝기 측정
+            upper_brightness = self._get_brightness_at_remembered_position(image, 'upper')
+            lower_brightness = self._get_brightness_at_remembered_position(image, 'lower')
+            
+            cv2.putText(image, f"Current Brightness: UP={upper_brightness:.1f} | DOWN={lower_brightness:.1f}", 
+                       (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+            
+            # 🔥 깜빡임 상태 표시
+            if self.blink_detection_enabled and len(self.brightness_history['upper']) >= 5:
+                upper_blink = self._detect_blink_at_position('upper')
+                lower_blink = self._detect_blink_at_position('lower')
+                
+                blink_status = ""
+                if upper_blink and lower_blink:
+                    blink_status = "BOTH BLINKING"
+                    color = (0, 255, 255)  # 노란색
+                elif upper_blink:
+                    blink_status = "UP BLINKING"
+                    color = (0, 255, 0)  # 초록색
+                elif lower_blink:
+                    blink_status = "DOWN BLINKING" 
+                    color = (0, 0, 255)  # 빨간색
+                else:
+                    blink_status = "NO BLINK"
+                    color = (128, 128, 128)  # 회색
+                    
+                cv2.putText(image, f"Blink Status: {blink_status}", 
+                           (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+            else:
+                cv2.putText(image, "Blink Detection: Collecting History...", 
+                           (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+        
+        # 엘리베이터 방향 정보 표시
+        direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
+        cv2.putText(image, f"Elevator Direction: {direction_text}", (10, 170), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
+=======
+>>>>>>> Stashed changes
         
         # 탐지된 객체 분류 표시
         if objects:
@@ -2994,14 +3197,29 @@ class VSNode(Node):
             direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
             direction_color = (0, 255, 0) if self.last_elevator_direction == 0 else (0, 0, 255)  # UP: 초록, DOWN: 빨강
             
+<<<<<<< Updated upstream
+            # 🔥 깜빡임 감지 표시 추가
+            if self.last_blink_detected:
+                direction_text += " ✦"  # 깜빡임 감지 시 별표 추가
+                direction_color = (0, 255, 255)  # 노란색으로 변경
+            
+=======
+>>>>>>> Stashed changes
             # 방향 텍스트 크기 계산
             dir_text_size = cv2.getTextSize(direction_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
             dir_text_x = image.shape[1] - dir_text_size[0] - 15  # 오른쪽 정렬
             dir_text_y = text_y + 45  # 층수 아래
             
+<<<<<<< Updated upstream
+            # 방향 배경 박스 (깜빡임 감지 시 더 두껍게)
+            box_thickness = 4 if self.last_blink_detected else 2
+            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
+            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, box_thickness)
+=======
             # 방향 배경 박스
             cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
             cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, 2)
+>>>>>>> Stashed changes
             
             # 방향 텍스트
             cv2.putText(image, direction_text, (dir_text_x, dir_text_y), 
@@ -3015,7 +3233,11 @@ class VSNode(Node):
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
         
         # 종료 안내
+<<<<<<< Updated upstream
+        cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco, D:Reset, L:Remember (Blink Detection ON)", (10, image.shape[0]-10), 
+=======
         cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-10), 
+>>>>>>> Stashed changes
                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
 
     def _on_gpu_memory_exceeded(self, used_memory: int, limit_memory: int, violation_count: int):
@@ -3094,6 +3316,260 @@ class VSNode(Node):
         if hasattr(self, 'camera_manager'):
             self.camera_manager.cleanup_all_cameras()
 
+<<<<<<< Updated upstream
+    def _update_remembered_positions(self, direction_objects: List[dict]) -> bool:
+        """방향등 2개가 감지되면 위치를 기억해둠 (간헐적 감지 대비)"""
+        try:
+            if len(direction_objects) != 2:
+                return False
+            
+            # Y 좌표 기준으로 정렬 (위쪽이 먼저)
+            sorted_lights = sorted(direction_objects, key=lambda obj: obj['center'][1])
+            upper_light = sorted_lights[0]  # Y 좌표가 작은 것 (위쪽)
+            lower_light = sorted_lights[1]  # Y 좌표가 큰 것 (아래쪽)
+            
+            # 위치 정보 저장
+            self.remembered_direction_positions['upper'] = {
+                'center': upper_light['center'],
+                'bbox': upper_light['bbox']
+            }
+            self.remembered_direction_positions['lower'] = {
+                'center': lower_light['center'],
+                'bbox': lower_light['bbox']
+            }
+            
+            self.last_position_update = self.get_clock().now()
+            
+            self.get_logger().info(f"🎯 방향등 위치 기억: 위쪽=({upper_light['center'][0]},{upper_light['center'][1]}), 아래쪽=({lower_light['center'][0]},{lower_light['center'][1]})")
+            
+            return True
+            
+        except Exception as e:
+            self.get_logger().error(f"방향등 위치 기억 에러: {e}")
+            return False
+
+    def _get_brightness_at_remembered_position(self, image: np.ndarray, position_type: str) -> float:
+        """기억된 위치에서 밝기 측정"""
+        try:
+            if not self.remembered_direction_positions[position_type] or image is None:
+                return 0.0
+                
+            pos_info = self.remembered_direction_positions[position_type]
+            
+            # 가상의 light_obj 생성해서 기존 함수 활용
+            virtual_light_obj = {
+                'center': pos_info['center'],
+                'bbox': pos_info['bbox']
+            }
+            
+            # 기존 함수 활용
+            return self._get_light_brightness_advanced(image, virtual_light_obj)
+            
+        except Exception as e:
+            self.get_logger().error(f"기억된 위치 밝기 측정 에러: {e}")
+            return 0.0
+
+    def _update_brightness_history(self, image: np.ndarray):
+        """기억된 위치에서 밝기 히스토리 업데이트"""
+        try:
+            if not (self.remembered_direction_positions['upper'] and 
+                   self.remembered_direction_positions['lower'] and 
+                   image is not None):
+                return
+                
+            # 각 위치에서 현재 밝기 측정
+            upper_brightness = self._get_brightness_at_remembered_position(image, 'upper')
+            lower_brightness = self._get_brightness_at_remembered_position(image, 'lower')
+            
+            # 히스토리에 추가
+            self.brightness_history['upper'].append(upper_brightness)
+            self.brightness_history['lower'].append(lower_brightness)
+            
+            # 히스토리 크기 제한
+            if len(self.brightness_history['upper']) > self.history_size:
+                self.brightness_history['upper'].pop(0)
+            if len(self.brightness_history['lower']) > self.history_size:
+                self.brightness_history['lower'].pop(0)
+                
+        except Exception as e:
+            self.get_logger().error(f"밝기 히스토리 업데이트 에러: {e}")
+
+    def _detect_blink_at_position(self, position_type: str) -> bool:
+        """특정 위치에서 깜빡임 감지"""
+        try:
+            history = self.brightness_history[position_type]
+            
+            # 최소 5프레임의 히스토리가 필요
+            if len(history) < 5:
+                return False
+                
+            # 최근 3프레임과 그 이전 프레임들 비교
+            recent_frames = history[-3:]  # 최근 3프레임
+            previous_frames = history[-8:-3]  # 그 이전 5프레임
+            
+            if len(previous_frames) == 0:
+                return False
+                
+            # 평균 밝기 계산
+            recent_avg = sum(recent_frames) / len(recent_frames)
+            previous_avg = sum(previous_frames) / len(previous_frames)
+            
+            # 밝기 변화량 계산
+            brightness_change = recent_avg - previous_avg
+            
+            # 깜빡임 감지: 임계값 이상 밝아짐
+            is_blink = brightness_change > self.brightness_change_threshold_for_blink
+            
+            if is_blink:
+                self.get_logger().info(f"🔥 {position_type.upper()} 방향등 깜빡임 감지! 변화량: {brightness_change:.1f}")
+                # 🎯 깜빡임 감지 후 히스토리 일부 초기화 (연속 깜빡임 감지를 위해)
+                self._reset_brightness_history_for_continuous_detection(position_type)
+                
+            return is_blink
+            
+        except Exception as e:
+            self.get_logger().error(f"{position_type} 깜빡임 감지 에러: {e}")
+            return False
+
+    def _reset_brightness_history_for_continuous_detection(self, position_type: str):
+        """깜빡임 감지 후 히스토리 일부 초기화 (연속 감지를 위해)"""
+        try:
+            if position_type in self.brightness_history:
+                # 현재 히스토리의 마지막 3개 값만 유지 (나머지 제거)
+                if len(self.brightness_history[position_type]) > 3:
+                    self.brightness_history[position_type] = self.brightness_history[position_type][-3:]
+                    self.get_logger().info(f"🔄 {position_type.upper()} 방향등 히스토리 초기화 (연속 깜빡임 감지용)")
+        except Exception as e:
+            self.get_logger().error(f"히스토리 초기화 에러: {e}")
+
+    def _classify_light_by_learned_position(self, light_obj: dict) -> str:
+        """학습된 위치 정보를 기반으로 방향등을 위/아래로 분류"""
+        try:
+            if (not self.direction_light_positions['upper'] or 
+                not self.direction_light_positions['lower']):
+                return 'unknown'
+            
+            light_y = light_obj['center'][1]
+            upper_y = self.direction_light_positions['upper']['center'][1]
+            lower_y = self.direction_light_positions['lower']['center'][1]
+            
+            # 학습된 위치와의 거리 계산
+            dist_to_upper = abs(light_y - upper_y)
+            dist_to_lower = abs(light_y - lower_y)
+            
+            # 더 가까운 위치로 분류 (허용 오차 50픽셀)
+            if dist_to_upper < dist_to_lower and dist_to_upper < 50:
+                return 'upper'
+            elif dist_to_lower < dist_to_upper and dist_to_lower < 50:
+                return 'lower'
+            else:
+                return 'unknown'
+                
+        except Exception as e:
+            self.get_logger().error(f"방향등 위치 분류 에러: {e}")
+            return 'unknown'
+
+    def _detect_with_learned_positions(self, image: np.ndarray, current_lights: List[dict]) -> int:
+        """학습된 위치 정보를 활용한 방향 감지"""
+        try:
+            # 위치별로 분류
+            upper_lights = [light for light in current_lights if light.get('position_type') == 'upper']
+            lower_lights = [light for light in current_lights if light.get('position_type') == 'lower']
+            
+            # 각 영역의 평균 밝기 계산
+            upper_avg_brightness = sum([light['brightness'] for light in upper_lights]) / len(upper_lights) if upper_lights else 0
+            lower_avg_brightness = sum([light['brightness'] for light in lower_lights]) / len(lower_lights) if lower_lights else 0
+            
+            self.get_logger().info(f"🔍 학습된 위치 기반 - 위쪽 평균 밝기: {upper_avg_brightness:.1f}, 아래쪽 평균 밝기: {lower_avg_brightness:.1f}")
+            
+            # 밝기 차이로 방향 판단
+            brightness_diff = upper_avg_brightness - lower_avg_brightness
+            threshold = 40.0  # 밝기 차이 임계값 (안정성 우선)
+            
+            self.get_logger().info(f"💡 밝기 차이: {brightness_diff:.1f} (임계값: ±{threshold})")
+            
+            if brightness_diff > threshold:
+                self.get_logger().debug("🔥 위쪽 방향등이 더 밝음 → 상행")
+                return 0  # 상행
+            elif brightness_diff < -threshold:
+                self.get_logger().debug("🔥 아래쪽 방향등이 더 밝음 → 하행") 
+                return 1  # 하행
+            else:
+                # 차이가 미미하면 기존 방향 유지
+                self.get_logger().debug(f"📊 밝기 차이가 임계값 이하 → 기존 방향 유지")
+                return self.last_elevator_direction
+                
+        except Exception as e:
+            self.get_logger().error(f"학습된 위치 기반 감지 에러: {e}")
+            return self.last_elevator_direction
+
+    def _detect_direction_by_lights(self, image: np.ndarray, direction_objects: List[dict]) -> int:
+        """🔥 깜빡임 감지 기반 방향 판단 (위치 기억 + 밝기 변화 추적)"""
+        try:
+            current_count = len(direction_objects)
+            
+            # 1단계: 방향등 2개가 감지되면 위치 업데이트
+            if current_count == 2:
+                self._update_remembered_positions(direction_objects)
+            
+            # 2단계: 기억된 위치가 있으면 밝기 히스토리 업데이트
+            if (self.remembered_direction_positions['upper'] and 
+                self.remembered_direction_positions['lower'] and 
+                image is not None):
+                
+                # 밝기 히스토리 업데이트
+                self._update_brightness_history(image)
+                
+                # 3단계: 깜빡임 감지 우선 (방향 변화 감지)
+                if self.blink_detection_enabled:
+                    upper_blink = self._detect_blink_at_position('upper')
+                    lower_blink = self._detect_blink_at_position('lower')
+                    
+                    if upper_blink and not lower_blink:
+                        self.get_logger().info("🔥🔥 위쪽 방향등 깜빡임 감지 → 상행!")
+                        self.last_blink_detected = True
+                        return 0  # 상행
+                    elif lower_blink and not upper_blink:
+                        self.get_logger().info("🔥🔥 아래쪽 방향등 깜빡임 감지 → 하행!")
+                        self.last_blink_detected = True
+                        return 1  # 하행
+                    elif upper_blink and lower_blink:
+                        self.get_logger().info("⚠️ 양쪽 모두 깜빡임 감지됨, 밝기 차이로 판단")
+                        self.last_blink_detected = True
+                        # 양쪽 모두 깜빡이면 밝기 차이로 판단
+                    else:
+                        # 깜빡임이 없으면 밝기 차이로 판단
+                        self.last_blink_detected = False
+                
+                # 4단계: 깜빡임이 없거나 양쪽 모두 깜빡이면 밝기 차이로 판단
+                upper_brightness = self._get_brightness_at_remembered_position(image, 'upper')
+                lower_brightness = self._get_brightness_at_remembered_position(image, 'lower')
+                
+                brightness_diff = upper_brightness - lower_brightness
+                threshold = 40.0
+                
+                self.get_logger().debug(f"💡 기억된 위치 밝기: 위쪽={upper_brightness:.1f}, 아래쪽={lower_brightness:.1f}, 차이={brightness_diff:.1f}")
+                
+                if brightness_diff > threshold:
+                    self.get_logger().debug("🔥 위쪽 방향등이 더 밝음 → 상행")
+                    return 0  # 상행
+                elif brightness_diff < -threshold:
+                    self.get_logger().debug("🔥 아래쪽 방향등이 더 밝음 → 하행")
+                    return 1  # 하행
+                else:
+                    self.get_logger().debug("📊 밝기 차이가 임계값 이하 → 기존 방향 유지")
+                    return self.last_elevator_direction
+            else:
+                # 기억된 위치가 없으면 기존 방향 유지
+                if current_count == 0:
+                    self.get_logger().debug("방향등 미감지, 기억된 위치 없음 → 기존 방향 유지")
+                else:
+                    self.get_logger().info(f"방향등 {current_count}개 감지됨 (2개 필요), 기억된 위치 없음")
+                return self.last_elevator_direction
+            
+        except Exception as e:
+            self.get_logger().error(f"Direction light 감지 에러: {e}")
+=======
     def _detect_direction_by_lights(self, image: np.ndarray, direction_objects: List[dict]) -> int:
         """🔥 밝기 기반 + 소실 감지 방향 판단 (개선된 버전)"""
         try:
@@ -3135,6 +3611,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"Direction light 감지 에러: {e}")
             self.previous_direction_lights = direction_objects.copy()
+>>>>>>> Stashed changes
             return self.last_elevator_direction
 
     def _analyze_light_color(self, image: np.ndarray, light_obj: dict) -> str:
@@ -3279,6 +3756,73 @@ class VSNode(Node):
             self.get_logger().error(f"소실 감지 에러: {e}")
             return -1
 
+<<<<<<< Updated upstream
+    def _match_lights_by_position(self, prev_lights: List[dict], curr_lights: List[dict]) -> List[tuple]:
+        """🔍 이전 프레임과 현재 프레임의 방향등을 위치 기반으로 매칭"""
+        try:
+            matched_pairs = []
+            
+            for prev_light in prev_lights:
+                prev_center = prev_light['center']
+                best_match = None
+                best_distance = float('inf')
+                
+                for curr_light in curr_lights:
+                    curr_center = curr_light['center']
+                    
+                    # 유클리드 거리 계산
+                    distance = ((prev_center[0] - curr_center[0]) ** 2 + 
+                               (prev_center[1] - curr_center[1]) ** 2) ** 0.5
+                    
+                    if distance < self.position_tolerance and distance < best_distance:
+                        best_distance = distance
+                        best_match = curr_light
+                
+                if best_match:
+                    matched_pairs.append((prev_light, best_match))
+            
+            self.get_logger().info(f"🔗 매칭된 방향등: {len(matched_pairs)}쌍")
+            return matched_pairs
+            
+        except Exception as e:
+            self.get_logger().error(f"방향등 매칭 에러: {e}")
+            return []
+
+    def _detect_by_absolute_brightness(self, current_lights: List[dict]) -> int:
+        """절대 밝기 기반 감지: 너무 밝은 것 = 켜진 것"""
+        try:
+            if len(current_lights) < 2:
+                return -1
+            
+            # 위쪽/아래쪽 분류 (학습된 위치 정보가 있을 때만)
+            upper_lights = []
+            lower_lights = []
+            has_position_info = False
+            
+            for light in current_lights:
+                if light.get('position_type') == 'upper':
+                    upper_lights.append(light)
+                    has_position_info = True
+                elif light.get('position_type') == 'lower':
+                    lower_lights.append(light)
+                    has_position_info = True
+                # 위치 정보가 없으면 분류하지 않음 (안전)
+            
+            # 위치 정보가 없으면 판단 보류
+            if not has_position_info:
+                self.get_logger().warn("⚠️ 학습된 위치 정보가 없어 절대 밝기 감지를 건너뜁니다")
+                return -1
+            
+            # 각 영역에서 가장 밝은 방향등 찾기
+            upper_max_brightness = max([light['brightness'] for light in upper_lights]) if upper_lights else 0
+            lower_max_brightness = max([light['brightness'] for light in lower_lights]) if lower_lights else 0
+            
+            self.get_logger().info(f"💡 절대 밝기: 위쪽 최대={upper_max_brightness:.1f}, 아래쪽 최대={lower_max_brightness:.1f} (임계값: {self.brightness_threshold})")
+            
+            # 매우 밝은 영역은 켜진 것으로 판단
+            upper_too_bright = upper_max_brightness > self.brightness_threshold
+            lower_too_bright = lower_max_brightness > self.brightness_threshold
+=======
     def _detect_by_brightness_advanced(self, image: np.ndarray, direction_objects: List[dict]) -> int:
         """밝기 기반 감지: 너무 밝은 것은 감지 불가 = 켜진 것"""
         try:
@@ -3299,6 +3843,7 @@ class VSNode(Node):
             # 매우 밝은 영역은 켜진 것으로 판단
             upper_too_bright = upper_brightness > self.brightness_threshold
             lower_too_bright = lower_brightness > self.brightness_threshold
+>>>>>>> Stashed changes
             
             if upper_too_bright and not lower_too_bright:
                 self.get_logger().info("🔥 위쪽 방향등이 매우 밝음 → 상행")
@@ -3306,6 +3851,8 @@ class VSNode(Node):
             elif lower_too_bright and not upper_too_bright:
                 self.get_logger().info("🔥 아래쪽 방향등이 매우 밝음 → 하행")
                 return 1  # 하행
+<<<<<<< Updated upstream
+=======
             elif upper_too_bright and lower_too_bright:
                 self.get_logger().warn("⚠️ 두 방향등 모두 너무 밝음, 밝기 차이로 판단")
                 # 더 밝은 쪽이 켜진 것
@@ -3313,11 +3860,16 @@ class VSNode(Node):
                     return 0  # 상행
                 elif lower_brightness > upper_brightness * 1.1:
                     return 1  # 하행
+>>>>>>> Stashed changes
             
             return -1
             
         except Exception as e:
+<<<<<<< Updated upstream
+            self.get_logger().error(f"절대 밝기 감지 에러: {e}")
+=======
             self.get_logger().error(f"밝기 감지 에러: {e}")
+>>>>>>> Stashed changes
             return -1
 
     def _detect_by_count_pattern(self) -> int:
@@ -3369,6 +3921,94 @@ class VSNode(Node):
             self.get_logger().error(f"밝기 계산 에러: {e}")
             return 0.0
 
+<<<<<<< Updated upstream
+    def _get_lights_with_brightness(self, image: np.ndarray, direction_objects: List[dict]) -> List[dict]:
+        """🔥 각 방향등의 위치와 밝기 정보 추출"""
+        try:
+            lights_with_brightness = []
+            
+            for obj in direction_objects:
+                center = obj.get('center', [0, 0])
+                brightness = self._get_light_brightness_advanced(image, obj)
+                
+                light_info = {
+                    'center': center,
+                    'brightness': brightness,
+                    'bbox': obj.get('bbox'),
+                    'original_obj': obj
+                }
+                lights_with_brightness.append(light_info)
+            
+            return lights_with_brightness
+            
+        except Exception as e:
+            self.get_logger().error(f"방향등 밝기 정보 추출 에러: {e}")
+            return []
+
+    def _detect_by_position_brightness_change(self, current_lights: List[dict]) -> int:
+        """🔥 개별 위치별 밝기 변화 감지 (핵심 로직)"""
+        try:
+            if not self.previous_direction_lights or not current_lights:
+                return -1
+            
+            # 이전 프레임과 현재 프레임의 방향등 매칭
+            matched_lights = self._match_lights_by_position(self.previous_direction_lights, current_lights)
+            
+            if not matched_lights:
+                return -1
+            
+            # 각 매칭된 방향등의 밝기 변화 계산
+            brightness_changes = []
+            for prev_light, curr_light in matched_lights:
+                prev_brightness = prev_light['brightness']
+                curr_brightness = curr_light['brightness']
+                change = curr_brightness - prev_brightness
+                
+                # 학습된 위치 정보가 있을 때만 판단
+                position_type = curr_light.get('position_type')
+                if position_type == 'upper':
+                    is_upper = True
+                elif position_type == 'lower':
+                    is_upper = False
+                else:
+                    # 위치 정보가 없으면 이 방향등은 건너뜀
+                    continue
+                
+                light_info = {
+                    'center': curr_light['center'],
+                    'prev_brightness': prev_brightness,
+                    'curr_brightness': curr_brightness,
+                    'change': change,
+                    'is_upper': is_upper
+                }
+                brightness_changes.append(light_info)
+                
+                self.get_logger().info(f"🔄 위치({curr_light['center'][0]},{curr_light['center'][1]}): {prev_brightness:.1f} → {curr_brightness:.1f} (변화: {change:+.1f})")
+            
+            # 🔥 밝기 급증한 방향등 찾기 (켜진 것)
+            significant_increases = [light for light in brightness_changes if light['change'] > self.brightness_change_threshold]
+            
+            if significant_increases:
+                # 위쪽/아래쪽 분류
+                upper_increases = [light for light in significant_increases if light['is_upper']]
+                lower_increases = [light for light in significant_increases if not light['is_upper']]
+                
+                if upper_increases and not lower_increases:
+                    self.get_logger().info(f"🔥 위쪽 방향등 {len(upper_increases)}개 밝기 급증 → 상행")
+                    return 0  # 상행
+                elif lower_increases and not upper_increases:
+                    self.get_logger().info(f"🔥 아래쪽 방향등 {len(lower_increases)}개 밝기 급증 → 하행")  
+                    return 1  # 하행
+            
+            # 변화가 미미한 경우
+            return -1
+            
+        except Exception as e:
+            self.get_logger().error(f"위치별 밝기 변화 감지 에러: {e}")
+            return -1
+
+=======
+>>>>>>> Stashed changes
 
 def main(args=None):
     rclpy.init(args=args)
@@ -3503,6 +4143,41 @@ def main(args=None):
                             elif camera_type in ['rear', 'front']:
                                 # 후방 카메라나 기타 전방 카메라: 영상만
                                 pass
+                            
+                            # 🎯 마지막 감지된 객체들 저장 (L키용)
+                            if objects and mode_id in [3, 4] and camera_type == 'front_webcam':
+                                node.last_detected_objects = objects.copy()
+                            
+                            # 🎯 메인 루프에서 방향등 위치 기억 + 실시간 방향 감지 (엘리베이터 모드에서만)
+                            if mode_id in [3, 4] and camera_type == 'front_webcam':
+                                if objects:
+                                    direction_objects = [obj for obj in objects if obj.get('class_name') == 'direction_light']
+                                    if len(direction_objects) == 2:
+                                        node._update_remembered_positions(direction_objects)
+                                
+                                # 기억된 위치가 있으면 항상 밝기 히스토리 업데이트 + 방향 감지
+                                if (node.remembered_direction_positions['upper'] and 
+                                    node.remembered_direction_positions['lower']):
+                                    node._update_brightness_history(color_image)
+                                    
+                                    # 🚦 메인 루프에서도 실시간 방향 감지 (GUI 업데이트용)
+                                    direction_objects_for_detection = []
+                                    if objects:
+                                        direction_objects_for_detection = [obj for obj in objects if obj.get('class_name') == 'direction_light']
+                                    
+                                    detected_direction = node._detect_direction_by_lights(color_image, direction_objects_for_detection)
+                                    
+                                    # 방향 변경되었거나 깜빡임이 감지된 경우 업데이트
+                                    if detected_direction != -1:
+                                        if (detected_direction != node.last_elevator_direction or node.last_blink_detected):
+                                            node.last_elevator_direction = detected_direction
+                                            node.last_direction_detection_time = node.get_clock().now()
+                                            blink_info = " (깜빡임 감지)" if node.last_blink_detected else ""
+                                            node.get_logger().info(f"🎯 [메인루프] 방향 업데이트: {'상행' if detected_direction == 0 else '하행'}{blink_info}")
+                                            
+                                            # 깜빡임 처리 완료 후 플래그 초기화
+                                            if node.last_blink_detected:
+                                                node.last_blink_detected = False
                             
                             display_image = color_image.copy()
                             if objects:
@@ -3670,13 +4345,37 @@ def main(args=None):
                             node.get_logger().info("키보드: A(ArUco테스트), F(좌우반전), C(신뢰도조정)")
                         elif key == ord('a') or key == ord('A'):  # A키: ArUco 감지 테스트
                             node.test_aruco_detection()
+                        elif key == ord('d') or key == ord('D'):  # D키: 방향등 위치 리셋
+                            node.remembered_direction_positions = {'upper': None, 'lower': None}
+                            node.last_position_update = None
+                            node.brightness_history = {'upper': [], 'lower': []}
+                            node.get_logger().info("🔄 방향등 위치와 밝기 히스토리를 리셋했습니다. 방향등 2개가 감지되면 다시 기억을 시작합니다.")
+                        elif key == ord('l') or key == ord('L'):  # L키: 강제 방향등 위치 기억
+                            # 마지막으로 감지된 direction_light 객체들로 강제 위치 기억
+                            if node.last_detected_objects:
+                                direction_objects = [obj for obj in node.last_detected_objects if obj.get('class_name') == 'direction_light']
+                                if len(direction_objects) == 2:
+                                    node.get_logger().info(f"🔥 [MANUAL] L키로 강제 위치 기억 시도! 방향등 {len(direction_objects)}개 감지됨")
+                                    # 좌표 정보 출력
+                                    for i, obj in enumerate(direction_objects):
+                                        node.get_logger().info(f"🔥 [MANUAL] 방향등[{i}]: center={obj['center']}, bbox={obj['bbox']}")
+                                    success = node._update_remembered_positions(direction_objects)
+                                    node.get_logger().info(f"🔥 [MANUAL] 강제 위치 기억 결과: {success}")
+                                elif len(direction_objects) == 0:
+                                    node.get_logger().warn("🔥 [MANUAL] 방향등이 감지되지 않았습니다")
+                                else:
+                                    node.get_logger().warn(f"🔥 [MANUAL] 방향등이 2개가 아님: {len(direction_objects)}개")
+                                    for i, obj in enumerate(direction_objects):
+                                        node.get_logger().info(f"🔥 [MANUAL] 방향등[{i}]: center={obj['center']}")
+                            else:
+                                node.get_logger().warn("🔥 [MANUAL] 마지막 감지된 객체가 없습니다")
                         elif key != 255 and key != -1:  # 다른 키가 눌렸을 때 (헤드리스 모드 제외)
                             if 32 <= key <= 126:
                                 node.get_logger().info(f"'{chr(key)}' 키 눌림")
                                 node.get_logger().info("사용 가능한 키:")
                                 node.get_logger().info("   R(추적시뮬레이션), T(추적이벤트), G(등록완료)")
                                 node.get_logger().info("   B(버튼정보), M(상태확인), A(ArUco테스트)")
-                                node.get_logger().info("   F(좌우반전), C(신뢰도), ESC(종료)")
+                                node.get_logger().info("   F(좌우반전), C(신뢰도), D(위치리셋), L(위치기억), ESC(종료)")
                             else:
                                 node.get_logger().info(f"키 코드 {key} 눌림")
                             

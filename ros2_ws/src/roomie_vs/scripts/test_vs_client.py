@@ -13,10 +13,8 @@ import time
 from roomie_msgs.srv import (
     SetVSMode, 
     ButtonStatus,
-    ElevatorWidth,
     ElevatorStatus, 
     DoorStatus,
-    SpaceAvailability,
     Location
 )
 from roomie_msgs.msg import TrackingEvent, Registered
@@ -29,11 +27,9 @@ class VSInterfaceTestClient(Node):
         # 🔧 Service Clients (rms_vs_interface.md 기준)
         self.service_clients = {
             'set_vs_mode': self.create_client(SetVSMode, '/vs/command/set_vs_mode'),
-            'elevator_width': self.create_client(ElevatorWidth, '/vs/command/elevator_width'), 
             'button_status': self.create_client(ButtonStatus, '/vs/command/button_status'),
             'elevator_status': self.create_client(ElevatorStatus, '/vs/command/elevator_status'),
             'door_status': self.create_client(DoorStatus, '/vs/command/door_status'),
-            'space_availability': self.create_client(SpaceAvailability, '/vs/command/space_availability'),
             'location': self.create_client(Location, '/vs/command/location')
         }
         
@@ -97,8 +93,8 @@ class VSInterfaceTestClient(Node):
         
         threading.Thread(target=handle_response, daemon=True).start()
     
-    def test_button_status(self):
-        """버튼 상태 테스트"""
+    def test_button_status(self, button_id=0):
+        """버튼 상태 테스트 - 단일 버튼"""
         client = self.service_clients['button_status']
         if not client.wait_for_service(timeout_sec=2.0):
             self.get_logger().error("❌ ButtonStatus 서비스 없음")
@@ -106,87 +102,61 @@ class VSInterfaceTestClient(Node):
             
         request = ButtonStatus.Request()
         request.robot_id = 1
+        request.button_id = button_id  # 단일 버튼 ID
         
-        # 🎯 새로운 버튼 ID 확장 (총 16개):
-        # 층 버튼: 1~12 (1층~12층)
-        # 특수 버튼: 100(하행), 101(상행), 102(열기), 103(닫기)
+        button_names = {
+            0: "현재 유일하게 감지되는 버튼", 1: "1층", 2: "2층", 3: "3층", 4: "4층", 5: "5층", 6: "6층",
+            7: "7층", 8: "8층", 9: "9층", 10: "10층", 11: "11층", 12: "12층", 13: "B1층", 14: "B2층",
+            100: "하행버튼", 101: "상행버튼", 102: "열기버튼", 103: "닫기버튼"
+        }
+        button_name = button_names.get(button_id, f"버튼{button_id}")
         
-        # 기본 테스트: 대표적인 버튼들
-        request.button_ids = [100, 101, 1, 2, 3, 102, 103]  # 하행, 상행, 1-3층, 열기, 닫기
-        
-        # 전체 테스트 (옵션):
-        # request.button_ids = list(range(1, 13)) + [100, 101, 102, 103]  # 모든 16개 버튼
-        
-        self.get_logger().info(f"📞 버튼 상태 호출: button_ids={request.button_ids}")
+        self.get_logger().info(f"📞 버튼 상태 호출: button_id={button_id} ({button_name})")
         future = client.call_async(request)
         
         def handle_response():
             rclpy.spin_until_future_complete(self, future)
             if future.result():
                 response = future.result()
-                self.get_logger().info(f"✅ 버튼 상태 응답: {len(response.xs)}개 버튼")
-                for i in range(len(response.xs)):
-                    pressed_str = "눌림" if response.is_pressed[i] else "안눌림"
-                    self.get_logger().info(f"   버튼 {request.button_ids[i]}: ({response.xs[i]:.3f}, {response.ys[i]:.3f}, {response.depths[i]:.3f}) - {pressed_str}")
+                pressed_str = "눌림" if response.is_pressed else "안눌림"
+                if response.success:
+                    self.get_logger().info(f"✅ 버튼 상태 응답: {button_name}")
+                    self.get_logger().info(f"   위치: x={response.x:.3f}, y={response.y:.3f}, size={response.size:.3f}")
+                    self.get_logger().info(f"   상태: {pressed_str}")
+                else:
+                    self.get_logger().info(f"❌ 버튼 상태 실패: {button_name} (버튼 미감지 또는 2개 이상 감지)")
             else:
                 self.get_logger().error("❌ 버튼 상태 호출 실패")
         
         threading.Thread(target=handle_response, daemon=True).start()
     
-    def test_button_status_updown(self):
-        """상행/하행 버튼만 테스트 (엘리베이터 외부 모드용)"""
-        client = self.service_clients['button_status']
-        if not client.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("❌ ButtonStatus 서비스 없음")
-            return
+    def test_button_status_sequence(self):
+        """주요 버튼들 순차 테스트"""
+        self.get_logger().info("🎯 주요 버튼들 순차 테스트 시작!")
+        
+        def run_button_tests():
+            # 주요 버튼들 테스트
+            test_buttons = [
+                (0, "현재 유일하게 감지되는 버튼"),
+                (100, "하행버튼"),
+                (101, "상행버튼"),
+                (1, "1층 버튼"),
+                (2, "2층 버튼"),
+                (3, "3층 버튼"),
+                (102, "열기버튼"),
+                (103, "닫기버튼")
+            ]
             
-        request = ButtonStatus.Request()
-        request.robot_id = 1
+            for i, (button_id, button_name) in enumerate(test_buttons):
+                self.get_logger().info(f"🧪 [{i+1}/{len(test_buttons)}] {button_name} 테스트")
+                self.test_button_status(button_id)
+                time.sleep(1.5)  # 1.5초 간격
+            
+            self.get_logger().info("🎉 버튼 순차 테스트 완료!")
         
-        # 🎯 상행/하행 버튼만 요청 (엘리베이터 외부 모드에 최적화)
-        request.button_ids = [100, 101]  # 하행, 상행
-        
-        self.get_logger().info(f"📞 상행/하행 버튼 상태 호출: button_ids={request.button_ids}")
-        future = client.call_async(request)
-        
-        def handle_response():
-            rclpy.spin_until_future_complete(self, future)
-            if future.result():
-                response = future.result()
-                self.get_logger().info(f"✅ 상행/하행 버튼 응답: {len(response.xs)}개 버튼")
-                
-                button_names = {100: "하행버튼", 101: "상행버튼"}
-                for i in range(len(response.xs)):
-                    pressed_str = "눌림" if response.is_pressed[i] else "안눌림"
-                    button_name = button_names.get(request.button_ids[i], f"버튼{request.button_ids[i]}")
-                    self.get_logger().info(f"   🔺🔻 {button_name}: ({response.xs[i]:.3f}, {response.ys[i]:.3f}, {response.depths[i]:.3f}) - {pressed_str}")
-            else:
-                self.get_logger().error("❌ 상행/하행 버튼 상태 호출 실패")
-        
-        threading.Thread(target=handle_response, daemon=True).start()
+        threading.Thread(target=run_button_tests, daemon=True).start()
     
-    def test_elevator_width(self):
-        """엘리베이터 너비 테스트"""
-        client = self.service_clients['elevator_width']
-        if not client.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("❌ ElevatorWidth 서비스 없음")
-            return
-            
-        request = ElevatorWidth.Request()
-        request.robot_id = 1
-        
-        self.get_logger().info("📞 엘리베이터 너비 호출")
-        future = client.call_async(request)
-        
-        def handle_response():
-            rclpy.spin_until_future_complete(self, future)
-            if future.result():
-                response = future.result()
-                self.get_logger().info(f"✅ 엘리베이터 너비 응답: left={response.left_boundary:.3f}, right={response.right_boundary:.3f}")
-            else:
-                self.get_logger().error("❌ 엘리베이터 너비 호출 실패")
-        
-        threading.Thread(target=handle_response, daemon=True).start()
+
     
     def test_elevator_status(self):
         """엘리베이터 상태 테스트"""
@@ -236,29 +206,7 @@ class VSInterfaceTestClient(Node):
         
         threading.Thread(target=handle_response, daemon=True).start()
     
-    def test_space_availability(self):
-        """공간 가용성 테스트"""
-        client = self.service_clients['space_availability']
-        if not client.wait_for_service(timeout_sec=2.0):
-            self.get_logger().error("❌ SpaceAvailability 서비스 없음")
-            return
-            
-        request = SpaceAvailability.Request()
-        request.robot_id = 1
-        
-        self.get_logger().info("📞 공간 가용성 호출")
-        future = client.call_async(request)
-        
-        def handle_response():
-            rclpy.spin_until_future_complete(self, future)
-            if future.result():
-                response = future.result()
-                space_str = "확보됨" if response.space_availability else "확보 안됨"
-                self.get_logger().info(f"✅ 공간 가용성 응답: {space_str}")
-            else:
-                self.get_logger().error("❌ 공간 가용성 호출 실패")
-        
-        threading.Thread(target=handle_response, daemon=True).start()
+
     
     def test_location(self):
         """위치 감지 테스트"""
@@ -295,20 +243,18 @@ class VSInterfaceTestClient(Node):
         
         def run_all_tests():
             tests = [
-                ("VS 모드 - 대기모드", lambda: self.test_set_vs_mode(0)),
-                ("VS 모드 - 등록모드", lambda: self.test_set_vs_mode(1)),
-                ("VS 모드 - 추적모드", lambda: self.test_set_vs_mode(2)),
-                ("VS 모드 - 엘리베이터모드", lambda: self.test_set_vs_mode(3)),
-                ("VS 모드 - 배송 시뮬레이션", lambda: self.test_set_vs_mode(100)),
-                ("VS 모드 - 호출 시뮬레이션", lambda: self.test_set_vs_mode(101)),
-                ("VS 모드 - 길안내 시뮬레이션", lambda: self.test_set_vs_mode(102)),
-                ("VS 모드 - 복귀 시뮬레이션", lambda: self.test_set_vs_mode(103)),
-                ("VS 모드 - 엘리베이터 시뮬레이션", lambda: self.test_set_vs_mode(104)),
-                ("엘리베이터 너비", self.test_elevator_width),
-                ("버튼 상태", self.test_button_status),
+                ("VS 모드 - 대기모드 (후방)", lambda: self.test_set_vs_mode(0)),
+                ("VS 모드 - 등록모드 (후방)", lambda: self.test_set_vs_mode(1)),
+                ("VS 모드 - 추적모드 (후방)", lambda: self.test_set_vs_mode(2)),
+                ("VS 모드 - 엘리베이터 외부 (전방)", lambda: self.test_set_vs_mode(3)),
+                ("VS 모드 - 엘리베이터 내부 (전방)", lambda: self.test_set_vs_mode(4)),
+                ("VS 모드 - 일반 주행 (전방)", lambda: self.test_set_vs_mode(5)),
+                ("VS 모드 - 대기모드 (전방)", lambda: self.test_set_vs_mode(6)),
+                ("버튼 상태 - 유일 버튼", lambda: self.test_button_status(0)),
+                ("버튼 상태 - 하행버튼", lambda: self.test_button_status(100)),
+                ("버튼 상태 - 상행버튼", lambda: self.test_button_status(101)),
                 ("엘리베이터 상태", self.test_elevator_status),
                 ("문 상태", self.test_door_status),
-                ("공간 가용성", self.test_space_availability),
                 ("위치 감지", self.test_location),
             ]
             
@@ -324,34 +270,30 @@ class VSInterfaceTestClient(Node):
     def show_menu(self):
         """사용 가능한 명령어 표시"""
         print("\n" + "="*70)
-        print("�� VS 인터페이스 테스트 클라이언트 (완전판)")
+        print("🧪 VS 인터페이스 테스트 클라이언트 (업데이트됨)")
         print("="*70)
-        print("📋 rms_vs_interface.md 기준 전체 인터페이스:")
+        print("📋 rms_vs_interface.md 기준 전체 인터페이스 (5개 서비스):")
         print()
         print("🔍 상태 확인:")
         print("  check : 모든 서비스 가용성 확인")
         print("  info  : 현재 노드 및 토픽 상태 확인")
         print()
         print("🔧 서비스 인터페이스 테스트 (RC → VS):")
-        print("  1  : SetVSMode - 대기모드 (mode_id=0)")
-        print("  1r : SetVSMode - 등록모드 (mode_id=1)")
-        print("  1t : SetVSMode - 추적모드 (mode_id=2)")
-        print("  1e : SetVSMode - 엘리베이터 외부 (mode_id=3)")
-        print("  1i : SetVSMode - 엘리베이터 내부 (mode_id=4)")
-        print("  1n : SetVSMode - 일반모드 (mode_id=5)")
-        print("  1f : SetVSMode - 전방 대기모드 (mode_id=6)")
-        print("  1s : SetVSMode - 배송 시뮬레이션 (mode_id=100)")
-        print("  1c : SetVSMode - 호출 시뮬레이션 (mode_id=101)")
-        print("  1g : SetVSMode - 길안내 시뮬레이션 (mode_id=102)")
-        print("  1b : SetVSMode - 복귀 시뮬레이션 (mode_id=103)")
-        print("  1v : SetVSMode - 엘리베이터 시뮬레이션 (mode_id=104)")
-        print("  2  : ElevatorWidth - 엘리베이터 너비 감지")
-        print("  3  : ButtonStatus - 버튼 상태 감지")
-        print("  3u : ButtonStatus - 상행/하행 버튼만 감지")
-        print("  4  : ElevatorStatus - 엘리베이터 상태 감지")
-        print("  5  : DoorStatus - 문 상태 감지")
-        print("  6  : SpaceAvailability - 공간 가용성 감지")
-        print("  7  : Location - 위치 감지")
+        print("  1  : SetVSMode - 대기모드 (후방 전용, mode_id=0)")
+        print("  1r : SetVSMode - 등록모드 (후방 전용, mode_id=1)")
+        print("  1t : SetVSMode - 추적모드 (후방 전용, mode_id=2)")
+        print("  1e : SetVSMode - 엘리베이터 외부 (전방 전용, mode_id=3)")
+        print("  1i : SetVSMode - 엘리베이터 내부 (전방 전용, mode_id=4)")
+        print("  1n : SetVSMode - 일반 주행모드 (전방 전용, mode_id=5)")
+        print("  1f : SetVSMode - 대기모드 (전방 전용, mode_id=6)")
+        print("  2  : ButtonStatus - 유일 버튼 감지 (button_id=0)")
+        print("  2d : ButtonStatus - 하행버튼 감지 (button_id=100)")
+        print("  2u : ButtonStatus - 상행버튼 감지 (button_id=101)")
+        print("  2f : ButtonStatus - 1층버튼 감지 (button_id=1)")
+        print("  2s : ButtonStatus - 주요 버튼들 순차 테스트")
+        print("  3  : ElevatorStatus - 엘리베이터 상태 감지")
+        print("  4  : DoorStatus - 문 상태 감지")
+        print("  5  : Location - 위치 감지")
         print()
         print("📡 토픽 인터페이스 테스트 (VS → RC):")
         print("  t1 : TrackingEvent 발행 요청")
@@ -457,10 +399,10 @@ class VSInterfaceTestClient(Node):
             
             self.get_logger().info("🎉 전체 인터페이스 테스트 완료!")
             self.get_logger().info("📋 인터페이스 요약:")
-            self.get_logger().info("   ✅ 서비스 7개 타입: SetVSMode(9가지모드), ElevatorWidth, ButtonStatus, ElevatorStatus, DoorStatus, SpaceAvailability, Location")
+            self.get_logger().info("   ✅ 서비스 5개 타입: SetVSMode(7가지모드), ButtonStatus(단일값), ElevatorStatus, DoorStatus, Location")
             self.get_logger().info("   ✅ 토픽 2개: TrackingEvent, Registered")
-            self.get_logger().info("   ✅ 총 테스트 케이스: 15개 서비스 + 2개 토픽 = 17개")
-            self.get_logger().info("   📋 모드: 기본 4개(대기,등록,추적,엘리베이터) + 시뮬레이션 5개(배송,호출,길안내,복귀,엘리베이터)")
+            self.get_logger().info("   ✅ 총 테스트 케이스: 13개 서비스 + 2개 토픽 = 15개")
+            self.get_logger().info("   📋 모드: 후방 3개(대기,등록,추적) + 전방 4개(엘리베이터외부,엘리베이터내부,일반주행,대기)")
         
         threading.Thread(target=run_full_tests, daemon=True).start()
     
@@ -505,29 +447,21 @@ class VSInterfaceTestClient(Node):
                     self.test_set_vs_mode(5)  # 일반모드
                 elif cmd == "1f":
                     self.test_set_vs_mode(6)  # 전방 대기모드
-                elif cmd == "1s":
-                    self.test_set_vs_mode(100) # 배송 시뮬레이션
-                elif cmd == "1c":
-                    self.test_set_vs_mode(101) # 호출 시뮬레이션
-                elif cmd == "1g":
-                    self.test_set_vs_mode(102) # 길안내 시뮬레이션
-                elif cmd == "1b":
-                    self.test_set_vs_mode(103) # 복귀 시뮬레이션
-                elif cmd == "1v":
-                    self.test_set_vs_mode(104) # 엘리베이터 시뮬레이션
                 elif cmd == "2":
-                    self.test_elevator_width()
+                    self.test_button_status(0)  # 유일 버튼
+                elif cmd == "2d":
+                    self.test_button_status(100)  # 하행버튼
+                elif cmd == "2u":
+                    self.test_button_status(101)  # 상행버튼
+                elif cmd == "2f":
+                    self.test_button_status(1)  # 1층버튼
+                elif cmd == "2s":
+                    self.test_button_status_sequence()  # 순차 테스트
                 elif cmd == "3":
-                    self.test_button_status()
-                elif cmd == "3u":
-                    self.test_button_status_updown()
-                elif cmd == "4":
                     self.test_elevator_status()
-                elif cmd == "5":
+                elif cmd == "4":
                     self.test_door_status()
-                elif cmd == "6":
-                    self.test_space_availability()
-                elif cmd == "7":
+                elif cmd == "5":
                     self.test_location()
                 else:
                     print(f"❌ 알 수 없는 명령어: {cmd}")
