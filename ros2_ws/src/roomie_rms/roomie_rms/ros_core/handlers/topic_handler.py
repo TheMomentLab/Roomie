@@ -19,22 +19,23 @@ class TopicHandler:
         self.node = node
         self.task_state_pub = node.task_state_pub if node else None
 
-    def publish_task_state(self, task_id, status_id):
-        """RC에게 작업의 현재 상태를 알립니다."""
-        if not self.task_state_pub:
-            logger.warning(f"[ROS2] task_state_pub이 초기화되지 않음. Task ID {task_id} 상태 전송 실패")
-            return
+    #------- 상태 다이어그램이 수정됨에 따라 RC에게 작업 상태를 전송하지 않음 -------
+    # def publish_task_state(self, task_id, status_id):
+    #     """RC에게 작업의 현재 상태를 알립니다."""
+    #     if not self.task_state_pub:
+    #         logger.warning(f"[ROS2] task_state_pub이 초기화되지 않음. Task ID {task_id} 상태 전송 실패")
+    #         return
             
-        from roomie_msgs.msg import TaskState
-        msg = TaskState()
-        msg.task_id = task_id
-        msg.task_state_id = status_id
-        self.task_state_pub.publish(msg)
-        logger.info(
-            "RC로 작업 상태 전송",
-            category="ROS2", subcategory="TOPIC-PUB",
-            details={"Topic": "/roomie/status/task_state", "TaskID": task_id, "StatusID": status_id}
-        )
+    #     from roomie_msgs.msg import TaskState
+    #     msg = TaskState()
+    #     msg.task_id = task_id
+    #     msg.task_state_id = status_id
+    #     self.task_state_pub.publish(msg)
+    #     logger.info(
+    #         "RC로 작업 상태 전송",
+    #         category="ROS2", subcategory="TOPIC-PUB",
+    #         details={"Topic": "/roomie/status/task_state", "TaskID": task_id, "StatusID": status_id}
+    #     )
 
     @handle_database_errors
     def robot_state_callback(self, msg):
@@ -131,8 +132,8 @@ class TopicHandler:
                                     (settings.db_consts.task_status['픽업 대기 중'], task_id))
                         log_database_operation("UPDATE", "task", True, f"Task {task_id} 상태 '픽업 대기 중'으로 변경")
                         
-                        # ROS2 토픽으로 상태 전파
-                        self.publish_task_state(task_id, settings.db_consts.task_status['픽업 대기 중'])
+                        # # ROS2 토픽으로 상태 전파
+                        # self.publish_task_state(task_id, settings.db_consts.task_status['픽업 대기 중'])
                         
                         # SGUI에 픽업 도착 알림 전송
                         action_type = ""
@@ -168,8 +169,8 @@ class TopicHandler:
                                      (settings.db_consts.task_status['배송 도착'], datetime.now(), task_id))
                         log_database_operation("UPDATE", "task", True, f"Task {task_id} 상태 '배송 도착'으로 변경")
                         
-                        # ROS2 토픽으로 상태 전파
-                        self.publish_task_state(task_id, settings.db_consts.task_status['배송 도착'])
+                        # # ROS2 토픽으로 상태 전파
+                        # self.publish_task_state(task_id, settings.db_consts.task_status['배송 도착'])
                         
                         # GGUI에 배송 도착 알림 전송 (해당 위치의 클라이언트에게만)
                         event_data = {
@@ -231,7 +232,7 @@ class TopicHandler:
             
     @handle_database_errors
     def roomie_pose_callback(self, msg):
-        """로봇의 현재 위치(Pose) 정보를 DB에 업데이트하고, AGUI에 실시간으로 전송합니다."""
+        """로봇의 현재 위치(Pose) 정보를 DB에 업데이트합니다."""
         logger.info(
             "로봇 위치 수신",
             category="ROS2", subcategory="TOPIC-SUB",
@@ -241,9 +242,7 @@ class TopicHandler:
         try:
             with safe_database_connection(db_manager.get_connection) as conn:
                 with database_transaction(conn) as cursor:                    
-                    self.robot_manager.update_robot_current_state(cursor, msg.robot_id, floor_id=msg.floor_id)
-            
-            # TODO: WebSocket 이벤트 전송 로직 추가
+                    self.robot_manager.update_robot_current_state(cursor, msg.robot_id, floor_id=msg.floor_id)    
 
         except (DatabaseException, Exception) as e:
             logger.error(
@@ -269,8 +268,8 @@ class TopicHandler:
             
             log_database_operation("UPDATE", "task", True, f"Task {msg.task_id} 상태 '배송 중'으로 변경 및 픽업 시간 기록")
             
-            # ROS2 토픽으로 상태 전파
-            self.publish_task_state(msg.task_id, settings.db_consts.task_status['배송 중'])
+            # # ROS2 토픽으로 상태 전파
+            # self.publish_task_state(msg.task_id, settings.db_consts.task_status['배송 중'])
             
             # AGUI에 픽업 완료 알림 전송
             from app.services.websocket_manager import manager as websocket_manager
@@ -315,8 +314,8 @@ class TopicHandler:
                     
             log_database_operation("UPDATE", "task", True, f"Task {msg.task_id} 상태 '수령 완료'로 변경")
             
-            # ROS2 토픽으로 최종 작업 상태 전파
-            self.publish_task_state(msg.task_id, settings.db_consts.task_status['수령 완료'])
+            # # ROS2 토픽으로 최종 작업 상태 전파
+            # self.publish_task_state(msg.task_id, settings.db_consts.task_status['수령 완료'])
             
             # WebSocket 이벤트 전송
             if destination_name:

@@ -45,7 +45,7 @@ CREATE TABLE error (
 
 CREATE TABLE task (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    type_id INT,
+    task_type_id INT,
     task_status_id INT,
     location_id INT,
     robot_id INT,
@@ -87,7 +87,7 @@ CREATE TABLE robot_log (
     is_charging BOOLEAN,
     floor_id INT,
     error_id INT,
-    last_updated_time DATETIME,
+    record_time DATETIME,
     FOREIGN KEY (robot_id) REFERENCES robot(id),
     FOREIGN KEY (robot_status_id) REFERENCES robot_status(id),
     FOREIGN KEY (task_id) REFERENCES task(id),

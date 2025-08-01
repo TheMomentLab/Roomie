@@ -3,9 +3,6 @@ import json
 from datetime import datetime
 from typing import Dict, Any
 
-# ActionHandler를 사용하기 위해 임포트가 필요할 수 있습니다. (구조에 따라 다름)
-# from app.services.action_handler import ActionHandler 
-
 from app.utils.logger import get_logger, log_database_operation
 from app.utils.error_handler import handle_exceptions, safe_database_connection, database_transaction
 from app.utils.exceptions import raise_validation_error
@@ -211,8 +208,8 @@ class TaskManager:
             )
             self.action_handler.send_perform_task_goal(goal_data)
 
-            # RC에게 변경된 작업 상태를 명확히 알려줌
-            self.action_handler.publish_task_state(task_id, moving_status_id)
+            # # RC에게 변경된 작업 상태를 명확히 알려줌
+            # self.action_handler.publish_task_state(task_id, moving_status_id)
 
         except Exception as e:
             logger.error(

@@ -52,12 +52,6 @@ class TaskState(BaseModel):
     task_id: int
     task_state_id: int
 
-class Arrival(BaseModel):
-    """장소 도착 (/roomie/event/arrival)"""
-    robot_id: int
-    task_id: int
-    location_id: int
-
 class BatteryStatus(BaseModel):
     """배터리 잔량 (/roomie/status/battery_status)"""
     robot_id: int
@@ -69,6 +63,12 @@ class RoomiePose(BaseModel):
     robot_id: int
     floor_id: int
     # geometry_msgs/Pose는 별도 처리 필요
+
+class Arrival(BaseModel):
+    """장소 도착 (/roomie/event/arrival)"""
+    robot_id: int
+    task_id: int
+    location_id: int
 
 class PickupCompleted(BaseModel):
     """픽업 완료 (/roomie/event/pickup_completed)"""
