@@ -21,6 +21,7 @@ class DisplayOCR:
         self.recent_results = []  # 최근 결과들 (다수결용)
         
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         # 🔥 강화된 안정성 시스템
         self.consecutive_failures = 0  # 연속 실패 횟수
         self.max_consecutive_failures = 5  # 최대 연속 실패 허용치
@@ -30,6 +31,11 @@ class DisplayOCR:
         # 유효한 층수 목록 (B2, 1~12층만)
         self.valid_floors = set(str(i) for i in range(1, 13))  # 1~12층만
         self.valid_floors.update(['B2'])  # B2만
+=======
+        # 유효한 층수 목록
+        self.valid_floors = set(str(i) for i in range(1, 51))  # 1~50층
+        self.valid_floors.update(['B1', 'B2', 'B3', 'B4', 'B5'])  # 지하층
+>>>>>>> Stashed changes
 =======
         # 유효한 층수 목록
         self.valid_floors = set(str(i) for i in range(1, 51))  # 1~50층
@@ -89,7 +95,10 @@ class DisplayOCR:
             display_image = full_image[y1:y2, x1:x2]
             
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
             # 간단한 로그만
             if self.config.get('debug_mode', False):
                 self.logger.info(f"디스플레이 크롭 영역: ({x1}, {y1}) -> ({x2}, {y2}), 크기: {display_image.shape}")
@@ -102,6 +111,9 @@ class DisplayOCR:
                 except:
                     pass
             
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             # 🎯 디스플레이 내에서 숫자 영역 ROI 추출 후 OCR 수행
             result_dict = self.recognize_display_with_smart_roi(display_image)
@@ -154,6 +166,12 @@ class DisplayOCR:
                 return {"text": "?", "digit_bbox": None}
             
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+            if self.config.get('debug_mode', False):
+                self.logger.info(f"🎯 단순 크롭: bbox({x},{y},{w},{h}) -> 크기:{roi_image.shape}")
+            
+>>>>>>> Stashed changes
 =======
             if self.config.get('debug_mode', False):
                 self.logger.info(f"🎯 단순 크롭: bbox({x},{y},{w},{h}) -> 크기:{roi_image.shape}")
@@ -176,6 +194,11 @@ class DisplayOCR:
             
             if not results:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                if self.config.get('debug_mode', False):
+                    self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
+>>>>>>> Stashed changes
 =======
                 if self.config.get('debug_mode', False):
                     self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
@@ -207,6 +230,12 @@ class DisplayOCR:
             min_confidence = 0.3
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                if self.config.get('debug_mode', False):
+                    self.logger.info(f"✅ 단순크롭 EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
+                
+>>>>>>> Stashed changes
 =======
                 if self.config.get('debug_mode', False):
                     self.logger.info(f"✅ 단순크롭 EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
@@ -222,6 +251,12 @@ class DisplayOCR:
                 }
             else:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                if self.config.get('debug_mode', False):
+                    self.logger.warn(f"❌ 단순크롭 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
+                
+>>>>>>> Stashed changes
 =======
                 if self.config.get('debug_mode', False):
                     self.logger.warn(f"❌ 단순크롭 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
@@ -285,6 +320,11 @@ class DisplayOCR:
             
             if not results:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                if self.config.get('debug_mode', False):
+                    self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
+>>>>>>> Stashed changes
 =======
                 if self.config.get('debug_mode', False):
                     self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
@@ -325,6 +365,12 @@ class DisplayOCR:
             min_confidence = 0.3
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+                if self.config.get('debug_mode', False):
+                    self.logger.info(f"✅ EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
+                
+>>>>>>> Stashed changes
 =======
                 if self.config.get('debug_mode', False):
                     self.logger.info(f"✅ EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
@@ -341,13 +387,19 @@ class DisplayOCR:
                 }
             else:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
                 if self.config.get('debug_mode', False):
                     self.logger.warn(f"❌ 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
                     # 모든 후보 출력
                     for i, (_, candidate_text, candidate_confidence) in enumerate(results):
                         candidate_cleaned = self._clean_elevator_text(candidate_text)
                         self.logger.warn(f"   후보 {i+1}: '{candidate_text}' -> '{candidate_cleaned}' (신뢰도: {candidate_confidence:.3f})")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 
                 # 실패시 마지막 안정된 결과 유지
@@ -440,12 +492,15 @@ class DisplayOCR:
             )
             
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
             # 결과 처리
             if not results:
                 return {"text": "?", "digit_bbox": None}
             
             # 🔥 모든 결과 출력 (디버깅용) - 제거됨
 =======
+=======
+>>>>>>> Stashed changes
             # 디버깅용 전처리 이미지 저장
             if self.config.get('debug_mode', False):
                 try:
@@ -465,6 +520,9 @@ class DisplayOCR:
                 self.logger.info(f"🔍 EasyOCR 전체 결과 ({len(results)}개):")
                 for i, (bbox_points, text, confidence) in enumerate(results):
                     self.logger.info(f"   결과 {i+1}: '{text}' (신뢰도: {confidence:.3f})")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             
             # 🎯 가장 신뢰도가 높은 결과 선택
@@ -490,9 +548,12 @@ class DisplayOCR:
             # 결과 로깅
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
                 return {"text": cleaned_text, "digit_bbox": digit_bbox}
             else:
 =======
+=======
+>>>>>>> Stashed changes
                 if self.config.get('debug_mode', False):
                     self.logger.info(f"✅ EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f}, 기준: {min_confidence})")
                 return {"text": cleaned_text, "digit_bbox": digit_bbox}
@@ -504,6 +565,9 @@ class DisplayOCR:
                     for i, (_, candidate_text, candidate_confidence) in enumerate(results):
                         candidate_cleaned = self._clean_elevator_text(candidate_text)
                         self.logger.warn(f"   후보 {i+1}: '{candidate_text}' -> '{candidate_cleaned}' (신뢰도: {candidate_confidence:.3f})")
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
                 return {"text": "?", "digit_bbox": None}
                 
@@ -541,7 +605,10 @@ class DisplayOCR:
             roi_image = display_image[y1:y2, x1:x2]
             
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
             if self.config.get('debug_mode', False):
                 self.logger.info(f"🎯 ROI 크롭: 원본({w}x{h}) -> ROI({x2-x1}x{y2-y1}), 중앙 30% 영역")
                 
@@ -552,6 +619,9 @@ class DisplayOCR:
                 except:
                     pass
             
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
             # 🚀 ROI 영역에서 EasyOCR 수행
             result_dict = self.recognize_display_with_easyocr(roi_image)
@@ -581,7 +651,11 @@ class DisplayOCR:
     
     def _clean_elevator_text(self, text: str) -> str:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         """🔥 엘리베이터 층수 텍스트 정리 (강화된 필터링)"""
+=======
+        """엘리베이터 층수 텍스트 정리 (숫자+B,F 중심)"""
+>>>>>>> Stashed changes
 =======
         """엘리베이터 층수 텍스트 정리 (숫자+B,F 중심)"""
 >>>>>>> Stashed changes
@@ -592,6 +666,12 @@ class DisplayOCR:
         cleaned = text.strip().upper()
         
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+=======
+        if self.config.get('debug_mode', False):
+            self.logger.info(f"🧹 텍스트 정리: '{text}' -> '{cleaned}'")
+        
+>>>>>>> Stashed changes
 =======
         if self.config.get('debug_mode', False):
             self.logger.info(f"🧹 텍스트 정리: '{text}' -> '{cleaned}'")
@@ -601,6 +681,7 @@ class DisplayOCR:
         if not cleaned:
             return "?"
         
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         # 🚫 즉시 거부할 패턴들 (비정상적인 OCR 결과)
         reject_patterns = [
@@ -648,6 +729,8 @@ class DisplayOCR:
         
         # 🔥 모든 패턴에 맞지 않으면 거부
 =======
+=======
+>>>>>>> Stashed changes
         # 🎯 층수 관련 패턴만 허용 (엄격한 필터링)
         import re
         
@@ -674,6 +757,9 @@ class DisplayOCR:
         if self.config.get('debug_mode', False):
             self.logger.warning(f"❌ 층수 패턴 불일치로 거부: '{cleaned}'")
         
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         return "?"
     
@@ -1129,7 +1215,11 @@ class MultiModelOCR:
     
     def _clean_elevator_text(self, text: str) -> str:
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
         """🔥 엘리베이터 층수 텍스트 정리 (B2, 1~12층만)"""
+=======
+        """엘리베이터 층수 텍스트 정리"""
+>>>>>>> Stashed changes
 =======
         """엘리베이터 층수 텍스트 정리"""
 >>>>>>> Stashed changes
@@ -1143,6 +1233,7 @@ class MultiModelOCR:
         
         import re
         
+<<<<<<< Updated upstream
 <<<<<<< Updated upstream
         # 지하층 패턴: B2만 허용
         basement_pattern = re.match(r'^B(\d+)$', cleaned)
@@ -1172,6 +1263,8 @@ class MultiModelOCR:
             else:
                 return "?"
 =======
+=======
+>>>>>>> Stashed changes
         # 지하층 패턴: B1, B2, B10 등
         basement_pattern = re.match(r'^B(\d+)$', cleaned)
         if basement_pattern:
@@ -1190,6 +1283,9 @@ class MultiModelOCR:
                 return cleaned
             elif floor_num == 0:
                 return "1"
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
         
         return "?"
