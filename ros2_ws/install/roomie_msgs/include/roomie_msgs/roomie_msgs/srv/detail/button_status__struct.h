@@ -20,15 +20,11 @@ extern "C"
 
 // Constants defined in the message
 
-// Include directives for member types
-// Member 'button_ids'
-#include "rosidl_runtime_c/primitives_sequence.h"
-
 /// Struct defined in srv/ButtonStatus in the package roomie_msgs.
 typedef struct roomie_msgs__srv__ButtonStatus_Request
 {
   int32_t robot_id;
-  rosidl_runtime_c__int32__Sequence button_ids;
+  int32_t button_id;
 } roomie_msgs__srv__ButtonStatus_Request;
 
 // Struct for a sequence of roomie_msgs__srv__ButtonStatus_Request.
@@ -44,12 +40,6 @@ typedef struct roomie_msgs__srv__ButtonStatus_Request__Sequence
 // Constants defined in the message
 
 // Include directives for member types
-// Member 'xs'
-// Member 'ys'
-// Member 'depths'
-// Member 'is_pressed'
-// already included above
-// #include "rosidl_runtime_c/primitives_sequence.h"
 // Member 'timestamp'
 #include "builtin_interfaces/msg/detail/time__struct.h"
 
@@ -57,12 +47,13 @@ typedef struct roomie_msgs__srv__ButtonStatus_Request__Sequence
 typedef struct roomie_msgs__srv__ButtonStatus_Response
 {
   int32_t robot_id;
+  int32_t button_id;
   bool success;
-  rosidl_runtime_c__float__Sequence xs;
-  rosidl_runtime_c__float__Sequence ys;
-  rosidl_runtime_c__float__Sequence depths;
-  rosidl_runtime_c__boolean__Sequence is_pressed;
-  builtin_interfaces__msg__Time__Sequence timestamp;
+  float x;
+  float y;
+  float size;
+  bool is_pressed;
+  builtin_interfaces__msg__Time timestamp;
 } roomie_msgs__srv__ButtonStatus_Response;
 
 // Struct for a sequence of roomie_msgs__srv__ButtonStatus_Response.

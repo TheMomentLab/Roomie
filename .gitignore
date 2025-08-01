@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# ROS2 워크스페이스 빌드 관련 폴더들
+build/
+log/
+install/
+
 # Distribution / packaging
 .Python
 build/

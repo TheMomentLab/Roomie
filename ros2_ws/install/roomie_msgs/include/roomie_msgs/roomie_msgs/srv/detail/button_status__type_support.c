@@ -12,10 +12,6 @@
 #include "roomie_msgs/srv/detail/button_status__struct.h"
 
 
-// Include directives for member types
-// Member `button_ids`
-#include "rosidl_runtime_c/primitives_sequence_functions.h"
-
 #ifdef __cplusplus
 extern "C"
 {
@@ -33,61 +29,6 @@ void roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c_
 void roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__ButtonStatus_Request_fini_function(void * message_memory)
 {
   roomie_msgs__srv__ButtonStatus_Request__fini(message_memory);
-}
-
-size_t roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Request__button_ids(
-  const void * untyped_member)
-{
-  const rosidl_runtime_c__int32__Sequence * member =
-    (const rosidl_runtime_c__int32__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Request__button_ids(
-  const void * untyped_member, size_t index)
-{
-  const rosidl_runtime_c__int32__Sequence * member =
-    (const rosidl_runtime_c__int32__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Request__button_ids(
-  void * untyped_member, size_t index)
-{
-  rosidl_runtime_c__int32__Sequence * member =
-    (rosidl_runtime_c__int32__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Request__button_ids(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const int32_t * item =
-    ((const int32_t *)
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Request__button_ids(untyped_member, index));
-  int32_t * value =
-    (int32_t *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Request__button_ids(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  int32_t * item =
-    ((int32_t *)
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Request__button_ids(untyped_member, index));
-  const int32_t * value =
-    (const int32_t *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Request__button_ids(
-  void * untyped_member, size_t size)
-{
-  rosidl_runtime_c__int32__Sequence * member =
-    (rosidl_runtime_c__int32__Sequence *)(untyped_member);
-  rosidl_runtime_c__int32__Sequence__fini(member);
-  return rosidl_runtime_c__int32__Sequence__init(member, size);
 }
 
 static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__ButtonStatus_Request_message_member_array[2] = {
@@ -110,22 +51,22 @@ static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__Butto
     NULL  // resize(index) function pointer
   },
   {
-    "button_ids",  // name
+    "button_id",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_INT32,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs__srv__ButtonStatus_Request, button_ids),  // bytes offset in struct
+    offsetof(roomie_msgs__srv__ButtonStatus_Request, button_id),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Request__button_ids,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Request__button_ids,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Request__button_ids,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Request__button_ids,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Request__button_ids,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Request__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Request__button_ids  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   }
 };
 
@@ -183,12 +124,6 @@ ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspecti
 
 
 // Include directives for member types
-// Member `xs`
-// Member `ys`
-// Member `depths`
-// Member `is_pressed`
-// already included above
-// #include "rosidl_runtime_c/primitives_sequence_functions.h"
 // Member `timestamp`
 #include "builtin_interfaces/msg/time.h"
 // Member `timestamp`
@@ -213,282 +148,7 @@ void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c
   roomie_msgs__srv__ButtonStatus_Response__fini(message_memory);
 }
 
-size_t roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__xs(
-  const void * untyped_member)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__xs(
-  const void * untyped_member, size_t index)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__xs(
-  void * untyped_member, size_t index)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__xs(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const float * item =
-    ((const float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__xs(untyped_member, index));
-  float * value =
-    (float *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__xs(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  float * item =
-    ((float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__xs(untyped_member, index));
-  const float * value =
-    (const float *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__xs(
-  void * untyped_member, size_t size)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  rosidl_runtime_c__float__Sequence__fini(member);
-  return rosidl_runtime_c__float__Sequence__init(member, size);
-}
-
-size_t roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__ys(
-  const void * untyped_member)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__ys(
-  const void * untyped_member, size_t index)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__ys(
-  void * untyped_member, size_t index)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__ys(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const float * item =
-    ((const float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__ys(untyped_member, index));
-  float * value =
-    (float *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__ys(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  float * item =
-    ((float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__ys(untyped_member, index));
-  const float * value =
-    (const float *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__ys(
-  void * untyped_member, size_t size)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  rosidl_runtime_c__float__Sequence__fini(member);
-  return rosidl_runtime_c__float__Sequence__init(member, size);
-}
-
-size_t roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__depths(
-  const void * untyped_member)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__depths(
-  const void * untyped_member, size_t index)
-{
-  const rosidl_runtime_c__float__Sequence * member =
-    (const rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__depths(
-  void * untyped_member, size_t index)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__depths(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const float * item =
-    ((const float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__depths(untyped_member, index));
-  float * value =
-    (float *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__depths(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  float * item =
-    ((float *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__depths(untyped_member, index));
-  const float * value =
-    (const float *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__depths(
-  void * untyped_member, size_t size)
-{
-  rosidl_runtime_c__float__Sequence * member =
-    (rosidl_runtime_c__float__Sequence *)(untyped_member);
-  rosidl_runtime_c__float__Sequence__fini(member);
-  return rosidl_runtime_c__float__Sequence__init(member, size);
-}
-
-size_t roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__is_pressed(
-  const void * untyped_member)
-{
-  const rosidl_runtime_c__boolean__Sequence * member =
-    (const rosidl_runtime_c__boolean__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__is_pressed(
-  const void * untyped_member, size_t index)
-{
-  const rosidl_runtime_c__boolean__Sequence * member =
-    (const rosidl_runtime_c__boolean__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__is_pressed(
-  void * untyped_member, size_t index)
-{
-  rosidl_runtime_c__boolean__Sequence * member =
-    (rosidl_runtime_c__boolean__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__is_pressed(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const bool * item =
-    ((const bool *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__is_pressed(untyped_member, index));
-  bool * value =
-    (bool *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__is_pressed(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  bool * item =
-    ((bool *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__is_pressed(untyped_member, index));
-  const bool * value =
-    (const bool *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__is_pressed(
-  void * untyped_member, size_t size)
-{
-  rosidl_runtime_c__boolean__Sequence * member =
-    (rosidl_runtime_c__boolean__Sequence *)(untyped_member);
-  rosidl_runtime_c__boolean__Sequence__fini(member);
-  return rosidl_runtime_c__boolean__Sequence__init(member, size);
-}
-
-size_t roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__timestamp(
-  const void * untyped_member)
-{
-  const builtin_interfaces__msg__Time__Sequence * member =
-    (const builtin_interfaces__msg__Time__Sequence *)(untyped_member);
-  return member->size;
-}
-
-const void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__timestamp(
-  const void * untyped_member, size_t index)
-{
-  const builtin_interfaces__msg__Time__Sequence * member =
-    (const builtin_interfaces__msg__Time__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void * roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__timestamp(
-  void * untyped_member, size_t index)
-{
-  builtin_interfaces__msg__Time__Sequence * member =
-    (builtin_interfaces__msg__Time__Sequence *)(untyped_member);
-  return &member->data[index];
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__timestamp(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const builtin_interfaces__msg__Time * item =
-    ((const builtin_interfaces__msg__Time *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__timestamp(untyped_member, index));
-  builtin_interfaces__msg__Time * value =
-    (builtin_interfaces__msg__Time *)(untyped_value);
-  *value = *item;
-}
-
-void roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__timestamp(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  builtin_interfaces__msg__Time * item =
-    ((builtin_interfaces__msg__Time *)
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__timestamp(untyped_member, index));
-  const builtin_interfaces__msg__Time * value =
-    (const builtin_interfaces__msg__Time *)(untyped_value);
-  *item = *value;
-}
-
-bool roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__timestamp(
-  void * untyped_member, size_t size)
-{
-  builtin_interfaces__msg__Time__Sequence * member =
-    (builtin_interfaces__msg__Time__Sequence *)(untyped_member);
-  builtin_interfaces__msg__Time__Sequence__fini(member);
-  return builtin_interfaces__msg__Time__Sequence__init(member, size);
-}
-
-static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_member_array[7] = {
+static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_member_array[8] = {
   {
     "robot_id",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_INT32,  // type
@@ -499,6 +159,24 @@ static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__Butto
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs__srv__ButtonStatus_Response, robot_id),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "button_id",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_INT32,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is key
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(roomie_msgs__srv__ButtonStatus_Response, button_id),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -526,58 +204,58 @@ static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__Butto
     NULL  // resize(index) function pointer
   },
   {
-    "xs",  // name
+    "x",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs__srv__ButtonStatus_Response, xs),  // bytes offset in struct
+    offsetof(roomie_msgs__srv__ButtonStatus_Response, x),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__xs,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__xs,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__xs,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__xs,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__xs,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__xs  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   },
   {
-    "ys",  // name
+    "y",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs__srv__ButtonStatus_Response, ys),  // bytes offset in struct
+    offsetof(roomie_msgs__srv__ButtonStatus_Response, y),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__ys,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__ys,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__ys,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__ys,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__ys,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__ys  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   },
   {
-    "depths",  // name
+    "size",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs__srv__ButtonStatus_Response, depths),  // bytes offset in struct
+    offsetof(roomie_msgs__srv__ButtonStatus_Response, size),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__depths,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__depths,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__depths,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__depths,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__depths,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__depths  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   },
   {
     "is_pressed",  // name
@@ -585,17 +263,17 @@ static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__Butto
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs__srv__ButtonStatus_Response, is_pressed),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__is_pressed,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__is_pressed,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__is_pressed,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__is_pressed,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__is_pressed,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__is_pressed  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   },
   {
     "timestamp",  // name
@@ -603,24 +281,24 @@ static rosidl_typesupport_introspection_c__MessageMember roomie_msgs__srv__Butto
     0,  // upper bound of string
     NULL,  // members of sub message (initialized later)
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs__srv__ButtonStatus_Response, timestamp),  // bytes offset in struct
     NULL,  // default value
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__size_function__ButtonStatus_Response__timestamp,  // size() function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_const_function__ButtonStatus_Response__timestamp,  // get_const(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__get_function__ButtonStatus_Response__timestamp,  // get(index) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__fetch_function__ButtonStatus_Response__timestamp,  // fetch(index, &value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__assign_function__ButtonStatus_Response__timestamp,  // assign(index, value) function pointer
-    roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__resize_function__ButtonStatus_Response__timestamp  // resize(index) function pointer
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   }
 };
 
 static const rosidl_typesupport_introspection_c__MessageMembers roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_members = {
   "roomie_msgs__srv",  // message namespace
   "ButtonStatus_Response",  // message name
-  7,  // number of fields
+  8,  // number of fields
   sizeof(roomie_msgs__srv__ButtonStatus_Response),
   false,  // has_any_key_member_
   roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_member_array,  // message members
@@ -642,7 +320,7 @@ static rosidl_message_type_support_t roomie_msgs__srv__ButtonStatus_Response__ro
 ROSIDL_TYPESUPPORT_INTROSPECTION_C_EXPORT_roomie_msgs
 const rosidl_message_type_support_t *
 ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, roomie_msgs, srv, ButtonStatus_Response)() {
-  roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_member_array[6].members_ =
+  roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_member_array[7].members_ =
     ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, builtin_interfaces, msg, Time)();
   if (!roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_type_support_handle.typesupport_identifier) {
     roomie_msgs__srv__ButtonStatus_Response__rosidl_typesupport_introspection_c__ButtonStatus_Response_message_type_support_handle.typesupport_identifier =

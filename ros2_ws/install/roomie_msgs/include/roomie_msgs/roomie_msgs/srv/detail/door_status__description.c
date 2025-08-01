@@ -363,8 +363,9 @@ static char toplevel_type_raw_source[] =
   "bool door_opened\n"
   "\n"
   "# door_opened values:\n"
-  "# false: closed\n"
-  "# true: opened ";
+  "# 0: closed\n"
+  "# 1: opened\n"
+  "# \\xeb\\xac\\xb8 \\xea\\xb0\\x90\\xec\\xa7\\x80 \\xec\\x97\\xac\\xeb\\xb6\\x80\\xeb\\xa1\\x9c \\xed\\x8c\\x90\\xeb\\x8b\\xa8 ";
 
 static char srv_encoding[] = "srv";
 static char implicit_encoding[] = "implicit";
@@ -379,7 +380,7 @@ roomie_msgs__srv__DoorStatus__get_individual_type_description_source(
   static const rosidl_runtime_c__type_description__TypeSource source = {
     {roomie_msgs__srv__DoorStatus__TYPE_NAME, 26, 26},
     {srv_encoding, 3, 3},
-    {toplevel_type_raw_source, 156, 156},
+    {toplevel_type_raw_source, 163, 163},
   };
   return &source;
 }

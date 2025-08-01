@@ -38,51 +38,6 @@ void ButtonStatus_Request_fini_function(void * message_memory)
   typed_message->~ButtonStatus_Request();
 }
 
-size_t size_function__ButtonStatus_Request__button_ids(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<int32_t> *>(untyped_member);
-  return member->size();
-}
-
-const void * get_const_function__ButtonStatus_Request__button_ids(const void * untyped_member, size_t index)
-{
-  const auto & member =
-    *reinterpret_cast<const std::vector<int32_t> *>(untyped_member);
-  return &member[index];
-}
-
-void * get_function__ButtonStatus_Request__button_ids(void * untyped_member, size_t index)
-{
-  auto & member =
-    *reinterpret_cast<std::vector<int32_t> *>(untyped_member);
-  return &member[index];
-}
-
-void fetch_function__ButtonStatus_Request__button_ids(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & item = *reinterpret_cast<const int32_t *>(
-    get_const_function__ButtonStatus_Request__button_ids(untyped_member, index));
-  auto & value = *reinterpret_cast<int32_t *>(untyped_value);
-  value = item;
-}
-
-void assign_function__ButtonStatus_Request__button_ids(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & item = *reinterpret_cast<int32_t *>(
-    get_function__ButtonStatus_Request__button_ids(untyped_member, index));
-  const auto & value = *reinterpret_cast<const int32_t *>(untyped_value);
-  item = value;
-}
-
-void resize_function__ButtonStatus_Request__button_ids(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<int32_t> *>(untyped_member);
-  member->resize(size);
-}
-
 static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_Request_message_member_array[2] = {
   {
     "robot_id",  // name
@@ -103,22 +58,22 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_
     nullptr  // resize(index) function pointer
   },
   {
-    "button_ids",  // name
+    "button_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_INT32,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs::srv::ButtonStatus_Request, button_ids),  // bytes offset in struct
+    offsetof(roomie_msgs::srv::ButtonStatus_Request, button_id),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Request__button_ids,  // size() function pointer
-    get_const_function__ButtonStatus_Request__button_ids,  // get_const(index) function pointer
-    get_function__ButtonStatus_Request__button_ids,  // get(index) function pointer
-    fetch_function__ButtonStatus_Request__button_ids,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Request__button_ids,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Request__button_ids  // resize(index) function pointer
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   }
 };
 
@@ -227,216 +182,7 @@ void ButtonStatus_Response_fini_function(void * message_memory)
   typed_message->~ButtonStatus_Response();
 }
 
-size_t size_function__ButtonStatus_Response__xs(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return member->size();
-}
-
-const void * get_const_function__ButtonStatus_Response__xs(const void * untyped_member, size_t index)
-{
-  const auto & member =
-    *reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void * get_function__ButtonStatus_Response__xs(void * untyped_member, size_t index)
-{
-  auto & member =
-    *reinterpret_cast<std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void fetch_function__ButtonStatus_Response__xs(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & item = *reinterpret_cast<const float *>(
-    get_const_function__ButtonStatus_Response__xs(untyped_member, index));
-  auto & value = *reinterpret_cast<float *>(untyped_value);
-  value = item;
-}
-
-void assign_function__ButtonStatus_Response__xs(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & item = *reinterpret_cast<float *>(
-    get_function__ButtonStatus_Response__xs(untyped_member, index));
-  const auto & value = *reinterpret_cast<const float *>(untyped_value);
-  item = value;
-}
-
-void resize_function__ButtonStatus_Response__xs(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<float> *>(untyped_member);
-  member->resize(size);
-}
-
-size_t size_function__ButtonStatus_Response__ys(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return member->size();
-}
-
-const void * get_const_function__ButtonStatus_Response__ys(const void * untyped_member, size_t index)
-{
-  const auto & member =
-    *reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void * get_function__ButtonStatus_Response__ys(void * untyped_member, size_t index)
-{
-  auto & member =
-    *reinterpret_cast<std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void fetch_function__ButtonStatus_Response__ys(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & item = *reinterpret_cast<const float *>(
-    get_const_function__ButtonStatus_Response__ys(untyped_member, index));
-  auto & value = *reinterpret_cast<float *>(untyped_value);
-  value = item;
-}
-
-void assign_function__ButtonStatus_Response__ys(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & item = *reinterpret_cast<float *>(
-    get_function__ButtonStatus_Response__ys(untyped_member, index));
-  const auto & value = *reinterpret_cast<const float *>(untyped_value);
-  item = value;
-}
-
-void resize_function__ButtonStatus_Response__ys(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<float> *>(untyped_member);
-  member->resize(size);
-}
-
-size_t size_function__ButtonStatus_Response__depths(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return member->size();
-}
-
-const void * get_const_function__ButtonStatus_Response__depths(const void * untyped_member, size_t index)
-{
-  const auto & member =
-    *reinterpret_cast<const std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void * get_function__ButtonStatus_Response__depths(void * untyped_member, size_t index)
-{
-  auto & member =
-    *reinterpret_cast<std::vector<float> *>(untyped_member);
-  return &member[index];
-}
-
-void fetch_function__ButtonStatus_Response__depths(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & item = *reinterpret_cast<const float *>(
-    get_const_function__ButtonStatus_Response__depths(untyped_member, index));
-  auto & value = *reinterpret_cast<float *>(untyped_value);
-  value = item;
-}
-
-void assign_function__ButtonStatus_Response__depths(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & item = *reinterpret_cast<float *>(
-    get_function__ButtonStatus_Response__depths(untyped_member, index));
-  const auto & value = *reinterpret_cast<const float *>(untyped_value);
-  item = value;
-}
-
-void resize_function__ButtonStatus_Response__depths(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<float> *>(untyped_member);
-  member->resize(size);
-}
-
-size_t size_function__ButtonStatus_Response__is_pressed(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<bool> *>(untyped_member);
-  return member->size();
-}
-
-void fetch_function__ButtonStatus_Response__is_pressed(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & member = *reinterpret_cast<const std::vector<bool> *>(untyped_member);
-  auto & value = *reinterpret_cast<bool *>(untyped_value);
-  value = member[index];
-}
-
-void assign_function__ButtonStatus_Response__is_pressed(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & member = *reinterpret_cast<std::vector<bool> *>(untyped_member);
-  const auto & value = *reinterpret_cast<const bool *>(untyped_value);
-  member[index] = value;
-}
-
-void resize_function__ButtonStatus_Response__is_pressed(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<bool> *>(untyped_member);
-  member->resize(size);
-}
-
-size_t size_function__ButtonStatus_Response__timestamp(const void * untyped_member)
-{
-  const auto * member = reinterpret_cast<const std::vector<builtin_interfaces::msg::Time> *>(untyped_member);
-  return member->size();
-}
-
-const void * get_const_function__ButtonStatus_Response__timestamp(const void * untyped_member, size_t index)
-{
-  const auto & member =
-    *reinterpret_cast<const std::vector<builtin_interfaces::msg::Time> *>(untyped_member);
-  return &member[index];
-}
-
-void * get_function__ButtonStatus_Response__timestamp(void * untyped_member, size_t index)
-{
-  auto & member =
-    *reinterpret_cast<std::vector<builtin_interfaces::msg::Time> *>(untyped_member);
-  return &member[index];
-}
-
-void fetch_function__ButtonStatus_Response__timestamp(
-  const void * untyped_member, size_t index, void * untyped_value)
-{
-  const auto & item = *reinterpret_cast<const builtin_interfaces::msg::Time *>(
-    get_const_function__ButtonStatus_Response__timestamp(untyped_member, index));
-  auto & value = *reinterpret_cast<builtin_interfaces::msg::Time *>(untyped_value);
-  value = item;
-}
-
-void assign_function__ButtonStatus_Response__timestamp(
-  void * untyped_member, size_t index, const void * untyped_value)
-{
-  auto & item = *reinterpret_cast<builtin_interfaces::msg::Time *>(
-    get_function__ButtonStatus_Response__timestamp(untyped_member, index));
-  const auto & value = *reinterpret_cast<const builtin_interfaces::msg::Time *>(untyped_value);
-  item = value;
-}
-
-void resize_function__ButtonStatus_Response__timestamp(void * untyped_member, size_t size)
-{
-  auto * member =
-    reinterpret_cast<std::vector<builtin_interfaces::msg::Time> *>(untyped_member);
-  member->resize(size);
-}
-
-static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_Response_message_member_array[7] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_Response_message_member_array[8] = {
   {
     "robot_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_INT32,  // type
@@ -447,6 +193,24 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs::srv::ButtonStatus_Response, robot_id),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "button_id",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_INT32,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is key
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(roomie_msgs::srv::ButtonStatus_Response, button_id),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -474,58 +238,58 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_
     nullptr  // resize(index) function pointer
   },
   {
-    "xs",  // name
+    "x",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs::srv::ButtonStatus_Response, xs),  // bytes offset in struct
+    offsetof(roomie_msgs::srv::ButtonStatus_Response, x),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Response__xs,  // size() function pointer
-    get_const_function__ButtonStatus_Response__xs,  // get_const(index) function pointer
-    get_function__ButtonStatus_Response__xs,  // get(index) function pointer
-    fetch_function__ButtonStatus_Response__xs,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Response__xs,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Response__xs  // resize(index) function pointer
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   },
   {
-    "ys",  // name
+    "y",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs::srv::ButtonStatus_Response, ys),  // bytes offset in struct
+    offsetof(roomie_msgs::srv::ButtonStatus_Response, y),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Response__ys,  // size() function pointer
-    get_const_function__ButtonStatus_Response__ys,  // get_const(index) function pointer
-    get_function__ButtonStatus_Response__ys,  // get(index) function pointer
-    fetch_function__ButtonStatus_Response__ys,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Response__ys,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Response__ys  // resize(index) function pointer
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   },
   {
-    "depths",  // name
+    "size",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(roomie_msgs::srv::ButtonStatus_Response, depths),  // bytes offset in struct
+    offsetof(roomie_msgs::srv::ButtonStatus_Response, size),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Response__depths,  // size() function pointer
-    get_const_function__ButtonStatus_Response__depths,  // get_const(index) function pointer
-    get_function__ButtonStatus_Response__depths,  // get(index) function pointer
-    fetch_function__ButtonStatus_Response__depths,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Response__depths,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Response__depths  // resize(index) function pointer
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   },
   {
     "is_pressed",  // name
@@ -533,17 +297,17 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs::srv::ButtonStatus_Response, is_pressed),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Response__is_pressed,  // size() function pointer
+    nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
     nullptr,  // get(index) function pointer
-    fetch_function__ButtonStatus_Response__is_pressed,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Response__is_pressed,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Response__is_pressed  // resize(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   },
   {
     "timestamp",  // name
@@ -551,24 +315,24 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember ButtonStatus_
     0,  // upper bound of string
     ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<builtin_interfaces::msg::Time>(),  // members of sub message
     false,  // is key
-    true,  // is array
+    false,  // is array
     0,  // array size
     false,  // is upper bound
     offsetof(roomie_msgs::srv::ButtonStatus_Response, timestamp),  // bytes offset in struct
     nullptr,  // default value
-    size_function__ButtonStatus_Response__timestamp,  // size() function pointer
-    get_const_function__ButtonStatus_Response__timestamp,  // get_const(index) function pointer
-    get_function__ButtonStatus_Response__timestamp,  // get(index) function pointer
-    fetch_function__ButtonStatus_Response__timestamp,  // fetch(index, &value) function pointer
-    assign_function__ButtonStatus_Response__timestamp,  // assign(index, value) function pointer
-    resize_function__ButtonStatus_Response__timestamp  // resize(index) function pointer
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   }
 };
 
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers ButtonStatus_Response_message_members = {
   "roomie_msgs::srv",  // message namespace
   "ButtonStatus_Response",  // message name
-  7,  // number of fields
+  8,  // number of fields
   sizeof(roomie_msgs::srv::ButtonStatus_Response),
   false,  // has_any_key_member_
   ButtonStatus_Response_message_member_array,  // message members

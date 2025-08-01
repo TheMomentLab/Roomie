@@ -377,7 +377,7 @@ static char toplevel_type_raw_source[] =
   "# direction values:\n"
   "# 0: upward\n"
   "# 1: downward\n"
-  "# position: \\xed\\x98\\x84\\xec\\x9e\\xac \\xec\\xb8\\xb5 ";
+  "# position: \\xec\\x97\\x98\\xeb\\xa6\\xac\\xeb\\xb2\\xa0\\xec\\x9d\\xb4\\xed\\x84\\xb0 \\xed\\x98\\x84\\xec\\x9e\\xac \\xec\\xb8\\xb5 ";
 
 static char srv_encoding[] = "srv";
 static char implicit_encoding[] = "implicit";
@@ -392,7 +392,7 @@ roomie_msgs__srv__ElevatorStatus__get_individual_type_description_source(
   static const rosidl_runtime_c__type_description__TypeSource source = {
     {roomie_msgs__srv__ElevatorStatus__TYPE_NAME, 30, 30},
     {srv_encoding, 3, 3},
-    {toplevel_type_raw_source, 184, 184},
+    {toplevel_type_raw_source, 190, 190},
   };
   return &source;
 }

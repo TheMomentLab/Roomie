@@ -10,10 +10,6 @@
 
 #include "rcutils/allocator.h"
 
-// Include directives for member types
-// Member `button_ids`
-#include "rosidl_runtime_c/primitives_sequence_functions.h"
-
 bool
 roomie_msgs__srv__ButtonStatus_Request__init(roomie_msgs__srv__ButtonStatus_Request * msg)
 {
@@ -21,11 +17,7 @@ roomie_msgs__srv__ButtonStatus_Request__init(roomie_msgs__srv__ButtonStatus_Requ
     return false;
   }
   // robot_id
-  // button_ids
-  if (!rosidl_runtime_c__int32__Sequence__init(&msg->button_ids, 0)) {
-    roomie_msgs__srv__ButtonStatus_Request__fini(msg);
-    return false;
-  }
+  // button_id
   return true;
 }
 
@@ -36,8 +28,7 @@ roomie_msgs__srv__ButtonStatus_Request__fini(roomie_msgs__srv__ButtonStatus_Requ
     return;
   }
   // robot_id
-  // button_ids
-  rosidl_runtime_c__int32__Sequence__fini(&msg->button_ids);
+  // button_id
 }
 
 bool
@@ -50,10 +41,8 @@ roomie_msgs__srv__ButtonStatus_Request__are_equal(const roomie_msgs__srv__Button
   if (lhs->robot_id != rhs->robot_id) {
     return false;
   }
-  // button_ids
-  if (!rosidl_runtime_c__int32__Sequence__are_equal(
-      &(lhs->button_ids), &(rhs->button_ids)))
-  {
+  // button_id
+  if (lhs->button_id != rhs->button_id) {
     return false;
   }
   return true;
@@ -69,12 +58,8 @@ roomie_msgs__srv__ButtonStatus_Request__copy(
   }
   // robot_id
   output->robot_id = input->robot_id;
-  // button_ids
-  if (!rosidl_runtime_c__int32__Sequence__copy(
-      &(input->button_ids), &(output->button_ids)))
-  {
-    return false;
-  }
+  // button_id
+  output->button_id = input->button_id;
   return true;
 }
 
@@ -259,12 +244,6 @@ roomie_msgs__srv__ButtonStatus_Request__Sequence__copy(
 
 
 // Include directives for member types
-// Member `xs`
-// Member `ys`
-// Member `depths`
-// Member `is_pressed`
-// already included above
-// #include "rosidl_runtime_c/primitives_sequence_functions.h"
 // Member `timestamp`
 #include "builtin_interfaces/msg/detail/time__functions.h"
 
@@ -275,29 +254,14 @@ roomie_msgs__srv__ButtonStatus_Response__init(roomie_msgs__srv__ButtonStatus_Res
     return false;
   }
   // robot_id
+  // button_id
   // success
-  // xs
-  if (!rosidl_runtime_c__float__Sequence__init(&msg->xs, 0)) {
-    roomie_msgs__srv__ButtonStatus_Response__fini(msg);
-    return false;
-  }
-  // ys
-  if (!rosidl_runtime_c__float__Sequence__init(&msg->ys, 0)) {
-    roomie_msgs__srv__ButtonStatus_Response__fini(msg);
-    return false;
-  }
-  // depths
-  if (!rosidl_runtime_c__float__Sequence__init(&msg->depths, 0)) {
-    roomie_msgs__srv__ButtonStatus_Response__fini(msg);
-    return false;
-  }
+  // x
+  // y
+  // size
   // is_pressed
-  if (!rosidl_runtime_c__boolean__Sequence__init(&msg->is_pressed, 0)) {
-    roomie_msgs__srv__ButtonStatus_Response__fini(msg);
-    return false;
-  }
   // timestamp
-  if (!builtin_interfaces__msg__Time__Sequence__init(&msg->timestamp, 0)) {
+  if (!builtin_interfaces__msg__Time__init(&msg->timestamp)) {
     roomie_msgs__srv__ButtonStatus_Response__fini(msg);
     return false;
   }
@@ -311,17 +275,14 @@ roomie_msgs__srv__ButtonStatus_Response__fini(roomie_msgs__srv__ButtonStatus_Res
     return;
   }
   // robot_id
+  // button_id
   // success
-  // xs
-  rosidl_runtime_c__float__Sequence__fini(&msg->xs);
-  // ys
-  rosidl_runtime_c__float__Sequence__fini(&msg->ys);
-  // depths
-  rosidl_runtime_c__float__Sequence__fini(&msg->depths);
+  // x
+  // y
+  // size
   // is_pressed
-  rosidl_runtime_c__boolean__Sequence__fini(&msg->is_pressed);
   // timestamp
-  builtin_interfaces__msg__Time__Sequence__fini(&msg->timestamp);
+  builtin_interfaces__msg__Time__fini(&msg->timestamp);
 }
 
 bool
@@ -334,36 +295,32 @@ roomie_msgs__srv__ButtonStatus_Response__are_equal(const roomie_msgs__srv__Butto
   if (lhs->robot_id != rhs->robot_id) {
     return false;
   }
+  // button_id
+  if (lhs->button_id != rhs->button_id) {
+    return false;
+  }
   // success
   if (lhs->success != rhs->success) {
     return false;
   }
-  // xs
-  if (!rosidl_runtime_c__float__Sequence__are_equal(
-      &(lhs->xs), &(rhs->xs)))
-  {
+  // x
+  if (lhs->x != rhs->x) {
     return false;
   }
-  // ys
-  if (!rosidl_runtime_c__float__Sequence__are_equal(
-      &(lhs->ys), &(rhs->ys)))
-  {
+  // y
+  if (lhs->y != rhs->y) {
     return false;
   }
-  // depths
-  if (!rosidl_runtime_c__float__Sequence__are_equal(
-      &(lhs->depths), &(rhs->depths)))
-  {
+  // size
+  if (lhs->size != rhs->size) {
     return false;
   }
   // is_pressed
-  if (!rosidl_runtime_c__boolean__Sequence__are_equal(
-      &(lhs->is_pressed), &(rhs->is_pressed)))
-  {
+  if (lhs->is_pressed != rhs->is_pressed) {
     return false;
   }
   // timestamp
-  if (!builtin_interfaces__msg__Time__Sequence__are_equal(
+  if (!builtin_interfaces__msg__Time__are_equal(
       &(lhs->timestamp), &(rhs->timestamp)))
   {
     return false;
@@ -381,34 +338,20 @@ roomie_msgs__srv__ButtonStatus_Response__copy(
   }
   // robot_id
   output->robot_id = input->robot_id;
+  // button_id
+  output->button_id = input->button_id;
   // success
   output->success = input->success;
-  // xs
-  if (!rosidl_runtime_c__float__Sequence__copy(
-      &(input->xs), &(output->xs)))
-  {
-    return false;
-  }
-  // ys
-  if (!rosidl_runtime_c__float__Sequence__copy(
-      &(input->ys), &(output->ys)))
-  {
-    return false;
-  }
-  // depths
-  if (!rosidl_runtime_c__float__Sequence__copy(
-      &(input->depths), &(output->depths)))
-  {
-    return false;
-  }
+  // x
+  output->x = input->x;
+  // y
+  output->y = input->y;
+  // size
+  output->size = input->size;
   // is_pressed
-  if (!rosidl_runtime_c__boolean__Sequence__copy(
-      &(input->is_pressed), &(output->is_pressed)))
-  {
-    return false;
-  }
+  output->is_pressed = input->is_pressed;
   // timestamp
-  if (!builtin_interfaces__msg__Time__Sequence__copy(
+  if (!builtin_interfaces__msg__Time__copy(
       &(input->timestamp), &(output->timestamp)))
   {
     return false;

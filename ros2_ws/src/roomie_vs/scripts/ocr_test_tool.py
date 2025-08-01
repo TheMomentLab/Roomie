@@ -51,11 +51,12 @@ class Logger:
 class WebcamManager:
     """웹캠 관리 클래스 (vs_node의 WebCamCamera 기반)"""
     
-    def __init__(self, logger, camera_id=0):
+    def __init__(self, logger, camera_id=0, prefer_front_camera=True):
         self.logger = logger
         self.camera_id = camera_id
         self.cap = None
         self.is_running = False
+        self.prefer_front_camera = prefer_front_camera
         
         # vs_node와 동일한 설정
         self.camera_ids_to_try = [0, 1, 2, 3]
@@ -212,11 +213,14 @@ class SimpleYOLODetector:
         
         return None
     
-    def detect_display_objects(self, image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
-        """Display 객체 감지"""
+    def detect_objects(self, image: np.ndarray, conf_threshold: float = 0.7, target_classes: List[str] = None) -> List[dict]:
+        """객체 감지 (display, button 등)"""
         try:
             if self.model is None:
                 return []
+            
+            if target_classes is None:
+                target_classes = ['display', 'button']  # 기본적으로 display와 button 모두 감지
             
             results = self.model(image, conf=conf_threshold, verbose=False)
             
@@ -232,8 +236,8 @@ class SimpleYOLODetector:
                         else:
                             class_name = f"class_{cls_id}"
                         
-                        # display 객체만 필터링
-                        if class_name == 'display':
+                        # 타겟 클래스만 필터링
+                        if class_name in target_classes:
                             # 바운딩박스 좌표
                             x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
                             
@@ -249,6 +253,14 @@ class SimpleYOLODetector:
         except Exception as e:
             self.logger.error(f"객체 감지 실패: {e}")
             return []
+    
+    def detect_display_objects(self, image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
+        """Display 객체 감지 (하위 호환성)"""
+        return self.detect_objects(image, conf_threshold, ['display'])
+    
+    def detect_button_objects(self, image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
+        """Button 객체 감지"""
+        return self.detect_objects(image, conf_threshold, ['button'])
 
 
 class OCRTestTool:
@@ -264,6 +276,7 @@ class OCRTestTool:
         # 설정
         self.confidence_threshold = 0.5
         self.test_mode = 'auto'  # 'auto' 또는 'manual'
+        self.target_objects = 'both'  # 'display', 'button', 'both'
         
         # 상태
         self.last_test_time = 0
@@ -311,6 +324,9 @@ class OCRTestTool:
             self.logger.info("키보드 컨트롤:")
             self.logger.info("  SPACE: 수동 OCR 테스트")
             self.logger.info("  'a': 자동 모드 ON/OFF")
+            self.logger.info("  'd': Display 객체만 감지")
+            self.logger.info("  'b': Button 객체만 감지")
+            self.logger.info("  'x': Display + Button 모두 감지")
             self.logger.info("  '+': 신뢰도 증가")
             self.logger.info("  '-': 신뢰도 감소")
             self.logger.info("  'q': 종료")
@@ -323,29 +339,30 @@ class OCRTestTool:
                 if color_image is None:
                     continue
                 
-                # Display 객체 감지
-                display_objects = self.yolo_detector.detect_display_objects(
-                    color_image, self.confidence_threshold
+                # 타겟 객체 감지
+                target_classes = self._get_target_classes()
+                detected_objects = self.yolo_detector.detect_objects(
+                    color_image, self.confidence_threshold, target_classes
                 )
                 
                 # 시각화
-                display_image = self._draw_visualizations(color_image, display_objects)
+                display_image = self._draw_visualizations(color_image, detected_objects)
                 
                 # 자동 모드에서 OCR 테스트
                 current_time = time.time()
                 if (self.test_mode == 'auto' and 
-                    display_objects and 
+                    detected_objects and 
                     current_time - self.last_test_time > self.test_interval):
                     
-                    self._run_ocr_tests(color_image, display_objects)
+                    self._run_ocr_tests(color_image, detected_objects)
                     self.last_test_time = current_time
                 
                 # 화면 출력
-                cv2.imshow('OCR Test Tool (Webcam)', display_image)
+                cv2.imshow('OCR Test Tool (Display & Button)', display_image)
                 
                 # 키보드 입력 처리
                 key = cv2.waitKey(1) & 0xFF
-                if not self._handle_keyboard(key, color_image, display_objects):
+                if not self._handle_keyboard(key, color_image, detected_objects):
                     break
             
         except KeyboardInterrupt:
@@ -355,22 +372,47 @@ class OCRTestTool:
         finally:
             self.cleanup()
     
-    def _draw_visualizations(self, image: np.ndarray, display_objects: List[dict]) -> np.ndarray:
+    def _get_target_classes(self) -> List[str]:
+        """타겟 클래스 목록 반환"""
+        if self.target_objects == 'display':
+            return ['display']
+        elif self.target_objects == 'button':
+            return ['button']
+        else:  # 'both'
+            return ['display', 'button']
+    
+    def _draw_visualizations(self, image: np.ndarray, detected_objects: List[dict]) -> np.ndarray:
         """시각화 그리기"""
         display_image = image.copy()
         
-        # Display 객체 그리기
-        for obj in display_objects:
+        # 감지된 객체 그리기
+        display_count = 0
+        button_count = 0
+        
+        for obj in detected_objects:
             x, y, w, h = obj['bbox']
             confidence = obj['confidence']
+            class_name = obj['class_name']
+            
+            # 클래스별 색상 설정
+            if class_name == 'display':
+                color = (0, 255, 255)  # 노란색 (BGR)
+                label = f"DISPLAY {confidence:.2f}"
+                display_count += 1
+            elif class_name == 'button':
+                color = (255, 0, 255)  # 마젠타색 (BGR)
+                label = f"BUTTON {confidence:.2f}"
+                button_count += 1
+            else:
+                color = (128, 128, 128)  # 회색
+                label = f"{class_name.upper()} {confidence:.2f}"
             
             # 바운딩박스
-            cv2.rectangle(display_image, (x, y), (x + w, y + h), (0, 255, 255), 2)
+            cv2.rectangle(display_image, (x, y), (x + w, y + h), color, 2)
             
             # 라벨
-            label = f"DISPLAY {confidence:.2f}"
             cv2.putText(display_image, label, (x, y - 10), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
         
         # 상태 정보 표시
         info_y = 30
@@ -383,7 +425,12 @@ class OCRTestTool:
                    (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
         info_y += 25
-        cv2.putText(display_image, f"Display Objects: {len(display_objects)}", 
+        target_text = {"display": "DISPLAY", "button": "BUTTON", "both": "BOTH"}[self.target_objects]
+        cv2.putText(display_image, f"Target: {target_text}", 
+                   (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        info_y += 25
+        cv2.putText(display_image, f"Objects: D={display_count}, B={button_count}", 
                    (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
         
         # 사용 가능한 OCR 모델 표시
@@ -394,22 +441,34 @@ class OCRTestTool:
         
         return display_image
     
-    def _handle_keyboard(self, key: int, color_image: np.ndarray, display_objects: List[dict]) -> bool:
+    def _handle_keyboard(self, key: int, color_image: np.ndarray, detected_objects: List[dict]) -> bool:
         """키보드 입력 처리"""
         if key == ord('q'):
             self.logger.info("종료 요청")
             return False
         
         elif key == ord(' '):  # SPACE
-            if display_objects:
+            if detected_objects:
                 self.logger.info("🎯 수동 OCR 테스트 시작...")
-                self._run_ocr_tests(color_image, display_objects)
+                self._run_ocr_tests(color_image, detected_objects)
             else:
-                self.logger.warning("Display 객체가 감지되지 않았습니다")
+                self.logger.warning("감지된 객체가 없습니다")
         
         elif key == ord('a'):
             self.test_mode = 'manual' if self.test_mode == 'auto' else 'auto'
             self.logger.info(f"테스트 모드 변경: {self.test_mode}")
+        
+        elif key == ord('d'):
+            self.target_objects = 'display'
+            self.logger.info("타겟 객체: Display만 감지")
+        
+        elif key == ord('b'):
+            self.target_objects = 'button'
+            self.logger.info("타겟 객체: Button만 감지")
+        
+        elif key == ord('x'):
+            self.target_objects = 'both'
+            self.logger.info("타겟 객체: Display + Button 모두 감지")
         
         elif key == ord('+') or key == ord('='):
             self.confidence_threshold = min(0.95, self.confidence_threshold + 0.05)
@@ -421,13 +480,27 @@ class OCRTestTool:
         
         return True
     
-    def _run_ocr_tests(self, color_image: np.ndarray, display_objects: List[dict]):
+    def _run_ocr_tests(self, color_image: np.ndarray, detected_objects: List[dict]):
         """OCR 테스트 실행"""
         try:
             self.logger.info("🔥 OCR 모델 테스트 시작...")
             
-            for idx, obj in enumerate(display_objects):
-                self.logger.info(f"📱 Display 객체 {idx + 1}/{len(display_objects)} 테스트 중...")
+            for idx, obj in enumerate(detected_objects):
+                class_name = obj['class_name']
+                confidence = obj['confidence']
+                
+                if class_name == 'display':
+                    icon = "📱"
+                    color_desc = "노란색"
+                elif class_name == 'button':
+                    icon = "🔘"
+                    color_desc = "마젠타색"
+                else:
+                    icon = "📦"
+                    color_desc = "회색"
+                
+                self.logger.info(f"{icon} {class_name.upper()} 객체 {idx + 1}/{len(detected_objects)} 테스트 중... "
+                               f"(신뢰도: {confidence:.3f}, {color_desc})")
                 
                 bbox = obj['bbox']
                 
@@ -451,15 +524,66 @@ class OCRTestTool:
                                    f"(신뢰도: {confidence:.3f}, "
                                    f"시간: {processing_time:.3f}s, {gpu_text})")
                 
-                # 최고 성능 모델 강조
+                # 최고 성능 모델 및 button_id 매핑
                 if sorted_results:
                     winner = sorted_results[0]
-                    self.logger.info(f"🥇 최고 성능: {winner[0]} - '{winner[1].get('text', '?')}'")
+                    winner_text = winner[1].get('text', '?')
+                    self.logger.info(f"🥇 최고 성능: {winner[0]} - '{winner_text}'")
+                    
+                    # 버튼인 경우 button_id 매핑 시도
+                    if class_name == 'button':
+                        button_id = self._map_button_text_to_id(winner_text)
+                        if button_id is not None:
+                            self.logger.info(f"🎯 Button ID 매핑: '{winner_text}' → button_id={button_id}")
+                        else:
+                            self.logger.info(f"❓ Button ID 매핑 실패: '{winner_text}' (알 수 없는 텍스트)")
                 
                 self.logger.info("-" * 50)
         
         except Exception as e:
             self.logger.error(f"OCR 테스트 실행 실패: {e}")
+    
+    def _map_button_text_to_id(self, text: str) -> Optional[int]:
+        """버튼 텍스트를 button_id로 매핑"""
+        if not text or text.strip() == '':
+            return None
+        
+        text = text.strip().upper()
+        
+        # 층수 버튼 매핑
+        floor_mapping = {
+            '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6,
+            '7': 7, '8': 8, '9': 9, '10': 10, '11': 11, '12': 12,
+            'B1': 13, 'B2': 14, '1F': 1, '2F': 2, '3F': 3, '4F': 4,
+            '5F': 5, '6F': 6, '7F': 7, '8F': 8, '9F': 9, '10F': 10,
+            '11F': 11, '12F': 12
+        }
+        
+        # 특수 버튼 매핑
+        special_mapping = {
+            '▼': 100, '↓': 100, 'DOWN': 100, '하행': 100,
+            '▲': 101, '↑': 101, 'UP': 101, '상행': 101,
+            '◀': 102, '열기': 102, 'OPEN': 102,
+            '▶': 103, '닫기': 103, 'CLOSE': 103
+        }
+        
+        # 먼저 특수 버튼 매핑 시도
+        if text in special_mapping:
+            return special_mapping[text]
+        
+        # 층수 버튼 매핑 시도
+        if text in floor_mapping:
+            return floor_mapping[text]
+        
+        # 숫자만 있는 경우 (1~12)
+        try:
+            floor_num = int(text)
+            if 1 <= floor_num <= 12:
+                return floor_num
+        except ValueError:
+            pass
+        
+        return None
     
     def cleanup(self):
         """리소스 정리"""
@@ -479,7 +603,9 @@ class OCRTestTool:
 
 def main():
     """메인 함수"""
-    print("🚀 OCR 테스트 도구 시작... (웹캠 전용)")
+    print("🚀 OCR 테스트 도구 시작... (Display & Button 감지)")
+    print("   - Display 객체: 엘리베이터 층수 표시기 OCR")
+    print("   - Button 객체: 버튼 텍스트 OCR → button_id 자동 매핑")
     
     # 도구 초기화
     tool = OCRTestTool()

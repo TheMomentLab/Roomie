@@ -35,21 +35,10 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
-  // member: button_ids
+  // member: button_id
   {
-    if (msg.button_ids.size() == 0) {
-      out << "button_ids: []";
-    } else {
-      out << "button_ids: [";
-      size_t pending_items = msg.button_ids.size();
-      for (auto item : msg.button_ids) {
-        rosidl_generator_traits::value_to_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "button_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.button_id, out);
   }
   out << "}";
 }  // NOLINT(readability/fn_size)
@@ -68,24 +57,14 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
-  // member: button_ids
+  // member: button_id
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.button_ids.size() == 0) {
-      out << "button_ids: []\n";
-    } else {
-      out << "button_ids:\n";
-      for (auto item : msg.button_ids) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "- ";
-        rosidl_generator_traits::value_to_yaml(item, out);
-        out << "\n";
-      }
-    }
+    out << "button_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.button_id, out);
+    out << "\n";
   }
 }  // NOLINT(readability/fn_size)
 
@@ -135,11 +114,11 @@ inline const char * name<roomie_msgs::srv::ButtonStatus_Request>()
 
 template<>
 struct has_fixed_size<roomie_msgs::srv::ButtonStatus_Request>
-  : std::integral_constant<bool, false> {};
+  : std::integral_constant<bool, true> {};
 
 template<>
 struct has_bounded_size<roomie_msgs::srv::ButtonStatus_Request>
-  : std::integral_constant<bool, false> {};
+  : std::integral_constant<bool, true> {};
 
 template<>
 struct is_message<roomie_msgs::srv::ButtonStatus_Request>
@@ -169,6 +148,13 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
+  // member: button_id
+  {
+    out << "button_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.button_id, out);
+    out << ", ";
+  }
+
   // member: success
   {
     out << "success: ";
@@ -176,93 +162,38 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
-  // member: xs
+  // member: x
   {
-    if (msg.xs.size() == 0) {
-      out << "xs: []";
-    } else {
-      out << "xs: [";
-      size_t pending_items = msg.xs.size();
-      for (auto item : msg.xs) {
-        rosidl_generator_traits::value_to_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "x: ";
+    rosidl_generator_traits::value_to_yaml(msg.x, out);
     out << ", ";
   }
 
-  // member: ys
+  // member: y
   {
-    if (msg.ys.size() == 0) {
-      out << "ys: []";
-    } else {
-      out << "ys: [";
-      size_t pending_items = msg.ys.size();
-      for (auto item : msg.ys) {
-        rosidl_generator_traits::value_to_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "y: ";
+    rosidl_generator_traits::value_to_yaml(msg.y, out);
     out << ", ";
   }
 
-  // member: depths
+  // member: size
   {
-    if (msg.depths.size() == 0) {
-      out << "depths: []";
-    } else {
-      out << "depths: [";
-      size_t pending_items = msg.depths.size();
-      for (auto item : msg.depths) {
-        rosidl_generator_traits::value_to_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "size: ";
+    rosidl_generator_traits::value_to_yaml(msg.size, out);
     out << ", ";
   }
 
   // member: is_pressed
   {
-    if (msg.is_pressed.size() == 0) {
-      out << "is_pressed: []";
-    } else {
-      out << "is_pressed: [";
-      size_t pending_items = msg.is_pressed.size();
-      for (auto item : msg.is_pressed) {
-        rosidl_generator_traits::value_to_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "is_pressed: ";
+    rosidl_generator_traits::value_to_yaml(msg.is_pressed, out);
     out << ", ";
   }
 
   // member: timestamp
   {
-    if (msg.timestamp.size() == 0) {
-      out << "timestamp: []";
-    } else {
-      out << "timestamp: [";
-      size_t pending_items = msg.timestamp.size();
-      for (auto item : msg.timestamp) {
-        to_flow_style_yaml(item, out);
-        if (--pending_items > 0) {
-          out << ", ";
-        }
-      }
-      out << "]";
-    }
+    out << "timestamp: ";
+    to_flow_style_yaml(msg.timestamp, out);
   }
   out << "}";
 }  // NOLINT(readability/fn_size)
@@ -281,6 +212,16 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
+  // member: button_id
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "button_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.button_id, out);
+    out << "\n";
+  }
+
   // member: success
   {
     if (indentation > 0) {
@@ -291,64 +232,34 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
-  // member: xs
+  // member: x
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.xs.size() == 0) {
-      out << "xs: []\n";
-    } else {
-      out << "xs:\n";
-      for (auto item : msg.xs) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "- ";
-        rosidl_generator_traits::value_to_yaml(item, out);
-        out << "\n";
-      }
-    }
+    out << "x: ";
+    rosidl_generator_traits::value_to_yaml(msg.x, out);
+    out << "\n";
   }
 
-  // member: ys
+  // member: y
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.ys.size() == 0) {
-      out << "ys: []\n";
-    } else {
-      out << "ys:\n";
-      for (auto item : msg.ys) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "- ";
-        rosidl_generator_traits::value_to_yaml(item, out);
-        out << "\n";
-      }
-    }
+    out << "y: ";
+    rosidl_generator_traits::value_to_yaml(msg.y, out);
+    out << "\n";
   }
 
-  // member: depths
+  // member: size
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.depths.size() == 0) {
-      out << "depths: []\n";
-    } else {
-      out << "depths:\n";
-      for (auto item : msg.depths) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "- ";
-        rosidl_generator_traits::value_to_yaml(item, out);
-        out << "\n";
-      }
-    }
+    out << "size: ";
+    rosidl_generator_traits::value_to_yaml(msg.size, out);
+    out << "\n";
   }
 
   // member: is_pressed
@@ -356,19 +267,9 @@ inline void to_block_style_yaml(
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.is_pressed.size() == 0) {
-      out << "is_pressed: []\n";
-    } else {
-      out << "is_pressed:\n";
-      for (auto item : msg.is_pressed) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "- ";
-        rosidl_generator_traits::value_to_yaml(item, out);
-        out << "\n";
-      }
-    }
+    out << "is_pressed: ";
+    rosidl_generator_traits::value_to_yaml(msg.is_pressed, out);
+    out << "\n";
   }
 
   // member: timestamp
@@ -376,18 +277,8 @@ inline void to_block_style_yaml(
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    if (msg.timestamp.size() == 0) {
-      out << "timestamp: []\n";
-    } else {
-      out << "timestamp:\n";
-      for (auto item : msg.timestamp) {
-        if (indentation > 0) {
-          out << std::string(indentation, ' ');
-        }
-        out << "-\n";
-        to_block_style_yaml(item, out, indentation + 2);
-      }
-    }
+    out << "timestamp:\n";
+    to_block_style_yaml(msg.timestamp, out, indentation + 2);
   }
 }  // NOLINT(readability/fn_size)
 
@@ -437,11 +328,11 @@ inline const char * name<roomie_msgs::srv::ButtonStatus_Response>()
 
 template<>
 struct has_fixed_size<roomie_msgs::srv::ButtonStatus_Response>
-  : std::integral_constant<bool, false> {};
+  : std::integral_constant<bool, has_fixed_size<builtin_interfaces::msg::Time>::value> {};
 
 template<>
 struct has_bounded_size<roomie_msgs::srv::ButtonStatus_Response>
-  : std::integral_constant<bool, false> {};
+  : std::integral_constant<bool, has_bounded_size<builtin_interfaces::msg::Time>::value> {};
 
 template<>
 struct is_message<roomie_msgs::srv::ButtonStatus_Response>

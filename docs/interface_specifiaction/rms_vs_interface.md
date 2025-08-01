@@ -19,15 +19,13 @@ bool success
 ```
 
 **mode_id 값:**
-- **후방 카메라 모드**
-  - `0`: 대기모드 - 후방 웹캠 사용, 모든 기능 비활성화
-  - `1`: 등록모드 - 후방 웹캠 사용, 추적 대상 등록 기능
-  - `2`: 추적모드 - 후방 웹캠 사용, 추적 이벤트 발행 기능
-- **전방 카메라 모드**
-  - `3`: 엘리베이터 외부 모드 - 전방 웹캠 사용, button_recog_1 방식
-  - `4`: 엘리베이터 내부 모드 - 전방 웹캠 사용, button_recog_2 방식
-  - `5`: 일반 주행 모드 - 전방 웹캠 + 뎁스 카메라 사용, ArUco 위치 감지
-  - `6`: 대기모드 - 전방 웹캠 사용, 모든 기능 비활성화
+- `0`: 대기모드 (후방 전용)
+- `1`: 등록모드 (후방 전용)
+- `2`: 추적모드 (후방 전용)
+- `3`: 엘리베이터 외부 모드 (전방 전용)
+- `4`: 엘리베이터 내부 모드 (전방 전용)
+- `5`: 일반 주행모드 (전방 전용)
+- `6`: 대기모드 (전방 전용)
 
 **버튼 인식 방식:**
 - **button_recog_1 (모드 3 - 엘리베이터 외부)**
@@ -54,26 +52,7 @@ bool success
 
 ---
 
-### 1.2 엘리베이터 입구 너비 감지 요청
-- **From**: RC → VS
-- **Protocol**: ROS2 Service
-- **Topic**: `/vs/command/elevator_width`
-
-```srv
-# ElevatorWidth.srv
-# Request
-int32 robot_id
----
-# Response
-int32 robot_id
-bool success
-float32 left_boundary
-float32 right_boundary
-```
-
----
-
-### 1.3 버튼 상태 감지 요청
+### 1.2 버튼 상태 감지 요청
 - **From**: RC → VS
 - **Protocol**: ROS2 Service
 - **Topic**: `/vs/command/button_status`
@@ -82,19 +61,26 @@ float32 right_boundary
 # ButtonStatus.srv
 # Request
 int32 robot_id
-int32[] button_ids
+int32 button_id
 ---
 # Response
 int32 robot_id
+int32 button_id
 bool success
-float32[] xs
-float32[] ys
-float32[] depths
-bool[] is_pressed
-builtin_interfaces/Time[] timestamp
+float32 x
+float32 y
+float32 size
+bool is_pressed
+builtin_interfaces/Time timestamp
 ```
 
+**x**: `0~1`
+**y**: `0~1`  
+**size**: `0~1`
+
 **button_id 값:**
+- `0`: (현재 유일하게 감지되는 버튼)
+- 버튼이 2개 이상 감지될 경우 success=false
 - `1`: 1층
 - `2`: 2층
 - `3`: 3층
@@ -116,7 +102,7 @@ builtin_interfaces/Time[] timestamp
 
 ---
 
-### 1.4 엘리베이터 위치 및 방향 감지 요청
+### 1.3 엘리베이터 위치 및 방향 감지 요청
 - **From**: RC → VS
 - **Protocol**: ROS2 Service
 - **Topic**: `/vs/command/elevator_status`
@@ -138,11 +124,11 @@ int32 position
 - `1`: downward
 
 **position 값:**
-- 현재 층 번호
+- 엘리베이터 현재 층
 
 ---
 
-### 1.5 문 열림 감지 요청
+### 1.4 문 열림 감지 요청
 - **From**: RC → VS
 - **Protocol**: ROS2 Service
 - **Topic**: `/vs/command/door_status`
@@ -159,30 +145,13 @@ bool door_opened
 ```
 
 **door_opened 값:**
-- `false (0)`: closed
-- `true (1)`: opened
+- `0`: closed
+- `1`: opened
+- 문 감지 여부로 판단
 
 ---
 
-### 1.6 엘리베이터 탑승/하차시 공간 확보 여부 감지
-- **From**: RC → VS
-- **Protocol**: ROS2 Service
-- **Topic**: `/vs/command/space_availability`
-
-```srv
-# SpaceAvailability.srv
-# Request
-int32 robot_id
----
-# Response
-int32 robot_id
-bool success
-bool space_availability
-```
-
----
-
-### 1.7 현재 위치 감지 결과
+### 1.5 현재 위치 감지 결과
 - **From**: RC → VS
 - **Protocol**: ROS2 Service
 - **Topic**: `/vs/command/location`
@@ -199,17 +168,20 @@ int32 location_id
 ```
 
 **location_id 값:**
-- `0`: LOB_WAITING
-- `1`: LOB_CALL
-- `2`: RES_PICKUP
-- `3`: RES_CALL
-- `4`: SUP_PICKUP
-- `5`: ELE_1
-- `6`: ELE_2
-- `101`: ROOM_101
-- `102`: ROOM_102
-- `201`: ROOM_201
-- `202`: ROOM_202
+
+| id | name |
+|----|------|
+| 0 | LOB_WAITING |
+| 1 | LOB_CALL |
+| 2 | RES_PICKUP |
+| 3 | RES_CALL |
+| 4 | SUP_PICKUP |
+| 5 | ELE_1 |
+| 6 | ELE_2 |
+| 101 | ROOM_101 |
+| 102 | ROOM_102 |
+| 201 | ROOM_201 |
+| 202 | ROOM_202 |
 
 ---
 

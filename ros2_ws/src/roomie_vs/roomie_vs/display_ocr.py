@@ -20,9 +20,15 @@ class DisplayOCR:
         self.last_stable_result = None  # 마지막 안정된 결과
         self.recent_results = []  # 최근 결과들 (다수결용)
         
-        # 유효한 층수 목록
-        self.valid_floors = set(str(i) for i in range(1, 51))  # 1~50층
-        self.valid_floors.update(['B1', 'B2', 'B3', 'B4', 'B5'])  # 지하층
+        # 🔥 강화된 안정성 시스템
+        self.consecutive_failures = 0  # 연속 실패 횟수
+        self.max_consecutive_failures = 5  # 최대 연속 실패 허용치
+        self.stable_result_timeout = 10.0  # 안정된 결과 유지 시간 (10초)
+        self.last_stable_time = None  # 마지막 안정된 결과 시간
+        
+        # 유효한 층수 목록 (B2, 1~12층만)
+        self.valid_floors = set(str(i) for i in range(1, 13))  # 1~12층만
+        self.valid_floors.update(['B2'])  # B2만
         
         # 디버그 이미지 저장 경로 설정
         self.debug_dir = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_vs/debug"
@@ -76,18 +82,6 @@ class DisplayOCR:
             
             display_image = full_image[y1:y2, x1:x2]
             
-            # 간단한 로그만
-            if self.config.get('debug_mode', False):
-                self.logger.info(f"디스플레이 크롭 영역: ({x1}, {y1}) -> ({x2}, {y2}), 크기: {display_image.shape}")
-            
-            # 디버깅용 이미지 저장 (옵션)
-            if self.config.get('debug_mode', False):
-                try:
-                    cv2.imwrite(f'{self.debug_dir}/display_crop_debug_{time.strftime("%Y%m%d_%H%M%S")}.jpg', display_image)
-                    self.logger.debug(f"디스플레이 크롭 이미지 저장: {self.debug_dir}/display_crop_debug_*.jpg")
-                except:
-                    pass
-            
             # 🎯 디스플레이 내에서 숫자 영역 ROI 추출 후 OCR 수행
             result_dict = self.recognize_display_with_smart_roi(display_image)
             
@@ -138,9 +132,6 @@ class DisplayOCR:
             if roi_image.size == 0:
                 return {"text": "?", "digit_bbox": None}
             
-            if self.config.get('debug_mode', False):
-                self.logger.info(f"🎯 단순 크롭: bbox({x},{y},{w},{h}) -> 크기:{roi_image.shape}")
-            
             # 2단계: 직접 EasyOCR 수행 (MultiModelOCR와 동일 파라미터)
             results = self.reader.readtext(
                 roi_image,
@@ -157,8 +148,6 @@ class DisplayOCR:
             )
             
             if not results:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
                 return {"text": "?", "digit_bbox": None}
             
             # 3단계: 가장 신뢰도 높은 결과 선택
@@ -185,9 +174,6 @@ class DisplayOCR:
             # 6단계: 결과 검증
             min_confidence = 0.3
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
-                if self.config.get('debug_mode', False):
-                    self.logger.info(f"✅ 단순크롭 EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
-                
                 self.last_stable_result = cleaned_text
                 
                 return {
@@ -197,9 +183,6 @@ class DisplayOCR:
                     "raw_text": text
                 }
             else:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn(f"❌ 단순크롭 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
-                
                 # 실패시 마지막 안정된 결과 유지
                 if self.last_stable_result:
                     return {"text": self.last_stable_result, "digit_bbox": None, "from_cache": True}
@@ -257,8 +240,6 @@ class DisplayOCR:
             )
             
             if not results:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
                 return {"text": "?", "digit_bbox": None}
             
             # 4단계: 가장 신뢰도 높은 결과 선택
@@ -294,9 +275,6 @@ class DisplayOCR:
             # 7단계: 결과 검증
             min_confidence = 0.3
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
-                if self.config.get('debug_mode', False):
-                    self.logger.info(f"✅ EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
-                
                 # 성공한 결과 캐싱
                 self.last_stable_result = cleaned_text
                 
@@ -307,12 +285,6 @@ class DisplayOCR:
                     "raw_text": text
                 }
             else:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn(f"❌ 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f})")
-                    # 모든 후보 출력
-                    for i, (_, candidate_text, candidate_confidence) in enumerate(results):
-                        candidate_cleaned = self._clean_elevator_text(candidate_text)
-                        self.logger.warn(f"   후보 {i+1}: '{candidate_text}' -> '{candidate_cleaned}' (신뢰도: {candidate_confidence:.3f})")
                 
                 # 실패시 마지막 안정된 결과 유지
                 if self.last_stable_result:
@@ -403,25 +375,11 @@ class DisplayOCR:
                 mag_ratio=3.0                 # 🔥 확대 비율 증가 (2.0 -> 3.0)
             )
             
-            # 디버깅용 전처리 이미지 저장
-            if self.config.get('debug_mode', False):
-                try:
-                    cv2.imwrite(f'{self.debug_dir}/easyocr_input_debug_{time.strftime("%Y%m%d_%H%M%S")}.jpg', display_image)
-                    self.logger.debug(f"EasyOCR 입력 이미지 저장: {self.debug_dir}/easyocr_input_debug_*.jpg")
-                except:
-                    pass
-            
             # 결과 처리
             if not results:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn("❌ EasyOCR: 텍스트를 찾을 수 없음")
                 return {"text": "?", "digit_bbox": None}
             
-            # 🔥 모든 결과 출력 (디버깅용)
-            if self.config.get('debug_mode', False):
-                self.logger.info(f"🔍 EasyOCR 전체 결과 ({len(results)}개):")
-                for i, (bbox_points, text, confidence) in enumerate(results):
-                    self.logger.info(f"   결과 {i+1}: '{text}' (신뢰도: {confidence:.3f})")
+            # 🔥 모든 결과 출력 (디버깅용) - 제거됨
             
             # 🎯 가장 신뢰도가 높은 결과 선택
             best_result = max(results, key=lambda x: x[2])  # confidence 기준
@@ -445,17 +403,8 @@ class DisplayOCR:
             
             # 결과 로깅
             if confidence >= min_confidence and cleaned_text and cleaned_text != "?":
-                if self.config.get('debug_mode', False):
-                    self.logger.info(f"✅ EasyOCR 성공: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f}, 기준: {min_confidence})")
                 return {"text": cleaned_text, "digit_bbox": digit_bbox}
             else:
-                if self.config.get('debug_mode', False):
-                    self.logger.warn(f"❌ 인식 실패: '{text}' -> '{cleaned_text}' (신뢰도: {confidence:.3f}, 기준: {min_confidence})")
-                    # 🔥 실패한 경우에도 모든 후보 표시
-                    self.logger.warn(f"💡 다른 후보들:")
-                    for i, (_, candidate_text, candidate_confidence) in enumerate(results):
-                        candidate_cleaned = self._clean_elevator_text(candidate_text)
-                        self.logger.warn(f"   후보 {i+1}: '{candidate_text}' -> '{candidate_cleaned}' (신뢰도: {candidate_confidence:.3f})")
                 return {"text": "?", "digit_bbox": None}
                 
         except Exception as e:
@@ -491,16 +440,6 @@ class DisplayOCR:
             # ROI 크롭
             roi_image = display_image[y1:y2, x1:x2]
             
-            if self.config.get('debug_mode', False):
-                self.logger.info(f"🎯 ROI 크롭: 원본({w}x{h}) -> ROI({x2-x1}x{y2-y1}), 중앙 30% 영역")
-                
-            # 디버깅용 ROI 이미지 저장
-            if self.config.get('debug_mode', False):
-                try:
-                    cv2.imwrite(f'{self.debug_dir}/roi_crop_debug_{time.strftime("%Y%m%d_%H%M%S")}.jpg', roi_image)
-                except:
-                    pass
-            
             # 🚀 ROI 영역에서 EasyOCR 수행
             result_dict = self.recognize_display_with_easyocr(roi_image)
             
@@ -528,46 +467,62 @@ class DisplayOCR:
             return self.recognize_display_with_easyocr(display_image)
     
     def _clean_elevator_text(self, text: str) -> str:
-        """엘리베이터 층수 텍스트 정리 (숫자+B,F 중심)"""
+        """🔥 엘리베이터 층수 텍스트 정리 (강화된 필터링)"""
         if not text:
             return "?"
         
         # 공백 제거 및 대문자 변환
         cleaned = text.strip().upper()
         
-        if self.config.get('debug_mode', False):
-            self.logger.info(f"🧹 텍스트 정리: '{text}' -> '{cleaned}'")
-        
         # 빈 문자열 체크
         if not cleaned:
             return "?"
         
-        # 🎯 층수 관련 패턴만 허용 (엄격한 필터링)
-        import re
+        # 🚫 즉시 거부할 패턴들 (비정상적인 OCR 결과)
+        reject_patterns = [
+            r'^B$',           # "B"만 있는 경우
+            r'^\d+B$',        # "1B", "2B" 등 (순서 잘못)
+            r'^F\d*$',        # "F", "F1" 등
+            r'.*[A-Z]{2,}.*', # 연속된 알파벳 2개 이상
+            r'.*[^B0-9F].*',  # B, 숫자, F 외의 문자 포함
+        ]
         
-        # 지하층 패턴: B1, B2, B10 등
+        import re
+        for pattern in reject_patterns:
+            if re.match(pattern, cleaned):
+                return "?"
+        
+        # 🎯 유효한 패턴만 허용 (엄격한 필터링)
+        
+        # 지하층 패턴: B2만 허용
         basement_pattern = re.match(r'^B(\d+)$', cleaned)
         if basement_pattern:
-            return cleaned  # B1, B2 등 그대로 반환
+            basement_num = int(basement_pattern.group(1))
+            if basement_num == 2:  # B2만 허용
+                return cleaned
+            else:
+                return "?"  # B2가 아니면 거부
         
-        # 층수+F 패턴: 1F, 2F, 12F 등
-        floor_pattern = re.match(r'^(\d+)F?$', cleaned)
+        # 층수+F 패턴: 1F~12F만 허용
+        floor_pattern = re.match(r'^(\d+)F$', cleaned)
         if floor_pattern:
-            floor_num = floor_pattern.group(1)
-            return floor_num  # F 제거하고 숫자만 반환
+            floor_num = int(floor_pattern.group(1))
+            if 1 <= floor_num <= 12:
+                return floor_pattern.group(1)  # F 제거하고 숫자만 반환
+            else:
+                return "?"  # 범위 벗어나면 거부
         
-        # 순수 숫자만 (1~50층 범위)
+        # 순수 숫자만 (1~12층 범위)
         if cleaned.isdigit():
             floor_num = int(cleaned)
-            if 1 <= floor_num <= 50:
+            if 1 <= floor_num <= 12:
                 return cleaned
             elif floor_num == 0:
                 return "1"  # 0층은 1층으로 변환
+            else:
+                return "?"  # 13층 이상은 거부
         
-        # 🔥 층수 관련이 아닌 텍스트는 거부
-        if self.config.get('debug_mode', False):
-            self.logger.warning(f"❌ 층수 패턴 불일치로 거부: '{cleaned}'")
-        
+        # 🔥 모든 패턴에 맞지 않으면 거부
         return "?"
     
     # 🔧 기존 인터페이스 호환성을 위한 함수들
@@ -1021,7 +976,7 @@ class MultiModelOCR:
         return 0.3
     
     def _clean_elevator_text(self, text: str) -> str:
-        """엘리베이터 층수 텍스트 정리"""
+        """🔥 엘리베이터 층수 텍스트 정리 (B2, 1~12층만)"""
         if not text:
             return "?"
         
@@ -1032,24 +987,33 @@ class MultiModelOCR:
         
         import re
         
-        # 지하층 패턴: B1, B2, B10 등
+        # 지하층 패턴: B2만 허용
         basement_pattern = re.match(r'^B(\d+)$', cleaned)
         if basement_pattern:
-            return cleaned
+            basement_num = int(basement_pattern.group(1))
+            if basement_num == 2:  # B2만 허용
+                return cleaned
+            else:
+                return "?"  # B2가 아니면 거부
         
-        # 층수+F 패턴: 1F, 2F, 12F 등
+        # 층수+F 패턴: 1F~12F만 허용
         floor_pattern = re.match(r'^(\d+)F?$', cleaned)
         if floor_pattern:
-            floor_num = floor_pattern.group(1)
-            return floor_num
+            floor_num = int(floor_pattern.group(1))
+            if 1 <= floor_num <= 12:
+                return floor_pattern.group(1)
+            else:
+                return "?"
         
-        # 순수 숫자만 (1~50층 범위)
+        # 순수 숫자만 (1~12층 범위)
         if cleaned.isdigit():
             floor_num = int(cleaned)
-            if 1 <= floor_num <= 50:
+            if 1 <= floor_num <= 12:
                 return cleaned
             elif floor_num == 0:
                 return "1"
+            else:
+                return "?"
         
         return "?"
     

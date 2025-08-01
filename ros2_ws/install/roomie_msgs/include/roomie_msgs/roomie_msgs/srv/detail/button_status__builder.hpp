@@ -24,15 +24,15 @@ namespace srv
 namespace builder
 {
 
-class Init_ButtonStatus_Request_button_ids
+class Init_ButtonStatus_Request_button_id
 {
 public:
-  explicit Init_ButtonStatus_Request_button_ids(::roomie_msgs::srv::ButtonStatus_Request & msg)
+  explicit Init_ButtonStatus_Request_button_id(::roomie_msgs::srv::ButtonStatus_Request & msg)
   : msg_(msg)
   {}
-  ::roomie_msgs::srv::ButtonStatus_Request button_ids(::roomie_msgs::srv::ButtonStatus_Request::_button_ids_type arg)
+  ::roomie_msgs::srv::ButtonStatus_Request button_id(::roomie_msgs::srv::ButtonStatus_Request::_button_id_type arg)
   {
-    msg_.button_ids = std::move(arg);
+    msg_.button_id = std::move(arg);
     return std::move(msg_);
   }
 
@@ -46,10 +46,10 @@ public:
   Init_ButtonStatus_Request_robot_id()
   : msg_(::rosidl_runtime_cpp::MessageInitialization::SKIP)
   {}
-  Init_ButtonStatus_Request_button_ids robot_id(::roomie_msgs::srv::ButtonStatus_Request::_robot_id_type arg)
+  Init_ButtonStatus_Request_button_id robot_id(::roomie_msgs::srv::ButtonStatus_Request::_robot_id_type arg)
   {
     msg_.robot_id = std::move(arg);
-    return Init_ButtonStatus_Request_button_ids(msg_);
+    return Init_ButtonStatus_Request_button_id(msg_);
   }
 
 private:
@@ -114,15 +114,15 @@ private:
   ::roomie_msgs::srv::ButtonStatus_Response msg_;
 };
 
-class Init_ButtonStatus_Response_depths
+class Init_ButtonStatus_Response_size
 {
 public:
-  explicit Init_ButtonStatus_Response_depths(::roomie_msgs::srv::ButtonStatus_Response & msg)
+  explicit Init_ButtonStatus_Response_size(::roomie_msgs::srv::ButtonStatus_Response & msg)
   : msg_(msg)
   {}
-  Init_ButtonStatus_Response_is_pressed depths(::roomie_msgs::srv::ButtonStatus_Response::_depths_type arg)
+  Init_ButtonStatus_Response_is_pressed size(::roomie_msgs::srv::ButtonStatus_Response::_size_type arg)
   {
-    msg_.depths = std::move(arg);
+    msg_.size = std::move(arg);
     return Init_ButtonStatus_Response_is_pressed(msg_);
   }
 
@@ -130,32 +130,32 @@ private:
   ::roomie_msgs::srv::ButtonStatus_Response msg_;
 };
 
-class Init_ButtonStatus_Response_ys
+class Init_ButtonStatus_Response_y
 {
 public:
-  explicit Init_ButtonStatus_Response_ys(::roomie_msgs::srv::ButtonStatus_Response & msg)
+  explicit Init_ButtonStatus_Response_y(::roomie_msgs::srv::ButtonStatus_Response & msg)
   : msg_(msg)
   {}
-  Init_ButtonStatus_Response_depths ys(::roomie_msgs::srv::ButtonStatus_Response::_ys_type arg)
+  Init_ButtonStatus_Response_size y(::roomie_msgs::srv::ButtonStatus_Response::_y_type arg)
   {
-    msg_.ys = std::move(arg);
-    return Init_ButtonStatus_Response_depths(msg_);
+    msg_.y = std::move(arg);
+    return Init_ButtonStatus_Response_size(msg_);
   }
 
 private:
   ::roomie_msgs::srv::ButtonStatus_Response msg_;
 };
 
-class Init_ButtonStatus_Response_xs
+class Init_ButtonStatus_Response_x
 {
 public:
-  explicit Init_ButtonStatus_Response_xs(::roomie_msgs::srv::ButtonStatus_Response & msg)
+  explicit Init_ButtonStatus_Response_x(::roomie_msgs::srv::ButtonStatus_Response & msg)
   : msg_(msg)
   {}
-  Init_ButtonStatus_Response_ys xs(::roomie_msgs::srv::ButtonStatus_Response::_xs_type arg)
+  Init_ButtonStatus_Response_y x(::roomie_msgs::srv::ButtonStatus_Response::_x_type arg)
   {
-    msg_.xs = std::move(arg);
-    return Init_ButtonStatus_Response_ys(msg_);
+    msg_.x = std::move(arg);
+    return Init_ButtonStatus_Response_y(msg_);
   }
 
 private:
@@ -168,10 +168,26 @@ public:
   explicit Init_ButtonStatus_Response_success(::roomie_msgs::srv::ButtonStatus_Response & msg)
   : msg_(msg)
   {}
-  Init_ButtonStatus_Response_xs success(::roomie_msgs::srv::ButtonStatus_Response::_success_type arg)
+  Init_ButtonStatus_Response_x success(::roomie_msgs::srv::ButtonStatus_Response::_success_type arg)
   {
     msg_.success = std::move(arg);
-    return Init_ButtonStatus_Response_xs(msg_);
+    return Init_ButtonStatus_Response_x(msg_);
+  }
+
+private:
+  ::roomie_msgs::srv::ButtonStatus_Response msg_;
+};
+
+class Init_ButtonStatus_Response_button_id
+{
+public:
+  explicit Init_ButtonStatus_Response_button_id(::roomie_msgs::srv::ButtonStatus_Response & msg)
+  : msg_(msg)
+  {}
+  Init_ButtonStatus_Response_success button_id(::roomie_msgs::srv::ButtonStatus_Response::_button_id_type arg)
+  {
+    msg_.button_id = std::move(arg);
+    return Init_ButtonStatus_Response_success(msg_);
   }
 
 private:
@@ -184,10 +200,10 @@ public:
   Init_ButtonStatus_Response_robot_id()
   : msg_(::rosidl_runtime_cpp::MessageInitialization::SKIP)
   {}
-  Init_ButtonStatus_Response_success robot_id(::roomie_msgs::srv::ButtonStatus_Response::_robot_id_type arg)
+  Init_ButtonStatus_Response_button_id robot_id(::roomie_msgs::srv::ButtonStatus_Response::_robot_id_type arg)
   {
     msg_.robot_id = std::move(arg);
-    return Init_ButtonStatus_Response_success(msg_);
+    return Init_ButtonStatus_Response_button_id(msg_);
   }
 
 private:

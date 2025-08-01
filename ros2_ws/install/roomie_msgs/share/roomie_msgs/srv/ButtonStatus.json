@@ -110,9 +110,9 @@
             "default_value": ""
           },
           {
-            "name": "button_ids",
+            "name": "button_id",
             "type": {
-              "type_id": 150,
+              "type_id": 6,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": ""
@@ -135,6 +135,16 @@
             "default_value": ""
           },
           {
+            "name": "button_id",
+            "type": {
+              "type_id": 6,
+              "capacity": 0,
+              "string_capacity": 0,
+              "nested_type_name": ""
+            },
+            "default_value": ""
+          },
+          {
             "name": "success",
             "type": {
               "type_id": 15,
@@ -145,9 +155,9 @@
             "default_value": ""
           },
           {
-            "name": "xs",
+            "name": "x",
             "type": {
-              "type_id": 154,
+              "type_id": 10,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": ""
@@ -155,9 +165,9 @@
             "default_value": ""
           },
           {
-            "name": "ys",
+            "name": "y",
             "type": {
-              "type_id": 154,
+              "type_id": 10,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": ""
@@ -165,9 +175,9 @@
             "default_value": ""
           },
           {
-            "name": "depths",
+            "name": "size",
             "type": {
-              "type_id": 154,
+              "type_id": 10,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": ""
@@ -177,7 +187,7 @@
           {
             "name": "is_pressed",
             "type": {
-              "type_id": 159,
+              "type_id": 15,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": ""
@@ -187,7 +197,7 @@
           {
             "name": "timestamp",
             "type": {
-              "type_id": 145,
+              "type_id": 1,
               "capacity": 0,
               "string_capacity": 0,
               "nested_type_name": "builtin_interfaces/msg/Time"
@@ -246,7 +256,7 @@
   "type_hashes": [
     {
       "type_name": "roomie_msgs/srv/ButtonStatus",
-      "hash_string": "RIHS01_558e10f0e8cff1a07dfc4d4fd38d7c6dd155224b24c638df0ab2c20c437e8416"
+      "hash_string": "RIHS01_6ede6baafdd97b6a3c55f7aae62c73c078922799ad421c6b873d4e8ae60b8b8f"
     },
     {
       "type_name": "builtin_interfaces/msg/Time",
@@ -254,15 +264,15 @@
     },
     {
       "type_name": "roomie_msgs/srv/ButtonStatus_Event",
-      "hash_string": "RIHS01_83c81bbacad882442006e8ae336dd70b7754b17d4bb867153b0d80952ce766c8"
+      "hash_string": "RIHS01_d1cdcfc04bb873b40528cad827b26c384980bf038210ae6922e616931b8750c1"
     },
     {
       "type_name": "roomie_msgs/srv/ButtonStatus_Request",
-      "hash_string": "RIHS01_e3a6c6443a9f8a575a1f6a254c320f44d5c5abe61a48f594c1ecbd617d62fd00"
+      "hash_string": "RIHS01_073959fd7d5a67411a210aa03ce75b175f0cce4d154dfd9f0128006ea1b86ee2"
     },
     {
       "type_name": "roomie_msgs/srv/ButtonStatus_Response",
-      "hash_string": "RIHS01_04131a2da9f94b1c7a20980f11eb724cb103741492d6b9afbfd0c927adeede24"
+      "hash_string": "RIHS01_fcc6af097cbdea1e33af02f877ee4ab4cd0a6e39ecbc195418f0b6e8139c8372"
     },
     {
       "type_name": "service_msgs/msg/ServiceEventInfo",

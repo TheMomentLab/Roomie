@@ -42,6 +42,7 @@ struct ButtonStatus_Request_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->robot_id = 0l;
+      this->button_id = 0l;
     }
   }
 
@@ -52,6 +53,7 @@ struct ButtonStatus_Request_
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->robot_id = 0l;
+      this->button_id = 0l;
     }
   }
 
@@ -59,9 +61,9 @@ struct ButtonStatus_Request_
   using _robot_id_type =
     int32_t;
   _robot_id_type robot_id;
-  using _button_ids_type =
-    std::vector<int32_t, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<int32_t>>;
-  _button_ids_type button_ids;
+  using _button_id_type =
+    int32_t;
+  _button_id_type button_id;
 
   // setters for named parameter idiom
   Type & set__robot_id(
@@ -70,10 +72,10 @@ struct ButtonStatus_Request_
     this->robot_id = _arg;
     return *this;
   }
-  Type & set__button_ids(
-    const std::vector<int32_t, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<int32_t>> & _arg)
+  Type & set__button_id(
+    const int32_t & _arg)
   {
-    this->button_ids = _arg;
+    this->button_id = _arg;
     return *this;
   }
 
@@ -122,7 +124,7 @@ struct ButtonStatus_Request_
     if (this->robot_id != other.robot_id) {
       return false;
     }
-    if (this->button_ids != other.button_ids) {
+    if (this->button_id != other.button_id) {
       return false;
     }
     return true;
@@ -167,23 +169,34 @@ struct ButtonStatus_Response_
   using Type = ButtonStatus_Response_<ContainerAllocator>;
 
   explicit ButtonStatus_Response_(rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
+  : timestamp(_init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->robot_id = 0l;
+      this->button_id = 0l;
       this->success = false;
+      this->x = 0.0f;
+      this->y = 0.0f;
+      this->size = 0.0f;
+      this->is_pressed = false;
     }
   }
 
   explicit ButtonStatus_Response_(const ContainerAllocator & _alloc, rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
+  : timestamp(_alloc, _init)
   {
-    (void)_alloc;
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
       this->robot_id = 0l;
+      this->button_id = 0l;
       this->success = false;
+      this->x = 0.0f;
+      this->y = 0.0f;
+      this->size = 0.0f;
+      this->is_pressed = false;
     }
   }
 
@@ -191,23 +204,26 @@ struct ButtonStatus_Response_
   using _robot_id_type =
     int32_t;
   _robot_id_type robot_id;
+  using _button_id_type =
+    int32_t;
+  _button_id_type button_id;
   using _success_type =
     bool;
   _success_type success;
-  using _xs_type =
-    std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>>;
-  _xs_type xs;
-  using _ys_type =
-    std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>>;
-  _ys_type ys;
-  using _depths_type =
-    std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>>;
-  _depths_type depths;
+  using _x_type =
+    float;
+  _x_type x;
+  using _y_type =
+    float;
+  _y_type y;
+  using _size_type =
+    float;
+  _size_type size;
   using _is_pressed_type =
-    std::vector<bool, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<bool>>;
+    bool;
   _is_pressed_type is_pressed;
   using _timestamp_type =
-    std::vector<builtin_interfaces::msg::Time_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<builtin_interfaces::msg::Time_<ContainerAllocator>>>;
+    builtin_interfaces::msg::Time_<ContainerAllocator>;
   _timestamp_type timestamp;
 
   // setters for named parameter idiom
@@ -217,38 +233,44 @@ struct ButtonStatus_Response_
     this->robot_id = _arg;
     return *this;
   }
+  Type & set__button_id(
+    const int32_t & _arg)
+  {
+    this->button_id = _arg;
+    return *this;
+  }
   Type & set__success(
     const bool & _arg)
   {
     this->success = _arg;
     return *this;
   }
-  Type & set__xs(
-    const std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>> & _arg)
+  Type & set__x(
+    const float & _arg)
   {
-    this->xs = _arg;
+    this->x = _arg;
     return *this;
   }
-  Type & set__ys(
-    const std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>> & _arg)
+  Type & set__y(
+    const float & _arg)
   {
-    this->ys = _arg;
+    this->y = _arg;
     return *this;
   }
-  Type & set__depths(
-    const std::vector<float, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<float>> & _arg)
+  Type & set__size(
+    const float & _arg)
   {
-    this->depths = _arg;
+    this->size = _arg;
     return *this;
   }
   Type & set__is_pressed(
-    const std::vector<bool, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<bool>> & _arg)
+    const bool & _arg)
   {
     this->is_pressed = _arg;
     return *this;
   }
   Type & set__timestamp(
-    const std::vector<builtin_interfaces::msg::Time_<ContainerAllocator>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<builtin_interfaces::msg::Time_<ContainerAllocator>>> & _arg)
+    const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
   {
     this->timestamp = _arg;
     return *this;
@@ -299,16 +321,19 @@ struct ButtonStatus_Response_
     if (this->robot_id != other.robot_id) {
       return false;
     }
+    if (this->button_id != other.button_id) {
+      return false;
+    }
     if (this->success != other.success) {
       return false;
     }
-    if (this->xs != other.xs) {
+    if (this->x != other.x) {
       return false;
     }
-    if (this->ys != other.ys) {
+    if (this->y != other.y) {
       return false;
     }
-    if (this->depths != other.depths) {
+    if (this->size != other.size) {
       return false;
     }
     if (this->is_pressed != other.is_pressed) {
