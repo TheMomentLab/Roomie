@@ -11,9 +11,18 @@ class Pose(IntEnum):
     LEFT = 1
     RIGHT = 2
     FORWARD = 3
-    OBSERVE = 4
-    # 새로운 포즈를 추가하고 싶으면 여기에 한 줄만 추가하면 됩니다.
-    # 예: READY_FOR_BUTTON = 4
+    UP= 4
+    OBSERVE = 5
+
+
+class ButtonActionStatus:
+    MOVING_TO_TARGET = "MOVING_TO_TARGET"
+    PRESSING = "PRESSING"
+    RETRACTING = "RETRACTING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 
 class ControlMode(IntEnum):
     """제어 전략 모드"""
@@ -68,15 +77,16 @@ COMEBACK_DELAY_SEC = 4.0 # 홈 포지션으로 복귀 대기 시간 (초)
 CONTROL_STRATEGY = ControlMode.HYBRID
 
 # --- 하이브리드 제어 설정 ---
-PRE_PRESS_DISTANCE_M = 0.05 # 버튼 앞에서 대기할 거리 (5cm)
+PRE_PRESS_DISTANCE_M = 0.02 # 버튼 앞에서 대기할 거리 (5cm)
 
 # 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
 POSE_ANGLES_DEG = {
-    Pose.INIT: np.array([90, 90, 90, 90]),
+    Pose.INIT: np.array([90, 40, 170, 30]),
     Pose.LEFT: np.array([170, 120, 150, 30]),
     Pose.RIGHT: np.array([0, 130, 170, 30]),
     Pose.FORWARD: np.array([90, 120, 127, 40]),
-    Pose.OBSERVE: np.array([90, 130, 168, 40]),
+    Pose.UP: np.array([90, 130, 127, 40]),
+    Pose.OBSERVE: np.array([90, 120, 168, 40]),
 }
 
 # 기존 홈 포지션 변수도 이 딕셔너리를 활용할 수 있습니다.
