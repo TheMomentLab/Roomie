@@ -7,6 +7,11 @@ from roomie_msgs.action import SetPose
 import tkinter as tk
 from tkinter import ttk
 import threading
+import os
+
+# FastRTPS 버퍼 크기 설정
+os.environ['RMW_FASTRTPS_USE_QOS_FROM_XML'] = '1'
+os.environ['FASTRTPS_DEFAULT_PROFILES_FILE'] = os.path.join(os.path.dirname(__file__), '..', 'fastrtps_profile.xml')
 
 class ArmPoseGUI(Node):
     def __init__(self):
@@ -93,10 +98,14 @@ class ArmPoseGUI(Node):
         try:
             # Goal 생성
             goal_msg = SetPose.Goal()
-            goal_msg.robot_id = 1  # 기본값
+            goal_msg.robot_id = 0  # 기본값
             goal_msg.pose_id = pose_id
             
             self.get_logger().info(f'🔄 pose_id {pose_id} 액션 발행')
+            self.get_logger().info(f'📤 전송 메시지: robot_id={goal_msg.robot_id}, pose_id={goal_msg.pose_id}')
+            self.get_logger().info(f'📤 RAW 메시지: {goal_msg}')
+            self.get_logger().info(f'📤 메시지 타입: {type(goal_msg)}')
+            self.get_logger().info(f'📤 메시지 속성: {dir(goal_msg)}')
             
             # 상태 업데이트
             self.root.after(0, lambda: self.status_label.config(text=f"🔄 pose_id {pose_id} 액션 발행 중..."))
@@ -132,6 +141,8 @@ class ArmPoseGUI(Node):
         """결과 콜백"""
         try:
             result = future.result().result
+            self.get_logger().info(f'📥 수신 결과: robot_id={result.robot_id}, success={result.success}')
+            self.get_logger().info(f'📥 RAW 결과: {result}')
             if result.success:
                 self.get_logger().info('🎉 액션 완료!')
                 self.root.after(0, lambda: self.status_label.config(text="🎉 액션 완료!"))
