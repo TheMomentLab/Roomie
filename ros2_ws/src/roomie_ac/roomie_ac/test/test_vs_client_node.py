@@ -2,7 +2,7 @@
 
 import rclpy
 import asyncio
-from roomie_ac.vision_service_client import VisionServiceClient # roomie_ac 패키지 내 모듈 임포트
+from src.roomie_ac.roomie_ac.vision_client import VisionServiceClient # roomie_ac 패키지 내 모듈 임포트
 from roomie_ac import config # config 임포트
 
 async def test_vision_service_client():
