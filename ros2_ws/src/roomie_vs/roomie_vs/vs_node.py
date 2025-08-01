@@ -1522,8 +1522,6 @@ class VSNode(Node):
         self.last_elevator_direction = 0  # 0: 상행, 1: 하행
         self.last_direction_detection_time = None
         
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         # 🔥 개선된 Direction Light 추적 (개별 위치 기반)
         self.previous_direction_lights = []  # 이전 프레임의 direction light 객체들 (위치+밝기)
         self.direction_light_history = []    # 최근 5프레임의 개수 히스토리
@@ -1550,17 +1548,6 @@ class VSNode(Node):
         
         # 🎯 마지막 감지된 객체들 저장 (L키 강제 학습용)
         self.last_detected_objects = []
-=======
-=======
->>>>>>> Stashed changes
-        # 🔥 개선된 Direction Light 추적 (밝기 기반 + 소실 감지)
-        self.previous_direction_lights = []  # 이전 프레임의 direction light 객체들
-        self.direction_light_history = []    # 최근 5프레임의 개수 히스토리
-        self.brightness_threshold = 200      # 밝기 임계값 (0-255)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         
         # ArUco 마커 ID와 location_id 직접 매핑 (interface 문서 기준)
         self.aruco_to_location = {
@@ -1981,25 +1968,11 @@ class VSNode(Node):
                     response.is_pressed = False
                     response.timestamp = self.get_clock().now().to_msg()
                     
-<<<<<<< Updated upstream
                 elif len(detected_buttons) == 1:
                     # 정확히 1개의 버튼이 감지됨
                     btn = detected_buttons[0]
                     center = btn['center']
                     bbox = btn['bbox']
-=======
-                    # 객체에 OCR 결과 추가 (display 객체만)
-                    enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
-                    
-                    # 객체에 OCR 결과 추가 (display 객체만)
-                    enhanced_objects = self._enhance_objects_with_ocr(current_color, detected_objects)
-                    
-                    # 'button' 클래스 객체들만 필터링
-                    detected_buttons = [obj for obj in enhanced_objects if obj.get('class_name') == 'button']
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     
                     # 좌표를 0~1 범위로 정규화
                     x_norm = float(center[0] / img_width)
@@ -2437,15 +2410,7 @@ class VSNode(Node):
                         if floor_number is not None:
                             detected_floor = floor_number
                             success = True
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                             self.get_logger().debug(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
-=======
-                            self.get_logger().info(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
->>>>>>> Stashed changes
-=======
-                            self.get_logger().info(f"🏢 엘리베이터 층수 인식: '{floor_text}' -> {detected_floor}층 (신뢰도: {display_obj.get('confidence', 0):.2f})")
->>>>>>> Stashed changes
                             break  # 첫 번째 성공한 결과 사용
                         elif ocr_success:
                             self.get_logger().warn(f"층수 파싱 실패: '{floor_text}'")
@@ -2460,8 +2425,6 @@ class VSNode(Node):
             if current_color is not None and 'enhanced_objects' in locals():
                 direction_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'direction_light']
                 if direction_objects:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     # 🚦 방향등 실시간 감지 시도
                     detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
                     
@@ -2489,29 +2452,6 @@ class VSNode(Node):
                 # 이미지나 객체가 없으면 캐시된 방향 사용
                 detected_direction = self.last_elevator_direction
                 self.get_logger().debug(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
-=======
-=======
->>>>>>> Stashed changes
-                    # 🚦 방향등 색상으로 정확한 방향 판단
-                    detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
-                    
-                    # 🎯 방향 캐시 업데이트
-                    self.last_elevator_direction = detected_direction
-                    self.last_direction_detection_time = self.get_clock().now()
-                    
-                    self.get_logger().info(f"방향등 기반 방향 감지: {len(direction_objects)}개 → {'상행' if detected_direction == 0 else '하행'} (캐시 업데이트)")
-                else:
-                    # 방향등이 감지되지 않으면 캐시된 방향 사용
-                    detected_direction = self.last_elevator_direction
-                    self.get_logger().info(f"방향등 미감지 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
-            else:
-                # 이미지나 객체가 없으면 캐시된 방향 사용
-                detected_direction = self.last_elevator_direction
-                self.get_logger().info(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             
             # 응답 설정
             response.robot_id = request.robot_id
@@ -2565,23 +2505,6 @@ class VSNode(Node):
                         enhanced_obj['ocr_confidence'] = confidence  # 신뢰도 추가
                         enhanced_obj['digit_bbox'] = digit_bbox  # 🎯 숫자 영역 바운딩박스 추가
                         
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-                        # 성공 로그
-                        if floor_number is not None:
-                            self.get_logger().info(f"✅ 디스플레이 OCR 성공: '{floor_text}' -> {floor_number}층 (신뢰도: {confidence:.3f})")
-                        elif floor_text and floor_text != "?":
-                            self.get_logger().warn(f"❌ 층수 파싱 실패: '{floor_text}' (신뢰도: {confidence:.3f})")
-                        else:
-                            self.get_logger().debug(f"❌ OCR 인식 실패 (신뢰도: {confidence:.3f})")
-                        
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 except Exception as e:
                     self.get_logger().error(f"DisplayOCR 에러: {e}")
                     enhanced_obj['ocr_text'] = ""
@@ -2872,79 +2795,12 @@ class VSNode(Node):
                     # 🎯 디스플레이 바운딩박스를 두껍게 표시 (YOLO가 감지한 전체 디스플레이 영역)
                     cv2.rectangle(image, (x1, y1), (x2, y2), (0, 165, 255), 3)  # 주황색으로 더 두껍게
                     
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-                    # 📍 ROI 영역 표시 (좌우 중앙 30% 영역)
-                    display_width = x2 - x1
-                    display_height = y2 - y1
-                    roi_width = int(display_width * 0.3)
-                    center_x = (x1 + x2) // 2
-                    
-                    roi_x1 = center_x - roi_width // 2
-                    roi_x2 = center_x + roi_width // 2 
-                    roi_y1 = y1  # 상단 그대로
-                    roi_y2 = y2  # 하단 그대로
-                    
-                    # ROI 영역을 녹색 점선으로 표시
-                    cv2.rectangle(image, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 255, 0), 2)  # 녹색 실선
-                    
-                    # ROI 영역에 반투명 녹색 오버레이
-                    overlay = image.copy()
-                    cv2.rectangle(overlay, (roi_x1, roi_y1), (roi_x2, roi_y2), (0, 255, 0), -1)
-                    cv2.addWeighted(overlay, 0.1, image, 0.9, 0, image)
-                    
-                    # ROI 영역 위에 "OCR ROI (30%)" 표시  
-                    cv2.putText(image, "OCR ROI (30%)", (roi_x1, roi_y1-10), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-                    
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     # 🎯 OCR이 실제로 인식한 숫자 영역 표시 (digit_bbox)
                     if digit_bbox and len(digit_bbox) == 4:
                         dx1, dy1, dx2, dy2 = digit_bbox
                         
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                         # 🔥 숫자 영역 표시 (단순화)
                         cv2.rectangle(image, (dx1, dy1), (dx2, dy2), (0, 0, 255), 2)  # 빨간 박스
-=======
-=======
->>>>>>> Stashed changes
-                        # 🔥 숫자 영역을 매우 명확하게 표시
-                        cv2.rectangle(image, (dx1-2, dy1-2), (dx2+2, dy2+2), (0, 0, 255), 4)  # 매우 두꺼운 빨간 박스
-                        
-                        # 숫자 영역에 십자선 표시 (정확한 위치 파악용)
-                        cv2.line(image, (dx1, (dy1+dy2)//2), (dx2, (dy1+dy2)//2), (0, 0, 255), 2)  # 가로선
-                        cv2.line(image, ((dx1+dx2)//2, dy1), ((dx1+dx2)//2, dy2), (0, 0, 255), 2)  # 세로선
-                        
-                        # 숫자 영역 크기 정보 표시
-                        digit_width = dx2 - dx1
-                        digit_height = dy2 - dy1
-                        cv2.putText(image, f"DIGIT: {digit_width}x{digit_height}", (dx1, dy1-15), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-                        
-                        # 🎯 숫자 영역 내부에 강한 반투명 오버레이
-                        overlay = image.copy()
-                        cv2.rectangle(overlay, (dx1, dy1), (dx2, dy2), (0, 0, 255), -1)
-                        cv2.addWeighted(overlay, 0.3, image, 0.7, 0, image)
-                        
-                        # 인식된 텍스트를 숫자 영역 바로 아래 표시
-                        if floor_text and floor_text != "?":
-                            cv2.putText(image, f"READ: '{floor_text}'", (dx1, dy2+20), 
-                                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                    else:
-                        # digit_bbox가 없는 경우 - OCR 실패 표시
-                        cv2.putText(image, "NO DIGIT DETECTED", (x1, y2+20), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     
                     # 디스플레이 라벨 (간단하게)
                     if floor_text and floor_text != "?":
@@ -2981,26 +2837,10 @@ class VSNode(Node):
                     else:
                         color_indicator = "OFF"
                     
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
                     # 최종 라벨 생성 (단순화)
                     label = f"{position_text}"  # "UP" 또는 "DOWN"만 표시
                     
                     # 방향등 오버레이 제거됨 (깔끔한 표시를 위해)
-=======
-=======
->>>>>>> Stashed changes
-                    # 최종 라벨 생성
-                    label = f"{position_text} LIGHT {color_indicator}"
-                    
-                    # 밝기 정보도 추가 표시
-                    brightness_text = f"({light_brightness:.0f})"
-                    cv2.putText(image, brightness_text, (x1, y2+15), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.3, position_color, 1)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                     
                     # 위치에 따른 색상 설정
                     color = position_color
@@ -3010,33 +2850,15 @@ class VSNode(Node):
                 cv2.putText(image, label, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 
-<<<<<<< Updated upstream
                 # 모델 이름 표시 제거됨 (오버레이 정리)
                 
                 # 거리 정보 표시 제거됨 (오버레이 정리)
-=======
-                # 모델 이름 표시 (작게)
-                model_text = f"[{model_name}]"
-                cv2.putText(image, model_text, (x1, y1-25), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
-                
-                # 거리 정보 표시
-                if depth_mm > 0:
-                    distance_text = f"{depth_mm}mm"
-                    cv2.putText(image, distance_text, (center[0]-20, center[1]+20), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 0), 1)
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
                 
                 # 버튼 눌림 상태 표시
                 if class_name == 'button' and is_pressed:
                     pressed_text = "PRESSED"
                     cv2.putText(image, pressed_text, (center[0]-30, center[1]+35), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         
         # 🎯 기억된 방향등 위치에 라벨 표시
         if (self.remembered_direction_positions['upper'] and 
@@ -3053,10 +2875,6 @@ class VSNode(Node):
             cv2.circle(image, (lower_pos[0], lower_pos[1]), 30, (0, 0, 255), 2)
             cv2.putText(image, "DOWN", (lower_pos[0] - 25, lower_pos[1] + 5), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         
         return image
 
@@ -3129,8 +2947,6 @@ class VSNode(Node):
         # 탐지된 객체 수
         cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         
         # 🔥 방향등 기억된 위치 정보 표시
         if (self.remembered_direction_positions['upper'] and self.remembered_direction_positions['lower']):
@@ -3183,10 +2999,6 @@ class VSNode(Node):
         direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
         cv2.putText(image, f"Elevator Direction: {direction_text}", (10, 170), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
         
         # 탐지된 객체 분류 표시
         if objects:
@@ -3252,38 +3064,20 @@ class VSNode(Node):
             direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
             direction_color = (0, 255, 0) if self.last_elevator_direction == 0 else (0, 0, 255)  # UP: 초록, DOWN: 빨강
             
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             # 🔥 깜빡임 감지 표시 추가
             if self.last_blink_detected:
                 direction_text += " ✦"  # 깜빡임 감지 시 별표 추가
                 direction_color = (0, 255, 255)  # 노란색으로 변경
             
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             # 방향 텍스트 크기 계산
             dir_text_size = cv2.getTextSize(direction_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
             dir_text_x = image.shape[1] - dir_text_size[0] - 15  # 오른쪽 정렬
             dir_text_y = text_y + 45  # 층수 아래
             
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             # 방향 배경 박스 (깜빡임 감지 시 더 두껍게)
             box_thickness = 4 if self.last_blink_detected else 2
             cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
             cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, box_thickness)
-=======
-            # 방향 배경 박스
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, 2)
->>>>>>> Stashed changes
-=======
-            # 방향 배경 박스
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, 2)
->>>>>>> Stashed changes
             
             # 방향 텍스트
             cv2.putText(image, direction_text, (dir_text_x, dir_text_y), 
@@ -3297,15 +3091,7 @@ class VSNode(Node):
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
         
         # 종료 안내
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
         cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco, D:Reset, L:Remember (Blink Detection ON)", (10, image.shape[0]-10), 
-=======
-        cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-10), 
->>>>>>> Stashed changes
-=======
-        cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco Test", (10, image.shape[0]-10), 
->>>>>>> Stashed changes
                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, (200, 200, 200), 1)
 
     def _on_gpu_memory_exceeded(self, used_memory: int, limit_memory: int, violation_count: int):
@@ -3384,8 +3170,6 @@ class VSNode(Node):
         if hasattr(self, 'camera_manager'):
             self.camera_manager.cleanup_all_cameras()
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def _update_remembered_positions(self, direction_objects: List[dict]) -> bool:
         """방향등 2개가 감지되면 위치를 기억해둠 (간헐적 감지 대비)"""
         try:
@@ -3638,54 +3422,6 @@ class VSNode(Node):
             
         except Exception as e:
             self.get_logger().error(f"Direction light 감지 에러: {e}")
-=======
-=======
->>>>>>> Stashed changes
-    def _detect_direction_by_lights(self, image: np.ndarray, direction_objects: List[dict]) -> int:
-        """🔥 밝기 기반 + 소실 감지 방향 판단 (개선된 버전)"""
-        try:
-            current_count = len(direction_objects)
-            
-            # 히스토리 관리 (최근 5프레임)
-            self.direction_light_history.append(current_count)
-            if len(self.direction_light_history) > 5:
-                self.direction_light_history.pop(0)
-            
-            self.get_logger().info(f"🔍 Direction Light: 현재 {current_count}개, 히스토리: {self.direction_light_history}")
-            
-            # 1단계: 소실 감지 방식 (가장 신뢰할 수 있는 방법)
-            if len(self.previous_direction_lights) > 0 and current_count < len(self.previous_direction_lights):
-                direction = self._detect_by_disappearance(image, direction_objects)
-                if direction != -1:  # 유효한 방향 감지
-                    self.previous_direction_lights = direction_objects.copy()
-                    return direction
-            
-            # 2단계: 밝기 기반 감지 (너무 밝은 것 = 켜진 것)
-            if current_count >= 2:
-                direction = self._detect_by_brightness_advanced(image, direction_objects)
-                if direction != -1:
-                    self.previous_direction_lights = direction_objects.copy()
-                    return direction
-            
-            # 3단계: 개수 변화 패턴 분석
-            if len(self.direction_light_history) >= 3:
-                direction = self._detect_by_count_pattern()
-                if direction != -1:
-                    self.previous_direction_lights = direction_objects.copy()
-                    return direction
-            
-            # 4단계: 기존 방향 유지
-            self.get_logger().warn("⚠️ 모든 감지 방법 실패, 기존 방향 유지")
-            self.previous_direction_lights = direction_objects.copy()
-            return self.last_elevator_direction
-            
-        except Exception as e:
-            self.get_logger().error(f"Direction light 감지 에러: {e}")
-            self.previous_direction_lights = direction_objects.copy()
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             return self.last_elevator_direction
 
     def _analyze_light_color(self, image: np.ndarray, light_obj: dict) -> str:
@@ -3830,8 +3566,6 @@ class VSNode(Node):
             self.get_logger().error(f"소실 감지 에러: {e}")
             return -1
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def _match_lights_by_position(self, prev_lights: List[dict], curr_lights: List[dict]) -> List[tuple]:
         """🔍 이전 프레임과 현재 프레임의 방향등을 위치 기반으로 매칭"""
         try:
@@ -3897,33 +3631,6 @@ class VSNode(Node):
             # 매우 밝은 영역은 켜진 것으로 판단
             upper_too_bright = upper_max_brightness > self.brightness_threshold
             lower_too_bright = lower_max_brightness > self.brightness_threshold
-=======
-=======
->>>>>>> Stashed changes
-    def _detect_by_brightness_advanced(self, image: np.ndarray, direction_objects: List[dict]) -> int:
-        """밝기 기반 감지: 너무 밝은 것은 감지 불가 = 켜진 것"""
-        try:
-            if len(direction_objects) < 2:
-                return -1
-            
-            # Y 좌표로 정렬 (위쪽, 아래쪽)
-            sorted_lights = sorted(direction_objects, key=lambda x: x['center'][1])
-            upper_light = sorted_lights[0]
-            lower_light = sorted_lights[-1]
-            
-            # 각 방향등 영역의 평균 밝기 계산
-            upper_brightness = self._get_light_brightness_advanced(image, upper_light)
-            lower_brightness = self._get_light_brightness_advanced(image, lower_light)
-            
-            self.get_logger().info(f"💡 방향등 밝기: 위쪽={upper_brightness:.1f}, 아래쪽={lower_brightness:.1f} (임계값: {self.brightness_threshold})")
-            
-            # 매우 밝은 영역은 켜진 것으로 판단
-            upper_too_bright = upper_brightness > self.brightness_threshold
-            lower_too_bright = lower_brightness > self.brightness_threshold
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             
             if upper_too_bright and not lower_too_bright:
                 self.get_logger().info("🔥 위쪽 방향등이 매우 밝음 → 상행")
@@ -3931,35 +3638,11 @@ class VSNode(Node):
             elif lower_too_bright and not upper_too_bright:
                 self.get_logger().info("🔥 아래쪽 방향등이 매우 밝음 → 하행")
                 return 1  # 하행
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> Stashed changes
-            elif upper_too_bright and lower_too_bright:
-                self.get_logger().warn("⚠️ 두 방향등 모두 너무 밝음, 밝기 차이로 판단")
-                # 더 밝은 쪽이 켜진 것
-                if upper_brightness > lower_brightness * 1.1:
-                    return 0  # 상행
-                elif lower_brightness > upper_brightness * 1.1:
-                    return 1  # 하행
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
             
             return -1
             
         except Exception as e:
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
             self.get_logger().error(f"절대 밝기 감지 에러: {e}")
-=======
-            self.get_logger().error(f"밝기 감지 에러: {e}")
->>>>>>> Stashed changes
-=======
-            self.get_logger().error(f"밝기 감지 에러: {e}")
->>>>>>> Stashed changes
             return -1
 
     def _detect_by_count_pattern(self) -> int:
@@ -4011,8 +3694,6 @@ class VSNode(Node):
             self.get_logger().error(f"밝기 계산 에러: {e}")
             return 0.0
 
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
     def _get_lights_with_brightness(self, image: np.ndarray, direction_objects: List[dict]) -> List[dict]:
         """🔥 각 방향등의 위치와 밝기 정보 추출"""
         try:
@@ -4098,10 +3779,6 @@ class VSNode(Node):
             self.get_logger().error(f"위치별 밝기 변화 감지 에러: {e}")
             return -1
 
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 
 def main(args=None):
     rclpy.init(args=args)
