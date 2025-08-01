@@ -50,7 +50,7 @@ class ActionHandler:
         
         # Future가 완료되면(목표 수락/거부 응답이 오면) goal_response_callback을 실행하도록 등록
         # task_id를 콜백에서 사용할 수 있도록 lambda로 래핑
-        send_goal_future.add_done_callback(lambda future: self.goal_response_callback(future, task_id))
+        send_goal_future.add_done_callback(lambda future: self.node.get_loop().call_soon_threadsafe(self.goal_response_callback, future, task_id))
         
         logger.info(
             "PerformTask 목표 전송을 요청했습니다.",

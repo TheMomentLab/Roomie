@@ -166,13 +166,15 @@ class Settings(BaseSettings):
     LOG_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MB
     LOG_BACKUP_COUNT: int = 5
 
-    # DB 경로 설정
-    DB_SCHEMA_PATH: str = "resource/sql/roomie_db_tables.sql"
-    DB_DATA_PATH: str = "resource/sql/roomie_db_data.sql"
-
     # 정적 파일 경로
     PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
-    STATIC_DIR: Path = PROJECT_ROOT / "static"
+
+    # DB 경로 설정
+    DB_SCHEMA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_tables.sql"
+    DB_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_data.sql"
+
+    # 정적 파일 경로
+    STATIC_DIR: Path = PROJECT_ROOT / "resources"
     
     # 클래스로 분리된 설정들을 포함
     api: ApiEndpoints = ApiEndpoints()

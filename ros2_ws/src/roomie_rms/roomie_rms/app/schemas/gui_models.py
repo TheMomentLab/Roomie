@@ -149,6 +149,7 @@ class TaskInDB(BaseModel):
     destination: str
     robot_id: int | None
     task_creation_time: datetime
+    task_completion_time: datetime | None
     task_cancellation_time: datetime | None
     
     @field_serializer('task_creation_time')
