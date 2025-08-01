@@ -36,10 +36,10 @@ class SerialManager:
             return None
 
     def send_command(self, angles_deg):
-        if not self.is_ready:
-            print("🚫 시리얼 포트가 준비되지 않았습니다. connect()를 먼저 호출하세요.")
+        if not self.ser or not self.ser.is_open:
+            print("🚫 시리얼 포트가 열려있지 않습니다.")
             return None
-         
+
         cmd = f"<M:{','.join(map(str, angles_deg))}>"
         if config.DEBUG: print(f"  [SERIAL TX] -> {cmd}")
 
