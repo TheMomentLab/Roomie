@@ -1,0 +1,499 @@
+#!/usr/bin/env python3
+"""
+OCR 모델 테스트 도구 (웹캠 전용)
+vs_node와 동일한 구조로 웹캠에서 ROI를 추출하여 다양한 OCR 모델을 테스트하는 스크립트
+"""
+
+import cv2
+import numpy as np
+import time
+import os
+import sys
+import logging
+from typing import Optional, Tuple, List, Dict
+
+# display_ocr.py 직접 import
+script_dir = os.path.dirname(os.path.abspath(__file__))
+roomie_vs_dir = os.path.join(script_dir, "..", "roomie_vs")
+display_ocr_path = os.path.join(roomie_vs_dir, "display_ocr.py")
+
+import importlib.util
+spec = importlib.util.spec_from_file_location("display_ocr", display_ocr_path)
+display_ocr_module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(display_ocr_module)
+
+MultiModelOCR = display_ocr_module.MultiModelOCR
+
+
+class Logger:
+    """간단한 로거 클래스"""
+    def __init__(self, name="OCRTestTool"):
+        self.name = name
+        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        self.logger = logging.getLogger(name)
+    
+    def info(self, msg):
+        self.logger.info(msg)
+        print(f"[INFO] {msg}")
+    
+    def warning(self, msg):
+        self.logger.warning(msg)
+        print(f"[WARN] {msg}")
+    
+    def error(self, msg):
+        self.logger.error(msg)
+        print(f"[ERROR] {msg}")
+    
+    def debug(self, msg):
+        self.logger.debug(msg)
+
+
+class WebcamManager:
+    """웹캠 관리 클래스 (vs_node의 WebCamCamera 기반)"""
+    
+    def __init__(self, logger, camera_id=0):
+        self.logger = logger
+        self.camera_id = camera_id
+        self.cap = None
+        self.is_running = False
+        
+        # vs_node와 동일한 설정
+        self.camera_ids_to_try = [0, 1, 2, 3]
+        
+    def initialize(self) -> bool:
+        """웹캠 초기화 (vs_node의 WebCamCamera 방식)"""
+        try:
+            self.logger.info(f"웹캠 초기화 시작...")
+            
+            # 사용 가능한 카메라 스캔
+            available_cameras = self._scan_available_cameras()
+            
+            if not available_cameras:
+                self.logger.error("사용 가능한 웹캠을 찾을 수 없습니다")
+                return False
+            
+            # 첫 번째 사용 가능한 카메라 선택
+            selected_camera = available_cameras[0]
+            camera_id = selected_camera['id']
+            
+            # 카메라 열기
+            self.cap = cv2.VideoCapture(camera_id)
+            if not self.cap.isOpened():
+                self.logger.error(f"웹캠을 열 수 없습니다 (ID: {camera_id})")
+                return False
+            
+            # vs_node와 동일한 해상도 설정
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+            self.cap.set(cv2.CAP_PROP_FPS, 30)
+            
+            self.camera_id = camera_id
+            self.is_running = True
+            
+            self.logger.info(f"✅ 웹캠 초기화 완료 (ID: {camera_id}, 이름: {selected_camera['name']})")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"웹캠 초기화 실패: {e}")
+            return False
+    
+    def _scan_available_cameras(self) -> List[dict]:
+        """사용 가능한 카메라 스캔 (vs_node 방식)"""
+        available_cameras = []
+        
+        for camera_id in self.camera_ids_to_try:
+            try:
+                cap = cv2.VideoCapture(camera_id)
+                if cap.isOpened():
+                    # 테스트 프레임 읽기
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        device_name = self._get_camera_device_name(camera_id)
+                        available_cameras.append({
+                            'id': camera_id,
+                            'name': device_name,
+                            'backend': cap.getBackendName()
+                        })
+                        self.logger.info(f"  카메라 발견: ID={camera_id}, 이름={device_name}")
+                    cap.release()
+                
+            except Exception as e:
+                self.logger.debug(f"카메라 ID {camera_id} 테스트 실패: {e}")
+        
+        return available_cameras
+    
+    def _get_camera_device_name(self, camera_id: int) -> str:
+        """카메라 디바이스 이름 획득"""
+        try:
+            # /dev/video* 장치 정보 확인
+            video_device_path = f"/dev/video{camera_id}"
+            if os.path.exists(video_device_path):
+                return f"Video{camera_id}"
+            else:
+                return f"Camera{camera_id}"
+        except:
+            return f"Unknown Camera {camera_id}"
+    
+    def get_frame(self) -> Optional[np.ndarray]:
+        """프레임 획득"""
+        try:
+            if not self.is_running or not self.cap:
+                return None
+            
+            ret, frame = self.cap.read()
+            if not ret or frame is None:
+                return None
+            
+            return frame
+            
+        except Exception as e:
+            self.logger.error(f"프레임 획득 실패: {e}")
+            return None
+    
+    def cleanup(self):
+        """리소스 정리"""
+        try:
+            self.is_running = False
+            if self.cap:
+                self.cap.release()
+            self.logger.info("웹캠 리소스 정리 완료")
+        except Exception as e:
+            self.logger.error(f"웹캠 정리 실패: {e}")
+
+
+class SimpleYOLODetector:
+    """간단한 YOLO 탐지기 (Elevator 모델 사용)"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        self.model = None
+        self.model_classes = ['button', 'direction_light', 'display', 'door']
+        self._initialize_model()
+    
+    def _initialize_model(self):
+        """YOLO 모델 초기화"""
+        try:
+            from ultralytics import YOLO
+            
+            # elevator 모델 찾기
+            elevator_model_path = self._find_elevator_model()
+            
+            if elevator_model_path:
+                self.model = YOLO(elevator_model_path)
+                # GPU 사용 가능하면 GPU로
+                try:
+                    self.model.to('cuda')
+                    self.logger.info(f"✅ Elevator YOLO 모델 로딩 성공 (GPU): {elevator_model_path}")
+                except:
+                    self.logger.info(f"✅ Elevator YOLO 모델 로딩 성공 (CPU): {elevator_model_path}")
+            else:
+                self.logger.warning("⚠️ Elevator 모델을 찾을 수 없습니다")
+                return False
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"YOLO 모델 초기화 실패: {e}")
+            return False
+    
+    def _find_elevator_model(self):
+        """Elevator 모델 파일 찾기"""
+        possible_paths = [
+            "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_vs/training/elevator/best.pt",
+            "training/elevator/best.pt",
+            "../training/elevator/best.pt",
+            "../../training/elevator/best.pt"
+        ]
+        
+        for path in possible_paths:
+            if os.path.exists(path):
+                self.logger.info(f"모델 발견: {path}")
+                return path
+        
+        return None
+    
+    def detect_display_objects(self, image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
+        """Display 객체 감지"""
+        try:
+            if self.model is None:
+                return []
+            
+            results = self.model(image, conf=conf_threshold, verbose=False)
+            
+            objects = []
+            for result in results:
+                boxes = result.boxes
+                if boxes is not None:
+                    for box in boxes:
+                        # 클래스 정보
+                        cls_id = int(box.cls.cpu().numpy())
+                        if cls_id < len(self.model_classes):
+                            class_name = self.model_classes[cls_id]
+                        else:
+                            class_name = f"class_{cls_id}"
+                        
+                        # display 객체만 필터링
+                        if class_name == 'display':
+                            # 바운딩박스 좌표
+                            x1, y1, x2, y2 = box.xyxy[0].cpu().numpy()
+                            
+                            objects.append({
+                                'class_name': class_name,
+                                'bbox': (int(x1), int(y1), int(x2-x1), int(y2-y1)),  # x, y, w, h 형식
+                                'confidence': float(box.conf.cpu().numpy()),
+                                'model_name': 'elevator'
+                            })
+            
+            return objects
+            
+        except Exception as e:
+            self.logger.error(f"객체 감지 실패: {e}")
+            return []
+
+
+class OCRTestTool:
+    """OCR 테스트 도구 메인 클래스 (웹캠 전용)"""
+    
+    def __init__(self):
+        self.logger = Logger("OCRTestTool")
+        self.webcam = None
+        self.yolo_detector = None
+        self.multi_ocr = None
+        self.is_running = False
+        
+        # 설정
+        self.confidence_threshold = 0.5
+        self.test_mode = 'auto'  # 'auto' 또는 'manual'
+        
+        # 상태
+        self.last_test_time = 0
+        self.test_interval = 2.0  # 2초마다 자동 테스트
+        
+    def initialize(self) -> bool:
+        """시스템 초기화"""
+        try:
+            self.logger.info("🚀 OCR 테스트 도구 초기화 시작...")
+            
+            # 1. 웹캠 초기화
+            self.webcam = WebcamManager(self.logger)
+            if not self.webcam.initialize():
+                self.logger.error("웹캠 초기화 실패")
+                return False
+            
+            # 2. YOLO 탐지기 초기화
+            self.yolo_detector = SimpleYOLODetector(self.logger)
+            
+            # 3. 멀티 OCR 초기화
+            self.multi_ocr = MultiModelOCR(self.logger)
+            
+            # 사용 가능한 모델 확인
+            available_models = self.multi_ocr.get_available_models()
+            self.logger.info(f"🎯 사용 가능한 OCR 모델: {available_models}")
+            
+            model_status = self.multi_ocr.get_model_status()
+            for name, status in model_status.items():
+                self.logger.info(f"   - {name}: {status['type']} ({'GPU' if status['gpu_mode'] else 'CPU'})")
+            
+            self.is_running = True
+            self.logger.info("✅ OCR 테스트 도구 초기화 완료!")
+            
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"시스템 초기화 실패: {e}")
+            return False
+    
+    def run(self):
+        """메인 실행 루프"""
+        try:
+            self.logger.info("🎯 OCR 테스트 도구 실행 시작")
+            self.logger.info("=" * 60)
+            self.logger.info("키보드 컨트롤:")
+            self.logger.info("  SPACE: 수동 OCR 테스트")
+            self.logger.info("  'a': 자동 모드 ON/OFF")
+            self.logger.info("  '+': 신뢰도 증가")
+            self.logger.info("  '-': 신뢰도 감소")
+            self.logger.info("  'q': 종료")
+            self.logger.info("=" * 60)
+            
+            while self.is_running:
+                # 웹캠 프레임 획득
+                color_image = self.webcam.get_frame()
+                
+                if color_image is None:
+                    continue
+                
+                # Display 객체 감지
+                display_objects = self.yolo_detector.detect_display_objects(
+                    color_image, self.confidence_threshold
+                )
+                
+                # 시각화
+                display_image = self._draw_visualizations(color_image, display_objects)
+                
+                # 자동 모드에서 OCR 테스트
+                current_time = time.time()
+                if (self.test_mode == 'auto' and 
+                    display_objects and 
+                    current_time - self.last_test_time > self.test_interval):
+                    
+                    self._run_ocr_tests(color_image, display_objects)
+                    self.last_test_time = current_time
+                
+                # 화면 출력
+                cv2.imshow('OCR Test Tool (Webcam)', display_image)
+                
+                # 키보드 입력 처리
+                key = cv2.waitKey(1) & 0xFF
+                if not self._handle_keyboard(key, color_image, display_objects):
+                    break
+            
+        except KeyboardInterrupt:
+            self.logger.info("사용자에 의해 중단됨")
+        except Exception as e:
+            self.logger.error(f"실행 중 오류: {e}")
+        finally:
+            self.cleanup()
+    
+    def _draw_visualizations(self, image: np.ndarray, display_objects: List[dict]) -> np.ndarray:
+        """시각화 그리기"""
+        display_image = image.copy()
+        
+        # Display 객체 그리기
+        for obj in display_objects:
+            x, y, w, h = obj['bbox']
+            confidence = obj['confidence']
+            
+            # 바운딩박스
+            cv2.rectangle(display_image, (x, y), (x + w, y + h), (0, 255, 255), 2)
+            
+            # 라벨
+            label = f"DISPLAY {confidence:.2f}"
+            cv2.putText(display_image, label, (x, y - 10), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 255), 2)
+        
+        # 상태 정보 표시
+        info_y = 30
+        cv2.putText(display_image, f"Confidence: {self.confidence_threshold:.2f}", 
+                   (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        info_y += 25
+        mode_text = "AUTO" if self.test_mode == 'auto' else "MANUAL"
+        cv2.putText(display_image, f"Mode: {mode_text}", 
+                   (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        info_y += 25
+        cv2.putText(display_image, f"Display Objects: {len(display_objects)}", 
+                   (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+        
+        # 사용 가능한 OCR 모델 표시
+        available_models = self.multi_ocr.get_available_models()
+        info_y += 25
+        cv2.putText(display_image, f"OCR Models: {', '.join(available_models)}", 
+                   (10, info_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
+        
+        return display_image
+    
+    def _handle_keyboard(self, key: int, color_image: np.ndarray, display_objects: List[dict]) -> bool:
+        """키보드 입력 처리"""
+        if key == ord('q'):
+            self.logger.info("종료 요청")
+            return False
+        
+        elif key == ord(' '):  # SPACE
+            if display_objects:
+                self.logger.info("🎯 수동 OCR 테스트 시작...")
+                self._run_ocr_tests(color_image, display_objects)
+            else:
+                self.logger.warning("Display 객체가 감지되지 않았습니다")
+        
+        elif key == ord('a'):
+            self.test_mode = 'manual' if self.test_mode == 'auto' else 'auto'
+            self.logger.info(f"테스트 모드 변경: {self.test_mode}")
+        
+        elif key == ord('+') or key == ord('='):
+            self.confidence_threshold = min(0.95, self.confidence_threshold + 0.05)
+            self.logger.info(f"신뢰도 임계값: {self.confidence_threshold:.2f}")
+        
+        elif key == ord('-'):
+            self.confidence_threshold = max(0.1, self.confidence_threshold - 0.05)
+            self.logger.info(f"신뢰도 임계값: {self.confidence_threshold:.2f}")
+        
+        return True
+    
+    def _run_ocr_tests(self, color_image: np.ndarray, display_objects: List[dict]):
+        """OCR 테스트 실행"""
+        try:
+            self.logger.info("🔥 OCR 모델 테스트 시작...")
+            
+            for idx, obj in enumerate(display_objects):
+                self.logger.info(f"📱 Display 객체 {idx + 1}/{len(display_objects)} 테스트 중...")
+                
+                bbox = obj['bbox']
+                
+                # 모든 모델로 테스트
+                results = self.multi_ocr.test_all_models_on_roi(color_image, bbox)
+                
+                # 결과 출력
+                self.logger.info("🏆 테스트 결과 (신뢰도 순):")
+                sorted_results = sorted(results.items(), 
+                                      key=lambda x: x[1].get('confidence', 0), 
+                                      reverse=True)
+                
+                for model_name, result in sorted_results:
+                    text = result.get('text', '?')
+                    confidence = result.get('confidence', 0)
+                    processing_time = result.get('processing_time', 0)
+                    gpu_mode = result.get('gpu_mode', False)
+                    
+                    gpu_text = "🚀GPU" if gpu_mode else "💻CPU"
+                    self.logger.info(f"  {model_name:12}: '{text:4}' "
+                                   f"(신뢰도: {confidence:.3f}, "
+                                   f"시간: {processing_time:.3f}s, {gpu_text})")
+                
+                # 최고 성능 모델 강조
+                if sorted_results:
+                    winner = sorted_results[0]
+                    self.logger.info(f"🥇 최고 성능: {winner[0]} - '{winner[1].get('text', '?')}'")
+                
+                self.logger.info("-" * 50)
+        
+        except Exception as e:
+            self.logger.error(f"OCR 테스트 실행 실패: {e}")
+    
+    def cleanup(self):
+        """리소스 정리"""
+        try:
+            self.is_running = False
+            
+            if self.webcam:
+                self.webcam.cleanup()
+            
+            cv2.destroyAllWindows()
+            
+            self.logger.info("✅ 시스템 정리 완료")
+            
+        except Exception as e:
+            self.logger.error(f"정리 중 오류: {e}")
+
+
+def main():
+    """메인 함수"""
+    print("🚀 OCR 테스트 도구 시작... (웹캠 전용)")
+    
+    # 도구 초기화
+    tool = OCRTestTool()
+    
+    if not tool.initialize():
+        print("❌ 초기화 실패")
+        return -1
+    
+    # 실행
+    tool.run()
+    
+    print("👋 OCR 테스트 도구 종료")
+    return 0
+
+
+if __name__ == "__main__":
+    exit(main()) 

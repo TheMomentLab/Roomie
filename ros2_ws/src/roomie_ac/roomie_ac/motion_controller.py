@@ -11,7 +11,7 @@ class MotionController:
     IK 계산, 시리얼 통신 등의 저수준 제어를 추상화하여,
     ac_node.py(지휘자)가 이해하기 쉬운 고수준의 동작 함수를 제공합니다.
     """
-    def __init__(self, kin_solver: KinematicsSolver, serial_manager: SerialManager, joint_publisher: ROSJointPublisher)
+    def __init__(self, kin_solver: KinematicsSolver, serial_manager: SerialManager, joint_publisher: ROSJointPublisher):
         """
         움직임 제어에 필요한 도구들(kin_solver, serial_manager)을 전달받습니다.
         """
@@ -121,19 +121,19 @@ class MotionController:
         return self.kin_solver.chain.forward_kinematics(full_joints)
     
     def _convert_rad_to_servo_deg(self, angles_rad: np.ndarray) -> np.ndarray:
-        """
-        [Private] IK 결과(라디안)를 실제 서보 각도(0-180)로 변환합니다.
-        """
         angles_deg_ik = np.rad2deg(angles_rad)
         servo_angles = config.SERVO_ZERO_OFFSET_DEG + angles_deg_ik * config.SERVO_DIRECTION_MULTIPLIER
+        # [추가] 디버그 로그
+        self._log(f"각도 변환 (Rad->Deg): {np.round(angles_rad, 2)} -> {np.round(servo_angles).astype(int)}")
         return np.round(servo_angles).astype(int)
 
+
     def _convert_servo_deg_to_rad(self, angles_deg: np.ndarray) -> np.ndarray:
-        """
-        [Private] 서보 각도(0-180)를 IK 계산에 필요한 라디안으로 변환합니다.
-        """
         angles_deg_ik = (angles_deg - config.SERVO_ZERO_OFFSET_DEG) * config.SERVO_DIRECTION_MULTIPLIER
-        return np.deg2rad(angles_deg_ik)
+        rad_angles = np.deg2rad(angles_deg_ik)
+        # [추가] 디버그 로그
+        self._log(f"각도 변환 (Deg->Rad): {angles_deg} -> {np.round(rad_angles, 2)}")
+        return rad_angles
 
     def _log(self, message: str, error: bool = False):
         """

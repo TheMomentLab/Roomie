@@ -1,7 +1,5 @@
 
 폴더 구조
-
-
 '''
 roomie_ac/
 ├── package.xml

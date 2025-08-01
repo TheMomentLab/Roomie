@@ -164,7 +164,7 @@ void Controller::updateStatusLED() {
   // LED 로직
   switch (currentRobotState) {
     case INITIAL:
-      setRGB(255, 255, 255);
+      setRGB(0, 255, 255);
       digitalWrite(STATUS_LED_PIN, HIGH);
       break;
     case ERROR:
@@ -177,7 +177,7 @@ void Controller::updateStatusLED() {
       break;
     case WAITING: case PICKUP_WAITING: case DELIVERY_WAITING: 
     case GUIDE_WAITING: case DESTINATION_SEARCHING:
-      setRGB(0, 255, 255);
+      setRGB(255, 255, 0);
       digitalWrite(STATUS_LED_PIN, HIGH);
       break;
     case PICKUP_MOVING: case DELIVERY_MOVING: case CALL_MOVING: 
@@ -186,7 +186,7 @@ void Controller::updateStatusLED() {
       digitalWrite(STATUS_LED_PIN, HIGH);
       break;
     default:
-      setRGB(255, 255, 0);
+      setRGB(255, 255, 255);
       digitalWrite(STATUS_LED_PIN, HIGH);
       break;
   }

@@ -26,6 +26,11 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# ROS 2 workspace build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
 # PyInstaller
 #  Usually these files are written by a python script from a template
 #  before PyInstaller builds the exe, so as to inject date/other infos into it.
@@ -205,3 +210,22 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific (Roomie)
+# Debug files and directories
+ros2_ws/src/roomie_vs/debug/
+debug/
+*.debug.jpg
+*.debug.png
+
+# ROS2 build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+install/
+log/
+build/
+
+# Temporary files
+*.tmp
+*.temp

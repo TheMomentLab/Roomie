@@ -2,11 +2,11 @@
 
 import rclpy
 from rclpy.node import Node
-from rclpy.client import SrvClient
+from rclpy.client import Client
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy, DurabilityPolicy
 from roomie_msgs.srv import ButtonStatus # ButtonStatus.srv 파일이 정의된 패키지
-
-from . import config # config.py 임포트
+from . import config
+from .config import ROBOT_ID
 
 class VisionServiceClient(Node):
     """
@@ -40,6 +40,9 @@ class VisionServiceClient(Node):
         
         반환: ButtonStatus.Response 객체 또는 오류 시 None
         """
+        if robot_id != ROBOT_ID:
+            self.get_logger().warn(f"요청된 robot_id({robot_id})가 현재 로봇 ID({ROBOT_ID})와 일치하지 않아 VS 요청을 무시합니다.")
+            return None
         if config.DEBUG: # config.DEBUG 사용
             self.get_logger().info(f"VS에 버튼 상태 요청 중: 로봇 ID={robot_id}, 버튼 ID={button_ids}")
 

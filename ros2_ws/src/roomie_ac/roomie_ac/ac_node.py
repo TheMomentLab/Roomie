@@ -14,40 +14,48 @@ from .motion_controller import MotionController
 from .image_servoing import ImageServoing
 from .ros_joint_publisher import ROSJointPublisher
 from .coordinate_transformer import CoordinateTransformer 
-
-# config에서 필요한 모든 설정을 가져옵니다.
 from .config import (
     Pose, POSE_ANGLES_DEG,
     ControlMode, CONTROL_STRATEGY,
-    PRE_PRESS_DISTANCE_M
+    PRE_PRESS_DISTANCE_M,
+    ROBOT_ID 
 )
+
+
 class ArmActionServer(Node):
     """
     팔 제어와 관련된 모든 Action 요청을 처리하는 메인 서버 (지휘자).
     """
     def __init__(self):
-            super().__init__('arm_action_server')
+        super().__init__('arm_action_server')
 
-            # --- 모든 '연주자' 객체 생성 ---
-            self.serial_manager = SerialManager()
-            self.kin_solver = KinematicsSolver()
-            self.joint_publisher = ROSJointPublisher()
-            self.vision_client = VisionServiceClient()
-            self.coord_transformer = CoordinateTransformer() # CoordinateTransformer 생성
-            self.motion_controller = MotionController(self.kin_solver, self.serial_manager, self.joint_publisher)
-            self.image_servo = ImageServoing(self.vision_client, self.motion_controller)
-            
-            # --- Action 서버 생성 ---
-            self._set_pose_server = ActionServer(self, SetPose, '/arm/action/set_pose', self.set_pose_callback)
-            self._click_button_server = ActionServer(self, ClickButton, '/arm/action/click_button', self.click_button_callback)
-            
-            self.get_logger().info("✅ Arm Action Server가 성공적으로 시작되었습니다.")
+        # --- 모든 '연주자' 객체 생성 ---
+        self.serial_manager = SerialManager()
+        self.kin_solver = KinematicsSolver()
+        self.joint_publisher = ROSJointPublisher()
+        self.vision_client = VisionServiceClient()
+        self.coord_transformer = CoordinateTransformer() # CoordinateTransformer 생성
+        self.motion_controller = MotionController(self.kin_solver, self.serial_manager, self.joint_publisher)
+        self.image_servo = ImageServoing(self.vision_client, self.motion_controller)
+        
+        # --- Action 서버 생성 ---
+        self._set_pose_server = ActionServer(self, SetPose, '/arm/action/set_pose', self.set_pose_callback)
+        self._click_button_server = ActionServer(self, ClickButton, '/arm/action/click_button', self.click_button_callback)
+        
+        self.get_logger().info("✅ Arm Action Server가 성공적으로 시작되었습니다.")
 
         
        
 
     def set_pose_callback(self, goal_handle):
         """[지휘] SetPose Action 요청을 처리합니다."""
+
+        if goal_handle.request.robot_id != ROBOT_ID:
+            msg = f"요청된 robot_id({goal_handle.request.robot_id})가 현재 로봇 ID({ROBOT_ID})와 일치하지 않습니다."
+            self.get_logger().error(msg)
+            goal_handle.abort()
+            return SetPose.Result(success=False, message=msg)
+
         try:
             requested_pose = Pose(goal_handle.request.pose_id)
             self.get_logger().info(f"SetPose 목표 수신: '{requested_pose.name}'")
@@ -77,6 +85,14 @@ class ArmActionServer(Node):
 
     async def click_button_callback(self, goal_handle):
         """[지휘] ClickButton Action의 전체 시나리오를 지휘합니다."""
+        if goal_handle.request.robot_id != ROBOT_ID:
+            msg = f"요청된 robot_id({goal_handle.request.robot_id})가 현재 로봇 ID({ROBOT_ID})와 일치하지 않습니다."
+            self.get_logger().error(msg)
+            goal_handle.abort()
+            result.success = False
+            result.message = msg
+            return result
+
         button_id = goal_handle.request.button_id
         self.get_logger().info(f"ClickButton 목표 수신: button_id={button_id} (제어 모드: {CONTROL_STRATEGY.name})")
         
@@ -85,7 +101,8 @@ class ArmActionServer(Node):
 
         try:
             # --- 시나리오 1: Vision Service로부터 2D 버튼 정보 받기 ---
-            response = await self.vision_client.request_button_status(self.image_servo.robot_id, [button_id])
+            response = await self.vision_client.request_button_status(ROBOT_ID, [button_id])
+
             if not response or not response.success or not response.xs:
                 raise RuntimeError("Vision Service로부터 버튼 위치 획득 실패")
             
