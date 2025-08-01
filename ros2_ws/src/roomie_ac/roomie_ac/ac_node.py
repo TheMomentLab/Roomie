@@ -57,7 +57,6 @@ class ArmActionServer(Node):
             goal_handle.abort()
             return SetPose.Result(robot_id=ROBOT_ID, success=False)
 
-        # ✅ 디버깅용 로그 추가
         self.get_logger().info(f"[DEBUG] 수신된 pose_id: {goal_handle.request.pose_id}")
         try:
             requested_pose = Pose(goal_handle.request.pose_id)
@@ -118,6 +117,8 @@ class ArmActionServer(Node):
             # --- 시나리오 2: 모델 기반으로 '준비 위치'까지 이동 (HYBRID 모드) ---
             if CONTROL_STRATEGY == ControlMode.HYBRID:
                 self.get_logger().info(">> [하이브리드 제어] 1단계: 모델 기반으로 준비 위치로 이동")
+                feedback.status = ButtonActionStatus.MOVING_TO_TARGET
+                goal_handle.publish_feedback(feedback)
                 current_fk_transform = self.motion_controller._get_current_transform()
                 target_3d_pose = self.coord_transformer.calculate_target_pose(
                     button_center_xy_norm, button_size_norm, current_fk_transform
@@ -133,21 +134,21 @@ class ArmActionServer(Node):
 
             # --- 시나리오 3: 이미지 서보잉으로 정밀 정렬 ---
             self.get_logger().info(">> [공통] 2단계: 이미지 서보잉으로 정밀 정렬")
-            feedback.status = "ALIGNING_TO_TARGET"
+            feedback.status = ButtonActionStatus.ALIGNING_TO_TARGET
             goal_handle.publish_feedback(feedback)
             if not await self.image_servo.align_to_target(button_id):
                 raise RuntimeError("이미지 정렬 실패")
 
             # --- 시나리오 4: 버튼 누르기 ---
             self.get_logger().info(">> [공통] 3단계: 버튼 누르기")
-            feedback.status = "PRESSING"
+            feedback.status = ButtonActionStatus.PRESSING
             goal_handle.publish_feedback(feedback)
             if not self.motion_controller.press_forward():
                 raise RuntimeError("누르기 동작 실패")
 
             # --- 시나리오 5: 후퇴 ---
             self.get_logger().info(">> [공통] 4단계: 후퇴")
-            feedback.status = "RETRACTING"
+            feedback.status = ButtonActionStatus.RETRACTING
             goal_handle.publish_feedback(feedback)
             if not self.motion_controller.retreat():
                 raise RuntimeError("후퇴 동작 실패")
@@ -155,6 +156,8 @@ class ArmActionServer(Node):
         except Exception as e:
             error_msg = f"ClickButton 처리 중 오류 발생: {e}"
             self.get_logger().error(error_msg)
+            feedback.status = ButtonActionStatus.FAILED 
+            goal_handle.publish_feedback(feedback)
 
             self.get_logger().info("안전 모드: 작업 실패로 초기 자세로 복귀합니다.")
             self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
@@ -166,6 +169,8 @@ class ArmActionServer(Node):
 
         success_msg = f"버튼 {button_id} 클릭 임무 성공"
         self.get_logger().info(success_msg)
+        feedback.status = ButtonActionStatus.COMPLETED  
+        goal_handle.publish_feedback(feedback)
         goal_handle.succeed()
         result.success = True
         result.message = success_msg

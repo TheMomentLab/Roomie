@@ -14,16 +14,16 @@ class Pose(IntEnum):
     UP= 4
     OBSERVE = 5
 
-
+# 버튼 피드백 상태
 class ButtonActionStatus:
     MOVING_TO_TARGET = "MOVING_TO_TARGET"
+    ALIGNING_TO_TARGET = "ALIGNING_TO_TARGET"
     PRESSING = "PRESSING"
     RETRACTING = "RETRACTING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
-
-
+# 제어 전략 모드 정의
 class ControlMode(IntEnum):
     """제어 전략 모드"""
     MODEL_ONLY = 0      # 모델 기반 제어만 사용 (빠름)
@@ -50,7 +50,7 @@ ROBOT_ID = 0
 
 # 서보 모터 및 관절 설정
 SERVO_ZERO_OFFSET_DEG = np.array([90, 90, 90, 90])
-SERVO_DIRECTION_MULTIPLIER = np.array([1, 1, -11, 1])
+SERVO_DIRECTION_MULTIPLIER = np.array([1, -1, -1, -1])
 JOINT_LIMIT_DEG = np.array([[0, 180], [0, 180], [0, 180], [0, 180]]) # 각 관절의 제한 각도 (deg)
 JOINT_LIMIT_RAD = np.deg2rad(JOINT_LIMIT_DEG) # 라디안 변환
 JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱을 위한 관절 이름
@@ -84,9 +84,9 @@ POSE_ANGLES_DEG = {
     Pose.INIT: np.array([90, 40, 170, 30]),
     Pose.LEFT: np.array([170, 120, 150, 30]),
     Pose.RIGHT: np.array([0, 130, 170, 30]),
-    Pose.FORWARD: np.array([90, 120, 127, 40]),
+    Pose.FORWARD: np.array([90, 130, 170, 30]),
     Pose.UP: np.array([90, 130, 127, 40]),
-    Pose.OBSERVE: np.array([90, 120, 168, 40]),
+    Pose.OBSERVE: np.array([90, 130, 170, 20]),
 }
 
 # 기존 홈 포지션 변수도 이 딕셔너리를 활용할 수 있습니다.
