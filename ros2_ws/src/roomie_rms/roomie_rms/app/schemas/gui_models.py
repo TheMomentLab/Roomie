@@ -15,8 +15,8 @@ class OrderItem(BaseModel):
 
 # SGUI 음식 주문 발생 알림
 class FoodOrderCreationEventPayload(BaseModel):
-    task_id: str
-    location: str
+    task_id: int
+    request_location: str
     order_details: List[OrderItem]
 
 class FoodOrderCreationEvent(BaseModel):
@@ -26,8 +26,8 @@ class FoodOrderCreationEvent(BaseModel):
 
 # SGUI 비품 요청 발생 알림
 class SupplyOrderCreationEventPayload(BaseModel):
-    task_id: str
-    location: str
+    task_id: int
+    request_location: str
     order_details: List[Dict[str, Any]]  # name, quantity (no price for supplies)
 
 class SupplyOrderCreationEvent(BaseModel):
@@ -37,8 +37,8 @@ class SupplyOrderCreationEvent(BaseModel):
 
 # SGUI 음식 픽업 장소 도착 알림
 class FoodPickupArrivalEventPayload(BaseModel):
-    task_id: str
-    robot_id: str
+    task_id: int
+    robot_id: int
 
 class FoodPickupArrivalEvent(BaseModel):
     type: str = "event"
@@ -47,8 +47,8 @@ class FoodPickupArrivalEvent(BaseModel):
 
 # SGUI 비품 픽업 장소 도착 알림
 class SupplyPickupArrivalEventPayload(BaseModel):
-    task_id: str
-    robot_id: str
+    task_id: int
+    robot_id: int
 
 class SupplyPickupArrivalEvent(BaseModel):
     type: str = "event"
@@ -57,7 +57,7 @@ class SupplyPickupArrivalEvent(BaseModel):
 
 # SGUI 음식 주문 작업 상태 전환 요청/응답
 class FoodOrderStatusChangeRequestPayload(BaseModel):
-    task_id: str
+    task_id: int
 
 class FoodOrderStatusChangeRequest(BaseModel):
     type: str = "request"
@@ -65,7 +65,7 @@ class FoodOrderStatusChangeRequest(BaseModel):
     payload: FoodOrderStatusChangeRequestPayload
 
 class FoodOrderStatusChangeResponsePayload(BaseModel):
-    task_id: str
+    task_id: int
     status_changed: str
 
 class FoodOrderStatusChangeResponse(BaseModel):
@@ -150,6 +150,7 @@ class TaskInDB(BaseModel):
     robot_id: int | None
     task_creation_time: datetime
     task_completion_time: datetime | None
+    task_cancellation_time: datetime | None
     
     @field_serializer('task_creation_time')
     def serialize_creation_time(self, value: datetime) -> str:
@@ -165,12 +166,12 @@ class TaskInDB(BaseModel):
 class RobotInDB(BaseModel):
     robot_id: int
     model_name: str
-    installation_date: Optional[date] = None
-    current_location: str | None # location.name
-    battery_level: float | None
-    task_status: str | None # robot_status.name
+    battery_level: int | None
+    is_charging: bool
+    robot_status: str | None
+    task_id: int | None
     has_error: bool
-    error_code: str | None # error.name
+    error_code: str | None
 
 # ----------------------------------------------------------------
 # GGUI (Guest GUI) HTTP Interface Models
@@ -178,8 +179,8 @@ class RobotInDB(BaseModel):
 
 # 호출 작업 생성 요청/응답
 class CreateCallTaskRequestPayload(BasePayload):
-    location: str
-    task_type: int
+    location_name: str
+    task_type_id: int
 
 class CreateCallTaskRequest(BaseModel):
     type: str = "request"
@@ -198,6 +199,33 @@ class CreateCallTaskResponse(BaseModel):
     type: str = "response"
     action: str = "create_call_task"
     payload: CreateCallTaskResponsePayload
+
+# 호출 내역 조회 요청/응답
+class GetCallHistoryRequestPayload(BasePayload):
+    location_name: str
+    task_name: str
+
+class GetCallHistoryRequest(BaseModel):
+    type: str = "request"
+    action: str = "get_call_history"
+    payload: GetCallHistoryRequestPayload
+
+class RobotStatus(BaseModel):
+    x: float
+    y: float
+    floor_id: int
+
+class GetCallHistoryResponsePayload(BasePayload):
+    location_name: str
+    task_name: str
+    task_type_name: str
+    estimated_time: int
+    robot_status: RobotStatus
+
+class GetCallHistoryResponse(BaseModel):
+    type: str = "response"
+    action: str = "get_call_history"
+    payload: GetCallHistoryResponsePayload
 
 # 음식 메뉴 요청/응답
 class GetFoodMenuRequestPayload(BasePayload):
@@ -267,33 +295,6 @@ class CreateDeliveryTaskResponse(BaseModel):
     action: str = "create_delivery_task"
     payload: CreateDeliveryTaskResponsePayload
 
-# 호출 내역 조회 요청/응답
-class GetCallHistoryRequestPayload(BasePayload):
-    location_name: str
-    task_name: str
-
-class GetCallHistoryRequest(BaseModel):
-    type: str = "request"
-    action: str = "get_call_history"
-    payload: GetCallHistoryRequestPayload
-
-class RobotStatus(BaseModel):
-    x: float
-    y: float
-    floor_id: int
-
-class GetCallHistoryResponsePayload(BasePayload):
-    location_name: str
-    task_name: str
-    task_type_name: str
-    estimated_time: int
-    robot_status: RobotStatus
-
-class GetCallHistoryResponse(BaseModel):
-    type: str = "response"
-    action: str = "get_call_history"
-    payload: GetCallHistoryResponsePayload
-
 # 주문 내역 조회 요청/응답
 class GetOrderHistoryRequestPayload(BasePayload):
     request_location: str
@@ -311,8 +312,8 @@ class GetOrderHistoryResponsePayload(BasePayload):
     task_type_name: str
     estimated_time: int
     task_creation_time: str
-    robot_assignment_time: str
-    pickup_completion_time: str
+    robot_assignment_time: Optional[str] = None
+    pickup_completion_time: Optional[str] = None
     delivery_arrival_time: Optional[str] = None
 
 class GetOrderHistoryResponse(BaseModel):
@@ -350,7 +351,7 @@ class TaskListResponse(BaseModel):
 
 # 작업 상세 요청
 class TaskDetailRequestPayload(BasePayload):
-    task_id: str
+    task_id: int
 
 class TaskDetailRequest(BaseModel):
     type: str = "request"

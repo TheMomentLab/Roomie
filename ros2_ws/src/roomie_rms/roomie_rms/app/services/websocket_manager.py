@@ -139,30 +139,28 @@ class WebSocketManager:
 
     def broadcast_to_sync(self, client_type: str, message: str):
         """동기 함수에서 호출할 수 있는 브로드캐스트 메서드 (ROS2 콜백용)"""
-        try:
-            # 현재 실행 중인 이벤트 루프가 있는지 확인
-            loop = asyncio.get_running_loop()
-            # 이벤트 루프가 실행 중이면 create_task 사용
-            loop.create_task(self.broadcast_to(client_type, message))
-        except RuntimeError:
-            # 실행 중인 이벤트 루프가 없으면 새로운 스레드에서 실행
-            import threading
-            def run_async():
-                asyncio.run(self.broadcast_to(client_type, message))
-            
-            thread = threading.Thread(target=run_async)
-            thread.daemon = True
-            thread.start()
+        from rms_node import RmsNode
+        rms_node = RmsNode.get_instance()
+        if rms_node and rms_node.get_loop():
+            asyncio.run_coroutine_threadsafe(
+                self.broadcast_to(client_type, message),
+                rms_node.get_loop()
+            )
+        else:
+            logger.error("RMS 노드 또는 이벤트 루프를 찾을 수 없어 WebSocket 메시지를 전송할 수 없습니다.")
 
     def send_to_client_by_location_sync(self, client_type: str, location_name: str, message: str):
-        """특정 위치의 클라이언트에게 메시지를 전송하는 동기 메서드 (ROS2 콜백용)
-        
-        현재는 모든 클라이언트에게 브로드캐스트하는 방식으로 구현됨.
-        향후 위치 기반 라우팅이 필요하면 개선 가능.
-        """
-        logger.info(f"위치 기반 메시지 전송 | 타겟: {client_type}@{location_name}")
-        # 일단 모든 클라이언트에게 브로드캐스트
-        self.broadcast_to_sync(client_type, message)
+        """특정 위치의 클라이언트에게 메시지를 전송하는 동기 메서드 (ROS2 콜백용)"""
+        from rms_node import RmsNode
+        rms_node = RmsNode.get_instance()
+        if rms_node and rms_node.get_loop():
+            # location_name을 client_id로 사용하여 특정 클라이언트에게 메시지 전송
+            asyncio.run_coroutine_threadsafe(
+                self.send_to_client(client_type, location_name, message),
+                rms_node.get_loop()
+            )
+        else:
+            logger.error("RMS 노드 또는 이벤트 루프를 찾을 수 없어 WebSocket 메시지를 전송할 수 없습니다.")
 
 # 글로벌 인스턴스 생성
 manager = WebSocketManager()

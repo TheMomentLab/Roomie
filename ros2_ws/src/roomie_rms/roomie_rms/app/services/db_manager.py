@@ -16,7 +16,7 @@ def init_db_pool():
     """데이터베이스 커넥션 풀을 초기화합니다."""
     global db_pool
     if db_pool is not None:
-        logger.warning("DB 커넥션 풀이 이미 초기화되어 있습니다")
+        logger.warning("[DB] 커넥션 풀이 이미 초기화되어 있습니다")
         return
 
     try:
@@ -59,7 +59,7 @@ def get_connection():
 
 def _load_constants_from_db():
     """DB의 lookup 테이블에서 상수 값들을 로드하여 settings 객체에 저장합니다."""
-    logger.info("DB에서 애플리케이션 상수 로드를 시작합니다...")
+    logger.info("[DB] 애플리케이션 상수 로드를 시작합니다...")
     
     try:
         conn = get_connection()

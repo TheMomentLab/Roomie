@@ -15,12 +15,20 @@ from pathlib import Path
 
 # API 엔드포인트 경로를 관리하는 클래스
 class ApiEndpoints:
+    # GUEST GUI HTTP Endpoints
+    CREATE_CALL_TASK = "/create_call_task"
+    GET_CALL_HISTORY = "/get_call_history"
     GET_FOOD_MENU = "/get_food_menu"
     GET_SUPPLY_MENU = "/get_supply_menu"
     CREATE_DELIVERY_TASK = "/create_delivery_task"
-    CHANGE_TASK_STATUS = "/change_task_status"
-    GET_TASKS = "/tasks"
-    GET_ROBOTS = "/robots"
+    GET_ORDER_HISTORY = "/get_order_history"
+    # STAFF GUI HTTP Endpoints
+    FOOD_ORDER_STATUS_CHANGE = "/food_order_status_change"
+    # ADMIN GUI HTTP Endpoints
+    GET_TASK_LIST = "/task_list"
+    GET_TASK_DETAIL = "/task_detail"
+    GET_ROBOT_LIST = "/robot_list"
+    # Websocket Endpoints
     WS_GUEST = "/ws/guest/{location_name}"
     WS_STAFF = "/ws/staff/{staff_id}"
     WS_ADMIN = "/ws/admin/{admin_id}"
@@ -59,13 +67,13 @@ class AppConstants:
     """
     DB에 저장되지 않는 순수 애플리케이션 레벨의 상수.
     """
-    # Task & Location Names (DB의 name과 일치해야 하는 핵심 문자열)
+    # Task & Location Names
     TASK_TYPE_FOOD_DELIVERY: str = "음식배송"
     TASK_TYPE_SUPPLY_DELIVERY: str = "비품배송"
     TASK_TYPE_CALL: str = "호출"
     TASK_TYPE_GUIDANCE: str = "길안내"
     
-    # Task Status Names (DB의 name과 일치)
+    # Task Status Names
     TASK_STATUS_RECEIVED: str = "접수됨"
     TASK_STATUS_READY: str = "준비 완료"
     TASK_STATUS_ROBOT_ASSIGNED: str = "로봇 할당됨"
@@ -82,7 +90,7 @@ class AppConstants:
     TASK_STATUS_GUIDANCE_IN_PROGRESS: str = "길안내 중"
     TASK_STATUS_GUIDANCE_ARRIVED: str = "길안내 도착"
     
-    # Location Names (DB의 name과 일치)
+    # Location Names
     LOCATION_LOB_WAITING: str = "LOB_WAITING"
     LOCATION_LOB_CALL: str = "LOB_CALL"
     LOCATION_RES_PICKUP: str = "RES_PICKUP"
@@ -95,27 +103,33 @@ class AppConstants:
     LOCATION_ROOM_201: str = "ROOM_201"
     LOCATION_ROOM_202: str = "ROOM_202"
     
-    # Food Items (DB의 name과 일치)
+    # Food Items
     FOOD_SPAGHETTI: str = "스파게티"
     FOOD_PIZZA: str = "피자"
     FOOD_STEAK: str = "스테이크"
     FOOD_BURGER: str = "버거"
     
-    # Supply Items (DB의 name과 일치)
+    # Supply Items
     SUPPLY_TOOTHBRUSH: str = "칫솔"
     SUPPLY_TOWEL: str = "타월"
     SUPPLY_WATER: str = "생수"
     SUPPLY_SPOON: str = "수저"
     
-    # Robot Status Names (DB의 name과 일치)
-    ROBOT_STATUS_UNAVAILABLE: str = "작업 불가능"
-    ROBOT_STATUS_AVAILABLE: str = "작업 가능"
-    ROBOT_STATUS_INPUTTING: str = "작업 입력 중"
-    ROBOT_STATUS_WORKING: str = "작업 수행 중"
-    ROBOT_STATUS_WAITING_RETURN: str = "복귀 대기 중"
-    ROBOT_STATUS_RETURNING: str = "복귀 중"
-    ROBOT_STATUS_FAILED: str = "작업 실패"
-    ROBOT_STATUS_ERROR: str = "시스템 오류"
+    # Robot Status Names
+    ROBOT_STATUS_INITIALIZING: str = "초기화"
+    ROBOT_STATUS_CHARGING: str = "충전상태"
+    ROBOT_STATUS_STANDBY: str = "작업대기"
+    ROBOT_STATUS_MOVING_TO_PICKUP: str = "픽업위치 이동"
+    ROBOT_STATUS_WAITING_FOR_PICKUP: str = "픽업대기"
+    ROBOT_STATUS_MOVING_TO_DESTINATION: str = "배송장소 이동"
+    ROBOT_STATUS_WAITING_FOR_HANDOVER: str = "수령대기"
+    ROBOT_STATUS_MOVING_TO_CALLER: str = "호출위치 이동"
+    ROBOT_STATUS_WAITING_FOR_GUIDANCE_INPUT: str = "길안내 목적지 입력대기"
+    ROBOT_STATUS_GUIDING: str = "길안내 이동"
+    ROBOT_STATUS_SEARCHING_TARGET: str = "대상 탐색"
+    ROBOT_STATUS_RETURNING_TO_STATION: str = "대기위치로 이동"
+    ROBOT_STATUS_ENTERING_ELEVATOR: str = "엘리베이터 탑승"
+    ROBOT_STATUS_ERROR: str = "오류"
     
     LOCATION_NAME_FOOD_PICKUP: str = "RES_PICKUP"
     LOCATION_NAME_SUPPLY_PICKUP: str = "SUP_PICKUP"
@@ -152,13 +166,15 @@ class Settings(BaseSettings):
     LOG_MAX_BYTES: int = 10 * 1024 * 1024  # 10 MB
     LOG_BACKUP_COUNT: int = 5
 
-    # SQL 파일 경로
-    DB_SCHEMA_PATH: str = "static/sql/roomie_db_tables.sql"
-    DB_DATA_PATH: str = "static/sql/roomie_db_data.sql"
-
     # 정적 파일 경로
     PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
-    STATIC_DIR: Path = PROJECT_ROOT / "static"
+
+    # DB 경로 설정
+    DB_SCHEMA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_tables.sql"
+    DB_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_data.sql"
+
+    # 정적 파일 경로
+    STATIC_DIR: Path = PROJECT_ROOT / "resources"
     
     # 클래스로 분리된 설정들을 포함
     api: ApiEndpoints = ApiEndpoints()

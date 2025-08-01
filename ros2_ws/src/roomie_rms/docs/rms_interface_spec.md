@@ -173,7 +173,7 @@ string message
   "type": "event",
   "action": "food_order_creation",
   "payload": {
-    "task_id": "12",
+    "task_id": 12,
     "request_location": "ROOM_307",
     "order_details": {
       "items": [
@@ -201,7 +201,7 @@ string message
   "type": "request",
   "action": "food_order_status_change",
   "payload": {
-    "task_id": "TASK_001"
+    "task_id": 1
   }
 }
 ```
@@ -212,7 +212,7 @@ string message
   "type": "response",
   "action": "food_order_status_change",
   "payload": {
-    "task_id": "TASK_001",
+    "task_id": 1,
     "status_changed": "food_ready"
   }
 }
@@ -224,8 +224,8 @@ string message
   "type": "event",
   "action": "food_pickup_arrival",
   "payload": {
-    "task_id": "TASK_001",
-    "robot_id": "ROBOT_01"
+    "task_id": 1,
+    "robot_id": 1
   }
 }
 ```
@@ -236,7 +236,7 @@ string message
   "type": "event",
   "action": "supply_order_creation",
   "payload": {
-    "task_id": "TASK_002",
+    "task_id": 2,
     "request_location": "ROOM_307",
     "order_details": {
       "items": [
@@ -260,8 +260,8 @@ string message
   "type": "event",
   "action": "supply_pickup_arrival",
   "payload": {
-    "task_id": "TASK_002",
-    "robot_id": "ROBOT_01"
+    "task_id": 2,
+    "robot_id": 1
   }
 }
 ```
@@ -270,18 +270,7 @@ string message
 
 ## 3. RMS ↔ GGUI (Guest GUI)
 
-### 3.1 기본 정보
-
-메시지 공통 구조:
-```json
-{
-  "type": "request" | "response" | "event",
-  "action": "string",
-  "payload": "object"
-}
-```
-
-### 3.2 HTTP 동기 인터페이스
+### 3.1 HTTP 동기 인터페이스
 
 #### 호출 작업 생성 요청/응답
 ```json
@@ -291,7 +280,7 @@ string message
   "action": "create_call_task",
   "payload": {
     "location": "ROOM_201",
-    "task_type": 2
+    "task_type_id": 2
   }
 }
 
@@ -433,12 +422,12 @@ string message
   "payload": {
     "location_name": "ROOM_102",
     "task_name": "TASK_006",
-    "task_type_name": "TASK_006",
+    "task_type_name": "호출",
     "estimated_time": 5,
     "robot_status": {
-      "x": "float",
-      "y": "float",
-      "floor_id": "int"
+      "x": 0.2,  //float
+      "y": 1.2,  //float
+      "floor_id": 1  //int
     }
   }
 }
@@ -474,7 +463,7 @@ string message
 }
 ```
 
-### 3.3 WebSocket 비동기 이벤트
+### 3.2 WebSocket 비동기 이벤트
 
 #### 호출 수락 알림
 ```json
@@ -541,7 +530,7 @@ string message
 - 1: 준비 완료
 - 2: 로봇 할당됨
 - 3: 픽업 장소로 이동
-- 4: 픽업 대기중
+- 4: 픽업 대기 중
 - 5: 배송 중
 - 6: 배송 도착
 - 7: 수령 완료
@@ -554,14 +543,20 @@ string message
 - 22: 길안내 도착
 
 #### Robot Status (`robot_status`)
-- 0: 작업 불가능
-- 1: 작업 가능
-- 2: 작업 입력중
-- 3: 작업 수행중
-- 4: 복귀 대기중
-- 5: 복귀 중
-- 6: 작업 실패
-- 7: 시스템 오류
+- 0: 초기화
+- 1: 충전상태
+- 2: 작업대기
+- 10: 픽업위치 이동
+- 11: 픽업대기
+- 12: 배송장소 이동
+- 13: 수령대기
+- 20: 호출위치 이동
+- 21: 길안내 목적지 입력대기
+- 22: 길안내 이동
+- 23: 대상 탐색
+- 30: 대기위치로 이동
+- 31: 엘리베이터 탑승
+- 90: 오류
 
 #### Location
 - 0: LOB_WAITING
@@ -620,7 +615,7 @@ string message
         "task_type": "음식배송",
         "task_status": "수령 완료",
         "destination": "ROOM_202",
-        "robot_id": "ROBOT_01",
+        "robot_id": 1,
         "task_creation_time": "2024-03-15T10:30:00Z",
         "task_completion_time": "2024-03-15T10:52:10Z"
       },
@@ -629,7 +624,7 @@ string message
         "task_type": "음식배송",
         "task_status": "픽업 대기중",
         "destination": "ROOM_102",
-        "robot_id": "ROBOT_01",
+        "robot_id": 2,
         "task_creation_time": "2024-03-15T10:30:00Z",
         "task_completion_time": null
       }
@@ -685,9 +680,9 @@ string message
   "action": "robot_list",
   "payload": {
     "filters": {
-      "robot_id": "ROBOT_01",
+      "robot_id": 1,
       "model_name": "ServiceBot_V2",
-      "robot_status": "복귀 중"
+      "robot_status": "충전상태"
     }
   }
 }
@@ -701,23 +696,23 @@ string message
   "payload": {
     "robots": [
       {
-        "robot_id": "ROBOT_01",
+        "robot_id": 1,
         "model_name": "ServiceBot_V2",
         "battery_level": 85,
-        "is_charging": "N",
-        "task_status": "배송 중",
+        "is_charging": false,
+        "robot_status": "배송장소 이동",
         "task_id": 13,
-        "has_error": "N",
+        "has_error": false,
         "error_code": null
       },
       {
-        "robot_id": "ROBOT_02",
+        "robot_id": 2,
         "model_name": "ServiceBot_V1",
         "battery_level": 45,
-        "is_charging": "Y",
-        "task_status": "작업 불가능",
+        "is_charging": true,
+        "robot_status": "충전상태",
         "task_id": null,
-        "has_error": "N",
+        "has_error": false,
         "error_code": null
       }
     ]

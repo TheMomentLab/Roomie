@@ -29,10 +29,24 @@ class RmsNode(RmsBaseNode, ServiceHandler, TopicHandler, ActionHandler):
     ROS2 노드와 FastAPI 서버를 통합하여 운영하는 메인 클래스입니다.
     로봇 관리, 작업 관리, GUI 통신을 담당합니다.
     """
+    # RmsNode를 싱글톤으로 만들어서 애플리케이션 어디서든 ROS2 노드와 이벤트 루프에 접근
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
+    @classmethod
+    def get_instance(cls):
+        return cls._instance
     
     def __init__(self) -> None:
         """RMS 노드 초기화"""
+        if hasattr(self, '_initialized'): # Prevent re-initialization
+            return
         super().__init__('rms_node')
+        self._initialized = True
         
         # ROS2 노드의 로거를 RMS 로거로 교체하여 일관성 유지
         self.get_logger().info = logger.info
