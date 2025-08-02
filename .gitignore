@@ -218,10 +218,16 @@ __marimo__/
 
 # Project-specific (Roomie)
 # Debug files and directories
+**/debug/
 ros2_ws/src/roomie_vs/debug/
 debug/
 *.debug.jpg
 *.debug.png
+*_debug_*.jpg
+*_debug_*.png
+easyocr_input_debug_*
+roi_*_debug_*
+test_results_*
 
 # ROS2 build artifacts
 ros2_ws/build/
