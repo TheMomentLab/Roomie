@@ -141,8 +141,8 @@ class DeliveryController(BaseController):
         """서랍 열기 버튼 클릭 시"""
         self.log_info("🔓 [배송 서랍 열기] 버튼이 클릭되었습니다")
         
-        # 서랍 열기 이벤트 발행 (rgui_event_id: 106)
-        self.publish_event(event_id=106, detail="delivery_drawer_open")
+        # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
+        self.publish_event(event_id=104, detail="")
     
     def on_back_to_delivery_arrival(self):
         """뒤로가기 버튼 클릭 시"""

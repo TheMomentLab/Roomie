@@ -42,25 +42,28 @@ class TestServiceClient(Node):
         self.event_pub.publish(msg)
         self.get_logger().info(f"📤 이벤트 발행: ID={event_id}, detail='{detail}'")
     
-    def call_departure_countdown(self):
+    def call_departure_countdown(self, task_type_id: int = 0):
         """출발 카운트다운 액션 호출"""
         if not self.departure_cli.wait_for_server(timeout_sec=2.0):
             self.get_logger().error("❌ 출발 카운트다운 액션 서버를 찾을 수 없습니다")
             return
         
+        task_types = {0: "음식배송", 1: "비품배송", 2: "호출", 3: "길안내"}
+        task_name = task_types.get(task_type_id, "알 수 없음")
+        
         goal = StartCountdown.Goal()
         goal.robot_id = 98
         goal.task_id = 1
-        goal.task_type_id = 0  # 음식배송
+        goal.task_type_id = task_type_id
         
-        self.get_logger().info("📞 카운트다운 액션 호출 중...")
+        self.get_logger().info(f"📞 {task_name} 카운트다운 액션 호출 중...")
         
         def feedback_callback(feedback):
             self.get_logger().info(f"⏰ 액션 피드백: 남은 시간 {feedback.feedback.remaining_time}초")
         
         def done_callback(future):
             result = future.result().result
-            self.get_logger().info(f"✅ 카운트다운 완료: success={result.success}, robot_id={result.robot_id}")
+            self.get_logger().info(f"✅ {task_name} 카운트다운 완료: success={result.success}, robot_id={result.robot_id}")
         
         send_goal_future = self.departure_cli.send_goal_async(goal, feedback_callback=feedback_callback)
         send_goal_future.add_done_callback(lambda future: future.result().get_result_async().add_done_callback(done_callback))
@@ -94,24 +97,60 @@ class TestServiceClient(Node):
         print("📋 사용 가능한 명령어:")
         print()
         print("🔧 액션 호출:")
-        print("  1  : 출발 카운트다운 액션 호출")
-        print("  2  : 복귀 카운트다운 액션 호출")
+        print("  start0: 음식배송 출발 카운트다운 액션 호출")
+        print("  start1: 비품배송 출발 카운트다운 액션 호출")
+        print("  start2: 호출 출발 카운트다운 액션 호출")
+        print("  start3: 길안내 출발 카운트다운 액션 호출")
+        print("  return: 복귀 카운트다운 액션 호출")
         print()
         print("📡 이벤트 발행 (RC → Robot GUI):")
+        print("🛗 엘리베이터:")
+        print("  1  : 엘리베이터 버튼 조작 시작")
+        print("  2  : 엘리베이터 버튼 조작 종료")
+        print("  3  : 엘리베이터 탑승 시작")
+        print("  4  : 엘리베이터 탑승 종료")
+        print("  5  : 엘리베이터 하차 시작")
+        print("  6  : 엘리베이터 하차 종료")
+        print("🚶 이동 관련:")
+        print("  7  : 호출 이동 시작")
+        print("  8  : 호출 이동 종료")
+        print("  9  : 호실 번호 인식 완료")
+        print("  10 : 길안내 이동 시작")
+        print("  11 : 길안내 이동 종료")
         print("  12 : 픽업장소 이동 시작")
         print("  13 : 픽업장소 이동 종료 (도착)")
         print("  14 : 배송장소 이동 시작") 
         print("  15 : 배송장소 도착 완료")
+        print("📦 서랍/물품:")
         print("  16 : 서랍 열림")
+        print("  17 : 서랍 닫힘")
+        print("  18 : 서랍 잠금")
+        print("  26 : 적재 감지")
+        print("  27 : 적재 미감지")
+        print("🔋 충전:")
         print("  19 : 충전 시작")
         print("  20 : 충전 종료")
+        print("👤 사용자:")
+        print("  21 : 투숙객 이탈")
+        print("  22 : 투숙객 이탈 후 재등록")
+        print("  23 : 투숙객 등록")
         print("  24 : 배송 수령 완료")
         print("  25 : 배송 수령 미완료")
         print()
+        print("🎮 GUI 이벤트 (Robot GUI → RC):")
+        print("  100 : [수령 완료] 클릭")
+        print("  101 : 목적지 입력 완료")
+        print("  102 : 사용자 점유 상태")
+        print("  103 : [카드키로 입력] 선택")
+        print("  104 : [서랍 열기] 클릭")
+        print("  105 : [적재 완료] 클릭")
+        print("  106 : 인식모드 전환 요청")
+        print()
         print("🎯 시나리오 자동 실행:")
-        print("  auto : 전체 배송 시나리오 자동 실행")
-        print("  menu : 이 메뉴 다시 표시")
-        print("  quit : 종료")
+        print("  auto     : 전체 배송 시나리오 자동 실행")
+        print("  elevator : 엘리베이터 시나리오 자동 실행")
+        print("  menu     : 이 메뉴 다시 표시")
+        print("  quit     : 종료")
         print("="*60)
         print("명령어를 입력하세요: ", end="")
     
@@ -140,6 +179,29 @@ class TestServiceClient(Node):
         
         threading.Thread(target=auto_runner, daemon=True).start()
     
+    def run_elevator_scenario(self):
+        """엘리베이터 시나리오 자동 실행"""
+        self.get_logger().info("🛗 엘리베이터 시나리오 시작!")
+        
+        scenarios = [
+            (1, "엘리베이터 버튼 조작 시작", ""),
+            (2, "엘리베이터 버튼 조작 종료", ""),
+            (3, "엘리베이터 탑승 시작", ""),
+            (4, "엘리베이터 탑승 종료", ""),
+            (5, "엘리베이터 하차 시작", ""),
+            (6, "엘리베이터 하차 종료", ""),
+        ]
+        
+        def elevator_runner():
+            for i, (event_id, desc, detail) in enumerate(scenarios):
+                time.sleep(2)  # 2초 간격
+                self.get_logger().info(f"🛗 [{i+1}/{len(scenarios)}] {desc}")
+                self.publish_event(event_id, detail=detail)
+            
+            self.get_logger().info("🎉 엘리베이터 시나리오 완료!")
+        
+        threading.Thread(target=elevator_runner, daemon=True).start()
+    
     def run_interactive(self):
         """대화형 모드 실행"""
         while True:
@@ -153,11 +215,21 @@ class TestServiceClient(Node):
                     self.show_menu()
                 elif cmd == "auto":
                     self.run_auto_scenario()
-                elif cmd == "1":
-                    self.call_departure_countdown()
-                elif cmd == "2":
+                elif cmd == "elevator":
+                    self.run_elevator_scenario()
+                elif cmd == "start0":
+                    self.call_departure_countdown(task_type_id=0)  # 음식배송
+                elif cmd == "start1":
+                    self.call_departure_countdown(task_type_id=1)  # 비품배송
+                elif cmd == "start2":
+                    self.call_departure_countdown(task_type_id=2)  # 호출
+                elif cmd == "start3":
+                    self.call_departure_countdown(task_type_id=3)  # 길안내
+                elif cmd == "return":
                     self.call_return_countdown()
-                elif cmd in ["12", "13", "14", "15", "16", "19", "20", "24", "25"]:
+                elif cmd in ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", 
+                           "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", 
+                           "24", "25", "26", "27", "100", "101", "102", "103", "104", "105", "106"]:
                     event_id = int(cmd)
                     # 13번(픽업장소 이동 종료) 이벤트는 주문 내역 detail 포함
                     if event_id == 13:
@@ -196,7 +268,32 @@ class TestServiceClient(Node):
                         
                         self.publish_event(event_id, detail=detail)
                     else:
-                        self.publish_event(event_id)
+                        # 특정 이벤트들에 대한 detail 처리
+                        detail = ""
+                        if event_id == 9:  # 호실 번호 인식 완료
+                            import random
+                            room_number = str(random.randint(101, 999))
+                            detail = room_number
+                            self.get_logger().info(f"🏠 랜덤 호실 번호: {room_number}호")
+                        elif event_id == 101:  # 목적지 입력 완료
+                            locations = ["LOB_1", "LOB_2", "RES_1", "RES_2", "SUP_1", "ELE_1", "ELE_2", "ROOM_101", "ROOM_201"]
+                            import random
+                            location = random.choice(locations)
+                            detail = location
+                            self.get_logger().info(f"📍 랜덤 목적지: {location}")
+                        elif event_id == 102:  # 사용자 점유 상태
+                            import random
+                            status = random.choice(["OCCUPIED", "VACANT"])
+                            detail = status
+                            self.get_logger().info(f"👤 사용자 점유 상태: {status}")
+                        elif event_id == 106:  # 인식모드 전환 요청
+                            import random
+                            mode = random.choice(["0", "1", "2", "3"])
+                            mode_names = {"0": "대기모드", "1": "등록모드", "2": "추적모드", "3": "엘리베이터모드"}
+                            detail = mode
+                            self.get_logger().info(f"👁️ 랜덤 인식모드: {mode_names[mode]}")
+                        
+                        self.publish_event(event_id, detail=detail)
                 else:
                     print(f"❌ 알 수 없는 명령어: {cmd}")
                     print("'menu'를 입력하면 사용 가능한 명령어를 볼 수 있습니다.")
