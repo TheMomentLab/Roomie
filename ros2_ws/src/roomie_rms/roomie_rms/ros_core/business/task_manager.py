@@ -34,7 +34,7 @@ class TaskManager:
 
                 # 2. 'task' 테이블에 새로운 작업 삽입
                 task_query = """
-                    INSERT INTO task (type_id, task_status_id, location_id, task_creation_time)
+                    INSERT INTO task (task_type_id, task_status_id, location_id, task_creation_time)
                     VALUES (%s, %s, %s, %s)
                 """
                 creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -141,9 +141,9 @@ class TaskManager:
                 with database_transaction(conn) as cursor:
                     # 1. 할당할 작업 찾기
                     query = """
-                        SELECT t.id, t.type_id, t.location_id, tt.name as task_type_name, l.name as location_name
+                        SELECT t.id, t.task_type_id, t.location_id, tt.name as task_type_name, l.name as location_name
                         FROM task t
-                        JOIN task_type tt ON t.type_id = tt.id
+                        JOIN task_type tt ON t.task_type_id = tt.id
                         JOIN location l ON t.location_id = l.id
                         WHERE t.task_status_id = %s
                         ORDER BY t.task_creation_time ASC LIMIT 1 FOR UPDATE
@@ -192,7 +192,7 @@ class TaskManager:
                     goal_data = {
                         'task_id': task_id,
                         'robot_id': robot_id,
-                        'task_type_id': task_to_assign['type_id'], # 인터페이스 명세에 따라 추가
+                        'task_type_id': task_to_assign['task_type_id'], # 인터페이스 명세에 따라 추가
                         'task_status_id': moving_status_id, # '픽업 장소로 이동' 상태로 전송
                         'target_location_id': task_to_assign['location_id'], # 명확한 이름으로 변경
                         'pickup_location_id': pickup_location_id,

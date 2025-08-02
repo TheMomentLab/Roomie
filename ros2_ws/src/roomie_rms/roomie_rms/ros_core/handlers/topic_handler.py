@@ -175,13 +175,12 @@ class TopicHandler:
                         # GGUI에 배송 도착 알림 전송 (해당 위치의 클라이언트에게만)
                         event_data = {
                             "type": "event",
-                            "action": "delivery_completion",
+                            "action": "robot_arrival_completion",
                             "payload": {
                                 "task_name": f"TASK_{task_id}",
-                                "request_location": destination_name
+                                "location_name": destination_name
                             }
                         }
-                        # 특정 위치의 게스트에게만 전송 (위치 기반 라우팅)
                         websocket_manager.send_to_client_by_location_sync("guest", destination_name, json.dumps(event_data))
                         log_websocket_event("SEND", f"guest@{destination_name}", f"배송 도착 알림 - Task {task_id}")
 
@@ -329,6 +328,9 @@ class TopicHandler:
                 }
                 websocket_manager.send_to_client_by_location_sync("guest", destination_name, json.dumps(event_data))
                 log_websocket_event("SEND", f"guest@{destination_name}", f"배송 완료 알림 - Task {msg.task_id}")
+
+            # 로봇 복귀 로직 호출
+            self.robot_manager.decide_and_execute_return(msg.robot_id)
 
         except (DatabaseException, Exception) as e:
             logger.error(

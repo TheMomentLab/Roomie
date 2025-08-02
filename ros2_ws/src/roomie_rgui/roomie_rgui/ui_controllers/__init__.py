@@ -6,9 +6,11 @@ UI Controllers for Roomie Robot GUI
 from .base_controller import BaseController
 from .common_controller import CommonController
 from .delivery_controller import DeliveryController
+from .elevator_controller import ElevatorController
 
 __all__ = [
     'BaseController',
     'CommonController', 
-    'DeliveryController'
+    'DeliveryController',
+    'ElevatorController'
 ] 

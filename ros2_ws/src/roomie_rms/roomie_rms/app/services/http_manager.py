@@ -145,7 +145,7 @@ class HttpManager:
                         logger.info(
                             "GGUI 음식 메뉴 응답 전송",
                             category="API", subcategory="HTTP-RES",
-                            details={"Client": "GGUI", "Response": response.model_dump_json()}
+                            details={"Client": "GGUI", "ItemCount": len(response.payload.food_items)}
                         )
                         return response
 
@@ -198,7 +198,7 @@ class HttpManager:
                         logger.info(
                             "GGUI 비품 메뉴 응답 전송",
                             category="API", subcategory="HTTP-RES",
-                            details={"Client": "GGUI", "Response": response.model_dump_json()}
+                            details={"Client": "GGUI", "ItemCount": len(response.payload.supply_items)}
                         )
                         return response
 
@@ -234,7 +234,7 @@ class HttpManager:
                     with database_transaction(conn) as cursor:
                         # 음식 배송일 경우, 최대 조리 시간 계산
                         if payload.task_type_name == "음식배송":
-                            food_names = [item.name for item in payload.order_details.items]
+                            food_names = [item.name for item in payload.order_details['items']]
                             if food_names:
                                 # IN 절을 사용하여 주문된 모든 음식의 조리 시간을 한 번에 조회
                                 query = f"SELECT MAX(cooking_time) as max_time FROM food WHERE name IN ({', '.join(['%s'] * len(food_names))})"
@@ -259,31 +259,16 @@ class HttpManager:
                 calculated_estimated_time = max_cooking_time + pickup_time + delivery_time
 
                 # WebSocket으로 SGUI에 새 주문 알림 전송
-                raw_items = []
-                if isinstance(payload.order_details, dict):
-                    for value in payload.order_details.values():
-                        if isinstance(value, list):
-                            raw_items = value
-                            break
+                order_items_list = [
+                    {"name": item.name, "quantity": item.quantity, "price": item.price}
+                    for item in payload.order_details['items']
+                ]
 
-                order_items_list = []
+                action_type = ""
                 if payload.task_type_name == "음식배송":
                     action_type = "food_order_creation"
-                    # 음식의 경우 name, quantity, price를 모두 포함
-                    for item in raw_items:
-                        order_items_list.append({
-                            "name": item.name,
-                            "quantity": item.quantity,
-                            "price": item.price if item.price is not None else 0 # price가 없는 경우 0으로 처리
-                        })
-                else: # 비품배송의 경우
+                elif payload.task_type_name == "비품배송":
                     action_type = "supply_order_creation"
-                    # 비품의 경우 name, quantity만 포함 (명세서 기준)
-                    for item in raw_items:
-                        order_items_list.append({
-                            "name": item.name,
-                            "quantity": item.quantity
-                        })
 
                 # event_data 변수 정의
                 event_data = {
@@ -730,6 +715,11 @@ class HttpManager:
 
                         response_payload = RobotListResponsePayload(robots=robot_list_models)
                         response = RobotListResponse(payload=response_payload)
+                        logger.info(
+                           "AGUI 로봇 목록 응답 전송",
+                           category="API", subcategory="HTTP-RES",
+                           details={"Client": "AGUI", "Count": len(robot_list_models)}
+                        )
                         return response
 
             except RoomieBaseException as e:
