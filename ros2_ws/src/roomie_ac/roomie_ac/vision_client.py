@@ -32,11 +32,11 @@ class VisionServiceClient(Node):
             self.get_logger().info('VS 서비스가 사용 가능해질 때까지 기다리는 중...')
         self.get_logger().info('VS 서비스가 사용 가능합니다.')
 
-    async def request_button_status(self, robot_id, button_ids):
+    async def request_button_status(self, robot_id: int, button_id: int):
         """
         Vision Service에 특정 버튼의 상태 정보를 요청합니다.
         robot_id: 요청을 보내는 로봇의 ID
-        button_ids: 상태를 요청할 버튼 ID들의 리스트 (예: [102, 103] for 열기/닫기)
+        button_id: 상태를 요청할 버튼 ID들의 리스트 (예: [102, 103] for 열기/닫기)
         
         반환: ButtonStatus.Response 객체 또는 오류 시 None
         """
@@ -44,11 +44,11 @@ class VisionServiceClient(Node):
             self.get_logger().warn(f"요청된 robot_id({robot_id})가 현재 로봇 ID({ROBOT_ID})와 일치하지 않아 VS 요청을 무시합니다.")
             return None
         if config.DEBUG: # config.DEBUG 사용
-            self.get_logger().info(f"VS에 버튼 상태 요청 중: 로봇 ID={robot_id}, 버튼 ID={button_ids}")
+            self.get_logger().info(f"VS에 버튼 상태 요청 중: 로봇 ID={robot_id}, 버튼 ID={button_id}")
 
         request = ButtonStatus.Request()
         request.robot_id = robot_id
-        request.button_ids = button_ids
+        request.button_id = button_id
 
         try:
             # 비동기적으로 서비스 호출
@@ -58,18 +58,19 @@ class VisionServiceClient(Node):
             
             if future.result() is not None:
                 response = future.result()
-                if config.DEBUG: # config.DEBUG 사용
+                if config.DEBUG:
                     self.get_logger().info(f"VS로부터 응답 수신: success={response.success}")
                     if response.success:
-                        for i, btn_id in enumerate(button_ids):
-                            # [BUG FIX] 'depths'가 아닌 'sizes' 필드를 사용하도록 수정했습니다.
-                            self.get_logger().info(f"  버튼 {btn_id}: xs={response.xs[i]:.3f}, ys={response.ys[i]:.3f}, sizes={response.sizes[i]:.4f}, pressed={response.is_pressed[i]}")
+                        # [수정] for 루프를 제거하고 단일 응답을 직접 처리합니다.
+                        # [수정] 응답 필드도 서비스 정의에 맞게 단수형(x, y, size)으로 가정합니다.
+                        self.get_logger().info(
+                            f"  버튼 {button_id}: "
+                            f"x={response.x:.3f}, y={response.y:.3f}, "
+                            f"size={response.size:.4f}, pressed={response.is_pressed}"
+                        )
                     else:
                         self.get_logger().warn("VS 요청이 실패했습니다.")
                 return response
-            else:
-                self.get_logger().error('VS 서비스 호출 실패: 응답 없음')
-                return None
         except Exception as e:
             self.get_logger().error(f'VS 서비스 호출 예외 발생: {e}')
             return None
