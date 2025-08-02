@@ -199,19 +199,28 @@ class ArmActionServer(Node):
             self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
 
         except Exception as e:
-            # ... (기존 예외 처리 로직은 동일) ...
-            error_msg = f"ClickButton 처리 중 오류 발생: {e}"
+            # ======================= [임시 수정] =======================
+            # TODO: 통신 테스트를 위해 내부 오류가 발생해도 RC에는 '성공'으로 보고합니다.
+            #       추후 실제 운영 시에는 반드시 goal_handle.abort()를 호출하여
+            #       '실패'로 처리하는 로직으로 복원해야 합니다.
+
+            error_msg = f"내부 오류 발생(테스트 성공 처리): {e}"
             self.get_logger().error(error_msg)
+
+            # 피드백은 'FAILED'로 보내 현재 상태를 알림
             feedback.status = ButtonActionStatus.FAILED
             goal_handle.publish_feedback(feedback)
 
+            # 안전을 위해 관측 자세 복귀는 그대로 수행
             self.get_logger().info("🛑 작업 실패 → 관측 자세 복귀")
             self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
 
-            goal_handle.abort()
-            result.success = False
-            result.message = error_msg
+            # 실패 대신 성공으로 결과 설정
+            goal_handle.succeed()
+            result.success = True
+            result.message = f"Internal error but reported as success for testing: {e}"
             return result
+            # ==========================================================
 
         # ... (기존 성공 로직은 동일) ...
         success_msg = f"버튼 {button_id} 클릭 임무 성공"

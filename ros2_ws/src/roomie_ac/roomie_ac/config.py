@@ -99,11 +99,11 @@ PREDEFINED_BUTTON_POSES_M = {
 # 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
 POSE_ANGLES_DEG = {
     Pose.INIT: np.array([0, 40, 170, 30]),
-    Pose.OBSERVE: np.array([90, 160, 178, 2]),
+    Pose.OBSERVE: np.array([90, 160, 178, 10]),
     Pose.LEFT: np.array([170, 120, 150, 30]),
     Pose.RIGHT: np.array([0, 130, 170, 30]),
     Pose.FORWARD: np.array([90, 140, 170, 30]),
-    Pose.UP: np.array([90, 130, 127, 40]),
+    Pose.UP: np.array([90, 120, 137, 30]),
 
 }
 
