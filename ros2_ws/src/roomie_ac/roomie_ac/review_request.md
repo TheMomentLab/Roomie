@@ -41,26 +41,25 @@ roomie_ac (Arm Control Package):
 5. 인터페이스 및 데이터 정의
 서비스 정의
 Protocol Buffers
-
 # ButtonStatus.srv
 
 # Request
 int32 robot_id
-int32[] button_ids
+int32 button_id
+
 ---
+
 # Response
 int32 robot_id
+int32 button_id
 bool success
-float32[] xs
-float32[] ys
-float32[] sizes
-bool[] is_pressed
-builtin_interfaces/Time[] timestamp
-액션 정의
-코드 스니펫
+float32 x
+float32 y
+float32 size
+bool is_pressed
+builtin_interfaces/Time timestamp
 
 # SetPose.action
-
 # Goal
 int32 robot_id
 int32 pose_id
@@ -68,21 +67,49 @@ int32 pose_id
 # Result
 int32 robot_id
 bool success
-string message
 ---
 # Feedback
-# (없음)
-코드 스니펫
+(없음)
+
+
+//pose_id
+0: init  초기자세
+
+1: 준비자세
+
+2: left  왼쪽 회전 자세 
+
+3: right  오른쪽 회전 자세
+
+4: forward  전면 회전 자세
+
+5:up 위쪽 회전 자세
 
 # ClickButton.action
-
 # Goal
 int32 robot_id
 int32 button_id
 ---
-# Result
+# Result (RCS -> RMS 최종 결과)
+int32 robot_id
 bool success
 string message
 ---
-# Feedback
+# Feedback (Arm(수행중) -> RC 진행 상황)
+int32 robot_id
 string status
+
+//
+status
+
+"MOVING_TO_TARGET", 
+
+"ALIGNING_TO_TARGET",
+
+"PRESSING"
+
+"RETRACTING"
+
+"COMPLETED"
+
+”FAILED”

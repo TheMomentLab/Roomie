@@ -7,7 +7,6 @@ from roomie_msgs.action import SetPose
 import tkinter as tk
 from tkinter import ttk
 import threading
-
 class ArmPoseGUI(Node):
     def __init__(self):
         super().__init__('arm_pose_gui')
@@ -29,7 +28,6 @@ class ArmPoseGUI(Node):
                 rclpy.spin_once(self, timeout_sec=0.1)
         except Exception as e:
             self.get_logger().error(f'ROS spin error: {str(e)}')
-
     def create_gui(self):
         self.root = tk.Tk()
         self.root.title("Roomie Arm Pose Controller")
@@ -52,10 +50,9 @@ class ArmPoseGUI(Node):
             (4, "위쪽 회전", "green"),
             (5, "준비자세 회전 (Forward)", "green"),
         ]
-
         for pose_id, text, color in poses:
             btn = ttk.Button(
-                button_frame, 
+                button_frame,
                 text=f"{pose_id}: {text}",
                 command=lambda pid=pose_id: self.send_pose_action(pid),
                 style=f"{color}.TButton"
@@ -85,18 +82,13 @@ class ArmPoseGUI(Node):
         except Exception as e:
             self.get_logger().error(f'Goal send error: {str(e)}')
             self.root.after(0, lambda: self.status_label.config(text=f"전송 오류: {str(e)}"))
-
     def goal_response_callback(self, future):
         try:
             goal_handle = future.result()
             if not goal_handle.accepted:
-                self.get_logger().info('❌ Goal 거부됨')
-                self.root.after(0, lambda: self.status_label.config(text="❌ Goal 거부됨"))
+                self.get_logger().info(':x: Goal 거부됨')
+                self.root.after(0, lambda: self.status_label.config(text=":x: Goal 거부됨"))
                 return
-
-            self.get_logger().info('✅ Goal 수락됨')
-            self.root.after(0, lambda: self.status_label.config(text="✅ Goal 수락됨, 실행 중..."))
-
             self._get_result_future = goal_handle.get_result_async()
             self._get_result_future.add_done_callback(self.get_result_callback)
         except Exception as e:
@@ -119,14 +111,12 @@ class ArmPoseGUI(Node):
         self.root.quit()
         self.root.destroy()
         rclpy.shutdown()
-
     def run(self):
         try:
             self.root.mainloop()
         except KeyboardInterrupt:
             self.get_logger().info('Keyboard interrupt, shutting down')
             self.quit_gui()
-
 def main(args=None):
     rclpy.init(args=args)
     gui = ArmPoseGUI()
@@ -137,6 +127,5 @@ def main(args=None):
     finally:
         gui.destroy_node()
         rclpy.shutdown()
-
 if __name__ == '__main__':
     main()

@@ -41,14 +41,15 @@ class ImageServoing:
             self._log(f"--- 정렬 시도 #{attempt + 1} ---")
 
             # 1. Vision Service로부터 현재 버튼 위치 정보 요청
-            response = await self.vision_client.request_button_status(self.robot_id, [button_id])
-            if not response or not response.success or response.sizes[0] <= 0:
+            response = await self.vision_client.request_button_status(self.robot_id, button_id) 
+            if not response or not response.success or response.size <= 0:
                 self._log("버튼 위치 정보를 얻는 데 실패했습니다. 0.5초 후 재시도합니다.", error=True)
                 await asyncio.sleep(0.5)
                 continue
 
-            current_x = response.xs[0]
-            current_y = response.ys[0]
+            current_x = response.x 
+            current_y = response.y
+
             
             # 2. 목표 지점(이미지 중앙)과의 오차 계산
             error_x = self.image_center_x - current_x
