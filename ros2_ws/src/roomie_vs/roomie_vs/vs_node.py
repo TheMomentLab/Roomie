@@ -1638,18 +1638,26 @@ class VSNode(Node):
             self.location_callback
         )
         
-        # ROS2 토픽 퍼블리셔들
+        # ROS2 토픽 퍼블리셔들 (QoS 프로파일 명시적 설정)
+        from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
+        
+        # QoS 프로파일 설정 (히스토리 크기 증가)
+        qos_profile = QoSProfile(
+            history=HistoryPolicy.KEEP_LAST,
+            depth=50,  # 히스토리 크기를 50으로 증가
+            reliability=ReliabilityPolicy.RELIABLE
+        )
         
         self.tracking_event_pub = self.create_publisher(
             TrackingEvent,
             '/vs/tracking_event',
-            10
+            qos_profile
         )
         
         self.registered_pub = self.create_publisher(
             Registered,
             '/vs/registered',
-            10
+            qos_profile
         )
         
         self.get_logger().info("모든 VS 인터페이스 초기화 완료!")
@@ -2029,14 +2037,64 @@ class VSNode(Node):
                         # button_id=0인 경우: 현재 유일하게 감지되는 버튼 (ID 매칭 불필요)
                         self.get_logger().info("📍 유일 버튼 감지 모드 (ID 매칭 생략)")
                 else:
-                    # 2개 이상의 버튼이 감지됨 - success=false
-                    self.get_logger().warning(f"버튼이 {len(detected_buttons)}개 감지됨 - 유일한 버튼이 아님")
-                    response.success = False
-                    response.x = 0.0
-                    response.y = 0.0
-                    response.size = 0.0
-                    response.is_pressed = False
-                    response.timestamp = self.get_clock().now().to_msg()
+                    # 2개 이상의 버튼이 감지됨
+                    self.get_logger().info(f"버튼이 {len(detected_buttons)}개 감지됨")
+                    
+                    if request.button_id == 0:
+                        # button_id=0: 유일한 버튼만 허용 → success=false
+                        self.get_logger().warning("button_id=0 요청이지만 유일한 버튼이 아님 - success=false")
+                        response.success = False
+                        response.x = 0.0
+                        response.y = 0.0
+                        response.size = 0.0
+                        response.is_pressed = False
+                        response.timestamp = self.get_clock().now().to_msg()
+                    else:
+                        # 특정 button_id 요청: 해당 버튼이 있는지 찾기
+                        target_button = None
+                        for btn in detected_buttons:
+                            detected_button_id = btn.get('button_id', -1)
+                            if detected_button_id == request.button_id:
+                                target_button = btn
+                                break
+                        
+                        if target_button is None:
+                            # 요청한 버튼이 없음
+                            self.get_logger().warning(f"요청한 button_id={request.button_id}가 감지되지 않음")
+                            response.success = False
+                            response.x = 0.0
+                            response.y = 0.0
+                            response.size = 0.0
+                            response.is_pressed = False
+                            response.timestamp = self.get_clock().now().to_msg()
+                        else:
+                            # 요청한 버튼을 찾음 → 성공
+                            btn = target_button
+                            center = btn['center']
+                            bbox = btn['bbox']
+                            
+                            # 좌표를 0~1 범위로 정규화
+                            x_norm = float(center[0] / img_width)
+                            y_norm = float(center[1] / img_height)
+                            
+                            # 버튼 크기를 0~1 범위로 정규화
+                            bbox_width = bbox[2] - bbox[0]
+                            bbox_height = bbox[3] - bbox[1]
+                            bbox_area = bbox_width * bbox_height
+                            img_area = img_width * img_height
+                            size_norm = float(bbox_area / img_area)
+                            
+                            response.success = True
+                            response.x = x_norm
+                            response.y = y_norm
+                            response.size = size_norm
+                            response.is_pressed = bool(btn.get('is_pressed', False))
+                            response.timestamp = self.get_clock().now().to_msg()
+                            
+                            confidence = btn.get('confidence', 1.0)
+                            self.get_logger().info(f"특정 버튼 탐지 성공: button_id={request.button_id}, "
+                                                 f"x={x_norm:.3f}, y={y_norm:.3f}, size={size_norm:.3f}, "
+                                                 f"pressed={btn.get('is_pressed', False)}, conf={confidence:.2f}")
                     
             except Exception as detection_error:
                 self.get_logger().error(f"버튼 탐지 중 에러: {detection_error}")
@@ -3881,33 +3939,9 @@ def main(args=None):
                                 elif mode_id == 6:  # 대기 모드: 영상만
                                     pass
                             elif camera_type == 'front_depth':
-                                if mode_id == 5:  # 일반 모드: 뎁스에 일반 YOLO
+                                if mode_id == 5:  # 일반 모드: 뎁스에 일반 YOLO (OCR 불필요 - ArUco만)
                                     detected_objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
-                                    
-                                    # 🎯 OCR 리소스 절약: 지정된 프레임 간격마다만 OCR 수행 (뎁스 카메라용)
-                                    node.ocr_counter += 1
-                                    if node.ocr_counter >= node.ocr_skip_frames:
-                                        objects = node._enhance_objects_with_ocr(color_image, detected_objects)
-                                        node.last_ocr_objects = objects  # 결과 캐싱
-                                        node.ocr_counter = 0  # 카운터 리셋
-                                        if frame_count % 100 == 1:
-                                            node.get_logger().info(f"🔄 OCR 수행됨 (뎁스 카메라, 매 {node.ocr_skip_frames}프레임마다)")
-                                    else:
-                                        # OCR 건너뛰고 이전 결과 재사용 (객체 감지는 계속)
-                                        objects = detected_objects.copy()
-                                        # 이전 OCR 결과가 있으면 병합
-                                        if hasattr(node, 'last_ocr_objects') and node.last_ocr_objects:
-                                            for old_obj in node.last_ocr_objects:
-                                                if old_obj.get('class_name') == 'display' and old_obj.get('ocr_text'):
-                                                    # 이전 OCR 결과를 현재 display 객체에 적용
-                                                    for new_obj in objects:
-                                                        if (new_obj.get('class_name') == 'display' and 
-                                                            not new_obj.get('ocr_text')):
-                                                            new_obj['ocr_text'] = old_obj.get('ocr_text', '')
-                                                            new_obj['floor_number'] = old_obj.get('floor_number')
-                                                            new_obj['ocr_success'] = old_obj.get('ocr_success', False)
-                                                            new_obj['digit_bbox'] = old_obj.get('digit_bbox')
-                                                            break
+                                    objects = detected_objects  # OCR 없이 그대로 사용
                                 elif mode_id in [3, 4, 6]:  # 엘리베이터/대기 모드: 뎁스는 영상만
                                     pass
                             elif camera_type in ['rear', 'front']:
