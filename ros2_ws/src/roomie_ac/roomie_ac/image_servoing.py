@@ -3,96 +3,78 @@ import asyncio
 from . import config
 from .vision_client import VisionServiceClient
 from .motion_controller import MotionController
+from .coordinate_transformer import CoordinateTransformer 
+import asyncio
+
 
 class ImageServoing:
-    """
-    카메라 이미지 피드백을 기반으로 로봇 팔을 목표 지점에 정렬하는 클래스 (정렬 전문가).
-    PD 제어기를 사용하여 안정성을 향상시켰습니다.
-    """
-    def __init__(self, vision_client: VisionServiceClient, motion_controller: MotionController):
+    def __init__(self, vision_client: VisionServiceClient, motion_controller: MotionController, coord_transformer: CoordinateTransformer):
         self.vision_client = vision_client
         self.motion_controller = motion_controller
-
-        # --- 정렬 제어 파라미터 ---
+        self.coord_transformer = coord_transformer
         self.robot_id = config.ROBOT_ID
-        self.image_center_x = 0.5
-        self.image_center_y = 0.5
-        
-        self.align_threshold_x = 0.005 # X축 정렬 완료 허용 오차 (정규화 기준, 0.5% 이내)
-        self.align_threshold_y = 0.005 # Y축 정렬 완료 허용 오차
-        self.loop_rate_sec = 0.2
-        self.max_attempts = 30
-        
-        # [수정] PD 제어기 게인(gain) 값 (필요시 이 값을 조절하여 성능 튜닝)
-        self.K_p = 0.08  # 비례 게인 (P): 오차에 비례하여 반응.
-        self.K_d = 0.02  # 미분 게인 (D): 오차의 변화율에 반응. 진동을 억제.
+        self.max_attempts = 5 # 최대 5번 시도
+        self.position_tolerance_m = 0.01 # 5mm 오차 허용
 
-    async def align_to_target(self, button_id: int) -> bool:
+    async def align_to_standby_pose(self, button_id: int) -> bool:
         """
-        [Public] 특정 버튼 ID를 받아, 해당 버튼이 이미지 중앙에 오도록 팔을 정렬합니다.
+        [최종 버전] '준비 위치'에 도달할 때까지 '측정->이동'을 반복합니다.
         """
-        self._log(f"버튼 ID {button_id}에 대한 이미지 서보잉(PD Control) 정렬을 시작합니다.")
-
-        # PD 제어를 위한 이전 오차 값 초기화
-        last_error_x = 0.0
-        last_error_y = 0.0
+        self._log(f"버튼 ID {button_id}에 대한 시각 정렬(1단계)을 시작합니다.")
 
         for attempt in range(self.max_attempts):
             self._log(f"--- 정렬 시도 #{attempt + 1} ---")
-
-            # 1. Vision Service로부터 현재 버튼 위치 정보 요청
-            response = await self.vision_client.request_button_status(self.robot_id, button_id) 
-            if not response or not response.success or response.size <= 0:
-                self._log("버튼 위치 정보를 얻는 데 실패했습니다. 0.5초 후 재시도합니다.", error=True)
-                await asyncio.sleep(0.5)
-                continue
-
-            current_x = response.x 
-            current_y = response.y
-
             
-            # 2. 목표 지점(이미지 중앙)과의 오차 계산
-            error_x = self.image_center_x - current_x
-            error_y = self.image_center_y - current_y
-            self._log(f"현재 위치 (x:{current_x:.4f}, y:{current_y:.4f}), 오차 (x:{error_x:.4f}, y:{error_y:.4f})")
+            # 1. 비전 서비스로부터 2D 점 4개 획득
+            response = await self.vision_client.request_button_status(self.robot_id, button_id)
+            if not response or not response.success or not response.points:
+                self._log("버튼의 2D 점 정보를 얻지 못했습니다.", error=True)
+                await asyncio.sleep(0.1); continue  # 0.5 → 0.1로 줄임
+            
+            image_points_2d = np.array([[p.x, p.y] for p in response.points], dtype=np.float32)
 
-            # 3. 정렬 완료 조건 확인
-            if abs(error_x) < self.align_threshold_x and abs(error_y) < self.align_threshold_y:
-                self._log("✅ 목표 지점에 성공적으로 정렬되었습니다.")
+            button_center_px = np.mean(image_points_2d, axis=0)
+            
+            image_center_px = np.array([config.IMAGE_WIDTH_PX / 2, config.IMAGE_HEIGHT_PX / 2])
+            center_offset = np.linalg.norm(button_center_px - image_center_px)
+            self._log(f"[정렬 오차] 버튼 중심과 이미지 중심 거리: {center_offset:.2f}px", info=True)
+
+            # 2. 현재 로봇팔의 Pose(FK) 획득
+            current_robot_transform = self.motion_controller._get_current_transform()
+
+            # 3. 목표 '준비 위치'의 3D 좌표 계산
+            target_xyz, target_orientation = self.coord_transformer.get_target_pose_from_points(
+                image_points_2d, current_robot_transform)
+            
+            if target_xyz is None:
+                self._log("목표 '준비 위치' 계산 실패.", error=True); continue
+
+            # [수정] 계산된 위치와 방향으로 IK를 이용해 이동
+            if not self.motion_controller.move_to_pose_ik(target_xyz, target_orientation):
+                self._log("IK 이동 실패.", error=True); continue
+            
+            # 4. 현재 위치와 목표 위치 사이의 오차 계산
+            current_pos = self.motion_controller._get_current_transform()[:3, 3]
+            offset_vector = target_xyz - current_pos
+            move_vector = config.SERVOING_KP * offset_vector  # P gain
+            move_vector = np.clip(move_vector, -config.SERVOING_MAX_MOVE_M, config.SERVOING_MAX_MOVE_M)  # Damping
+
+            if not self.motion_controller.move_relative_cartesian(move_vector):
+                self._log("상대 IK 이동 실패.", error=True); continue
+            # 5. 정렬 완료 확인
+            final_pos = self.motion_controller._get_current_transform()[:3, 3]
+            error = np.linalg.norm(final_pos - target_xyz)
+            self._log(f"정렬 이동 완료. 최종 오차: {error*1000:.2f} mm")
+            await asyncio.sleep(0.1)
+            
+            # 6. 오차가 허용 범위 내인지 확인
+            if error < self.position_tolerance_m:
+                self._log("✅ '준비 위치' 정렬 성공.")
                 return True
 
-            # 4. PD 제어 법칙에 따른 3D 공간 이동 벡터 계산
-            # 오차의 변화율 (Derivative term)
-            error_delta_x = error_x - last_error_x
-            error_delta_y = error_y - last_error_y
-
-            # P 제어량 + D 제어량
-            control_signal_x = self.K_p * error_x + self.K_d * (error_delta_x / self.loop_rate_sec)
-            control_signal_y = self.K_p * error_y + self.K_d * (error_delta_y / self.loop_rate_sec)
-
-            # 현재 오차를 다음 루프를 위해 저장
-            last_error_x = error_x
-            last_error_y = error_y
-
-            # 핸드-아이 좌표계 관계에 따라 이동 벡터 계산
-            move_x_tool = control_signal_y
-            move_y_tool = control_signal_x
-            move_z_tool = 0.0 # 정렬 단계에서는 전/후진 안함
-            
-            move_vector_local = np.array([move_x_tool, move_y_tool, move_z_tool])
-
-            # 5. MotionController를 통해 상대 이동 실행
-            self._log(f"PD 제어 이동량 (x:{move_x_tool:.4f}, y:{move_y_tool:.4f})")
-            success = self.motion_controller.move_relative_cartesian(move_vector_local)
-            if not success:
-                self._log("MotionController가 상대 이동에 실패했습니다. 다음 시도를 진행합니다.", error=True)
-
-            # 6. 제어 루프 주기만큼 대기
-            await asyncio.sleep(self.loop_rate_sec)
-
-        self._log(f"❌ 최대 시도 횟수({self.max_attempts}) 내에 정렬하지 못했습니다.", error=True)
+        self._log(f"❌ 최대 시도 횟수 내에 정렬하지 못했습니다.", error=True)
         return False
-
+        
     def _log(self, message: str, error: bool = False):
         if config.DEBUG:
             log_level = "ERROR" if error else "INFO"

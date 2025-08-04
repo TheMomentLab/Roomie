@@ -1,0 +1,118 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROOMIE - 객실 서비스</title>
+  <link rel="stylesheet" href="common.css" />
+  <style>
+    body {
+      font-family: 'Noto Sans KR', sans-serif;
+      color: white;
+      background: url('../assets/images/background_1.png') no-repeat center center;
+      background-size: cover;
+      background-position: center;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      padding: 30px;
+    }
+
+    .header {
+      width: 100%;
+      text-align: right;
+      font-size: 28px;
+      font-weight: 700;
+    }
+
+    .main-content h1 {
+      font-size: 75px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 18px;
+      margin-bottom: 25px;
+    }
+
+    .welcome {
+      font-size: 20px;
+      font-weight: 700;
+    }
+
+    .button-grid {
+      width: 100%;
+      max-width: 420px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+      margin-top: 40px;
+    }
+
+    .grid-button {
+      background-color: #3B5E72;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 25px 10px;
+      font-family: 'Noto Sans KR', sans-serif;
+      font-size: 24px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .grid-button:hover {
+      background-color: #4a758f;
+    }
+
+    @media (max-width: 600px) {
+      .main-content h1 {
+        font-size: 60px;
+      }
+      .subtitle, .welcome {
+        font-size: 16px;
+      }
+      .grid-button {
+        font-size: 20px;
+        padding: 20px 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <script src="config.js"></script>
+  <script src="app.js"></script> 
+  <script src="common.js"></script> 
+  <script src="food.js"></script>
+  <script src="supply.js"></script>
+  <script src="robot.js"></script>
+  <script src="history.js"></script>
+
+  <header class="header">
+    <span id="room-name"></span>
+  </header>
+
+  <main class="main-content">
+    <h1>ROOMIE</h1>
+    <p class="subtitle">호텔 안내 & 주문 배송 서비스</p>
+    <p class="welcome">ROOMIE에 오신 걸 환영합니다.</p>
+  </main>
+
+  <div class="button-grid">
+    <button class="grid-button" id="btn-call-robot">로봇호출</button>
+    <button class="grid-button" id="btn-order-history">요청조회</button>
+    <button class="grid-button" id="btn-order-food">음식주문</button>
+    <button class="grid-button" id="btn-order-supply">비품주문</button>
+  </div>
+
+  <div id="global-toast" class="global-toast hidden">
+    <img id="toast-full-image" class="toast-image" src="" alt="">
+  </div>
+</body>
+</html>

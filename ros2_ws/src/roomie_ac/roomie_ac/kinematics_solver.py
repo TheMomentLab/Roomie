@@ -18,12 +18,9 @@ class KinematicsSolver:
         full_joints[self.active_links_mask] = active_joints_rad
         return full_joints
 
-    def solve_ik(self, target_pos, current_active_angles_rad):
+    def solve_ik(self, target_pos, target_orientation_matrix, current_active_angles_rad):
         """
-        목표 3D 위치에 대한 역기구학(IK) 솔루션을 계산합니다.
-        target_pos: 로봇 팔 끝점의 목표 3D 좌표 (numpy 배열 [x, y, z], 단위: m)
-        current_active_angles_rad: 현재 활성 관절의 각도 (numpy 배열, 단위: 라디안) - IK 계산의 초기 시드
-        반환: 성공 시 활성 관절의 해(라디안), 실패 시 None
+        [최종 버전] 목표 3D 위치와 '방향'에 대한 IK 솔루션을 계산합니다.
         """
         if config.DEBUG:
             print("\n--- IK 계산 시작 ---")
@@ -35,14 +32,17 @@ class KinematicsSolver:
         try:
             q_solution_all = self.chain.inverse_kinematics(
                 target_position=target_pos,
+                target_orientation=target_orientation_matrix,   # [추가] 목표 방향 매트릭스
+                orientation_mode='Z',                           # ★★★ 핵심: Z축 방향만 제어
                 initial_position=q_full_seed,
-                max_iter=config.IK_MAX_ITERATIONS # config.py의 IK_MAX_ITERATIONS 사용
+                max_iter=config.IK_MAX_ITERATIONS
             )
         except Exception as e:
             if config.DEBUG:
                 print(f"❌ IK 계산 중 오류 발생: {e}")
             return None
         
+        # ... (이후의 오차 검사 및 반환 로직은 기존과 동일) ...
         final_pos = self.chain.forward_kinematics(q_solution_all)[:3, 3]
         error = np.linalg.norm(final_pos - target_pos)
 
@@ -52,16 +52,15 @@ class KinematicsSolver:
             print(f"  - 최종 도달 좌표 (m): {np.round(final_pos, 4)}")
             print(f"  - 오차 (m): {error:.6f}")
 
-        if error > config.IK_TOLERANCE_M: # config.py의 IK_TOLERANCE_M 사용
+        if error > config.IK_TOLERANCE_M:
             if config.DEBUG:
-                print(f"⚠️ IK 오차가 허용 범위를 초과합니다 (오차: {error*1000:.2f} mm, 허용: {config.IK_TOLERANCE_M*1000:.2f} mm).")
+                print(f"⚠️ IK 오차가 허용 범위를 초과합니다.")
             return None 
         
-        # 계산된 각도가 관절 제한을 벗어나는지 추가 검사
         for i, angle_rad in enumerate(active_solution_rad):
             if not (config.JOINT_LIMIT_RAD[i][0] <= angle_rad <= config.JOINT_LIMIT_RAD[i][1]):
                 if config.DEBUG:
-                    print(f"🚫 관절 {i+1}의 IK 결과 각도({np.rad2deg(angle_rad):.2f} deg)가 제한({np.rad2deg(config.JOINT_LIMIT_RAD[i][0]):.2f}~{np.rad2deg(config.JOINT_LIMIT_RAD[i][1]):.2f} deg)을 벗어납니다.")
+                    print(f"🚫 관절 {i+1}의 IK 결과 각도가 제한을 벗어납니다.")
                 return None
 
         return active_solution_rad

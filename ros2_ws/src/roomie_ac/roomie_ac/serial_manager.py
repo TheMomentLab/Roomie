@@ -16,10 +16,7 @@ class SerialManager:
     def connect(self):
         try:
             self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
-            # 포트가 열리면 ESP32가 리셋되고 부팅될 시간을 줍니다.
-            # 이 시간은 ESP32의 setup() 실행 시간보다 충분히 길어야 합니다.
-            print("🔌 시리얼 포트 연결됨. ESP32 부팅 대기 중 (2.0초)...")
-            time.sleep(2.0)
+            print("🔌 시리얼 포트 연결됨. ESP32 부팅 대기 중")
             
             # ======================= [핵심 수정] =======================
             # 1. 먼저 응답을 기다리는 대신, 초기 자세 명령을 보냅니다.

@@ -42,27 +42,21 @@ class MotionController:
             self._log("서보 이동 명령 실패.", error=True)
             return False
 
-    def move_to_pose_ik(self, target_xyz: np.ndarray) -> bool:
+    def move_to_pose_ik(self, target_xyz: np.ndarray, target_orientation_matrix: np.ndarray) -> bool:
         """
-        [Public] IK를 계산하여 목표 3D 좌표로 팔 끝점을 이동시킵니다.
+        [수정됨] IK를 계산하여 목표 3D 좌표와 '방향'으로 팔 끝점을 이동시킵니다.
         """
         self._log(f"IK를 이용해 3D 좌표 {np.round(target_xyz, 3)}로 이동합니다.")
         
-        # 1. IK 해 찾기
-        solution_rad = self.kin_solver.solve_ik(target_xyz, self.current_angles_rad)
+        solution_rad = self.kin_solver.solve_ik(target_xyz, target_orientation_matrix, self.current_angles_rad)
         
-        # 2. IK 성공 여부 확인
         if solution_rad is None:
             self._log("IK 해를 찾지 못했습니다.", error=True)
             return False
             
-        # 3. 실제 서보 각도로 변환
         servo_angles_deg = self._convert_rad_to_servo_deg(solution_rad)
-        
-        # 4. 시리얼 명령 전송
         response = self.serial.send_command(servo_angles_deg)
         
-        # 5. 상태 업데이트 및 결과 반환
         if response is not None:
             self.current_angles_rad = self._convert_servo_deg_to_rad(response)
             self._log("IK 이동 성공.")
@@ -74,27 +68,22 @@ class MotionController:
 
     def move_relative_cartesian(self, move_vector_m: np.ndarray) -> bool:
         """
-        [Public] 현재 팔 끝점 기준, 3D 벡터만큼 상대적으로 이동합니다.
-        (press_forward, retreat의 기반이 되는 함수)
+        [수정됨] 현재 팔 끝점 기준, 3D 벡터만큼 상대적으로 이동합니다.
         """
-        # 1. 현재 3D 위치 및 회전 정보 얻기
-        try:
-            current_transform = self._get_current_transform()
-            current_position = current_transform[:3, 3]
-            rotation_matrix = current_transform[:3, :3]
-        except Exception as e:
-            self._log(f"현재 위치 계산 실패: {e}", error=True)
-            return False
+        current_transform = self._get_current_transform()
+        
+        # 상대 이동을 위한 변환 행렬 생성
+        relative_transform = np.eye(4)
+        relative_transform[:3, 3] = move_vector_m
+        
+        # 최종 목표 변환 행렬 계산
+        target_transform = current_transform @ relative_transform
 
-        # 2. 베이스 좌표계 기준의 최종 이동 벡터 계산
-        # (로컬 이동 벡터를 현재 팔의 회전에 맞게 변환)
-        global_move_vector = rotation_matrix.dot(move_vector_m)
+        # 목표 위치와 방향을 분리하여 전달
+        target_xyz = target_transform[:3, 3]
+        target_orientation_matrix = target_transform[:3, :3]
         
-        # 3. 최종 목표 지점 계산
-        target_xyz = current_position + global_move_vector
-        
-        # 4. move_to_pose_ik 함수를 재사용하여 이동
-        return self.move_to_pose_ik(target_xyz)
+        return self.move_to_pose_ik(target_xyz, target_orientation_matrix)
 
     def press_forward(self, distance_m=0.05) -> bool:
         """

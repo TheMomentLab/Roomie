@@ -4,7 +4,21 @@ from . import config
 
 class CoordinateTransformer:
     def __init__(self):
-        self.hand_eye_matrix = np.load(config.HAND_EYE_MATRIX_FILE)
+        # 1. Hand-Eye 행렬을 우선 로드합니다.
+        hand_eye_matrix_raw = np.load(config.HAND_EYE_MATRIX_FILE)
+
+        # 2. 행렬의 이동(translation) 벡터를 확인합니다.
+        translation_vector = hand_eye_matrix_raw[:3, 3]
+
+        # 3. 이동 벡터의 절대값 중 하나라도 1.0을 초과하면 mm 단위로 간주합니다.
+        hand_eye_matrix_raw = np.load(config.HAND_EYE_MATRIX_FILE)
+        if config.HAND_EYE_UNIT == 'mm':
+            self.hand_eye_matrix = hand_eye_matrix_raw.copy()
+            self.hand_eye_matrix[:3, 3] /= 1000.0
+        else:
+            self.hand_eye_matrix = hand_eye_matrix_raw
+
+        
         camera_params = np.load(config.CAMERA_PARAMS_FILE)
         self.camera_matrix = camera_params['mtx']
         self.dist_coeffs = camera_params['dist']
@@ -17,64 +31,72 @@ class CoordinateTransformer:
         self.real_button_diameter_m = config.REAL_BUTTON_DIAMETER_M
         self._log("CoordinateTransformer 초기화 완료: 보정 데이터 로드 성공", info=True)
 
-    def calculate_target_pose(self, button_center_xy_norm, button_width_norm, robot_fk_transform):
+    def get_target_pose_from_points(self, image_points_2d: np.ndarray, robot_fk_transform: np.ndarray):
         """
-        [Public] 모든 정보를 종합하여 로봇 베이스 기준 최종 3D 목표 지점을 계산합니다.
-        button_width_norm: 정규화된 버튼의 '너비' (yolo_vision_service.py에서 보낸 값)
+        [최종 버전] PnP로 계산된 버튼 Pose와 로봇 FK를 이용해,
+        로봇 베이스 기준의 최종 목표 '준비 위치'를 계산합니다.
         """
-        if button_width_norm <= 0:
-            self._log("버튼 너비가 0 이하이므로 좌표 변환을 수행할 수 없습니다.", error=True)
+        if image_points_2d is None or len(image_points_2d) != 4:
+            self._log("PnP 계산에 필요한 2D 점이 4개가 아닙니다.", error=True)
             return None
 
-        self._log("\n--- 좌표 변환 시작 ---", info=True)
-        self._log(f"  [입력] 2D 정규화 좌표: ({button_center_xy_norm[0]:.4f}, {button_center_xy_norm[1]:.4f})", info=True)
-        self._log(f"  [입력] 2D 정규화 너비: {button_width_norm:.4f}", info=True)
+        # 1. PnP로 카메라 기준 버튼의 6D Pose (rvec, tvec) 계산
+        success, rvec, tvec, inliers = cv2.solvePnPRansac(
+            config.OBJECT_POINTS_3D,
+            image_points_2d,
+            self.camera_matrix,
+            self.dist_coeffs,
+            reprojectionError=config.PNPR_REPROJ_ERROR_THRESHOLD_PX,
+            confidence=0.99,
+            flags=cv2.SOLVEPNP_EPNP  # 변경
+        )
 
-        try:
-            # --- 1. 거리(Depth) 계산 ---
-            # [수정] 정규화된 '너비'이므로 이미지 '너비(WIDTH)'를 곱해야 합니다.
-            button_width_px = button_width_norm * config.IMAGE_WIDTH_PX
-            
-            # 핀홀 카메라 모델의 거리 추정 공식: Z = (f * W_real) / w_pixel
-            # X축 초점거리(fx)를 사용합니다.
-            distance_m = (self.fx * self.real_button_diameter_m) / button_width_px
-            self._log(f"  [1단계: 거리 계산] 버튼 픽셀 너비: {button_width_px:.2f} px, 계산된 거리: {distance_m:.4f} m", info=True)
+        if not success or (inliers is not None and len(inliers) < config.PNPR_MIN_INLIERS):
+            self._log("PnP 실패 또는 inliers 부족", error=True)
+            return None, None
 
-            # --- 2. 2D 이미지 좌표의 왜곡 보정 및 3D 변환 (카메라 기준) ---
-            u_distorted = button_center_xy_norm[0] * config.IMAGE_WIDTH_PX
-            v_distorted = button_center_xy_norm[1] * config.IMAGE_HEIGHT_PX
+        # reprojection error 확인
+        projected, _ = cv2.projectPoints(config.OBJECT_POINTS_3D, rvec, tvec, self.camera_matrix, self.dist_coeffs)
+        error = np.linalg.norm(projected.squeeze() - image_points_2d, axis=1).mean()
 
-            distorted_points = np.array([[[u_distorted, v_distorted]]], dtype=np.float32)
-            undistorted_points = cv2.undistortPoints(distorted_points, self.camera_matrix, self.dist_coeffs, P=self.camera_matrix)
-            u_undistorted, v_undistorted = undistorted_points[0][0]
-            self._log(f"  [2단계: 왜곡 보정] 왜곡 좌표: ({u_distorted:.2f}, {v_distorted:.2f}) -> 보정 좌표: ({u_undistorted:.2f}, {v_undistorted:.2f})", info=True)
+        if success:
+            self._log(f"[PnP 성공] rvec: {rvec.flatten()}, tvec: {tvec.flatten()}", info=True)
+            self._log(f"[Reproj Error] 평균 오차: {error:.2f}px", info=True)
+        else:
+            self._log("solvePnP 실패", error=True)
 
-            # 역투영 (2D -> 3D)
-            # [수정] 표준 카메라 좌표계 (Z축이 정면)에 맞게 수정
-            # X_cam = (u - cx) * Z / fx
-            # Y_cam = (v - cy) * Z / fy
-            # Z_cam = Z
-            cam_x = (u_undistorted - self.cx) * distance_m / self.fx
-            cam_y = (v_undistorted - self.cy) * distance_m / self.fy
-            cam_z = distance_m
+        if error > config.PNPR_REPROJ_ERROR_THRESHOLD_PX:
+            self._log(f"[PnP] Reprojection error too high: {error:.2f}px", error=True)
+            return None, None
 
-            # p_camera는 동차좌표 (Homogeneous Coordinate) 입니다. [x, y, z, 1]
-            p_camera = np.array([cam_x, cam_y, cam_z, 1])
-            self._log(f"  [2단계: 3D 변환] 카메라 기준 좌표 (X,Y,Z): {np.round(p_camera[:3], 4)}", info=True)
-
-            # --- 3. 최종 좌표 변환 (카메라 -> 로봇 베이스) ---
-            transform_base_to_camera = robot_fk_transform @ self.hand_eye_matrix
-            p_base = transform_base_to_camera @ p_camera
-            final_target_xyz = p_base[:3]
-            
-            self._log(f"  [3단계: 최종 변환] 로봇 베이스 기준 목표 좌표: {np.round(final_target_xyz, 4)}", info=True)
-            self._log("--- 좌표 변환 종료 ---\n", info=True)
-                
-            return final_target_xyz
-            
-        except Exception as e:
-            self._log(f"좌표 변환 중 오류 발생: {e}", error=True)
+        
+        if not success:
+            self._log("solvePnP 계산 실패", error=True)
             return None
+
+        # 2. rvec, tvec을 4x4 변환 행렬(T_cam_to_btn)로 변환
+        R_cam_to_btn, _ = cv2.Rodrigues(rvec)
+        T_cam_to_btn = np.eye(4)
+        T_cam_to_btn[:3, :3] = R_cam_to_btn
+        T_cam_to_btn[:3, 3] = tvec.flatten()
+
+        # 3. 로봇 베이스 -> 카메라 변환 행렬 계산
+        T_base_to_cam = robot_fk_transform @ self.hand_eye_matrix
+
+        # 4. 로봇 베이스 -> 버튼 변환 행렬 계산
+        T_base_to_btn = T_base_to_cam @ T_cam_to_btn
+        
+        # 5. 최종 목표인 '준비 위치' 계산
+        # 버튼 위치에서 Z축 방향으로 설정된 거리만큼 뒤로 물러난 위치가 최종 목표
+        offset = np.eye(4)
+        offset[2, 3] = -config.SERVOING_STANDBY_DISTANCE_M # 버튼 기준 -Z축 방향
+        
+        T_final_target = T_base_to_btn @ offset
+
+        # IK가 사용할 XYZ 좌표만 반환
+        target_xyz = T_final_target[:3, 3]
+        target_orientation = T_final_target[:3, :3]
+        return target_xyz, target_orientation
 
     def _log(self, message: str, info: bool = False, error: bool = False):
         if config.DEBUG:

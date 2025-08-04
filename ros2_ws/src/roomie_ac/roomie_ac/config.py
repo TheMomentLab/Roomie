@@ -30,7 +30,7 @@ class ControlMode(IntEnum):
     MODEL_ONLY = 0      # 모델 기반 제어만 사용 (빠름)
     HYBRID = 1          # 모델 기반 + 이미지 서보잉 결합 (정밀, 권장)
 
-
+HAND_EYE_UNIT = 'mm'  # 또는 'm'
 
 # 기본 설정 (DEBUG 등)
 DEBUG = True
@@ -59,7 +59,7 @@ JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱�
 # IK (Inverse Kinematics) 설정
 ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
 IK_MAX_ITERATIONS = 10000 # IK 최대 반복 횟수
-IK_TOLERANCE_M = 2e-2 # IK 오차 허용 범위 (m)
+IK_TOLERANCE_M = 5e-3 # IK 오차 허용 범위 (m)
 
 # 워크스페이스 (작업 공간) 설정
 WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
@@ -73,10 +73,8 @@ COMEBACK_DELAY_SEC = 4.0 # 홈 포지션으로 복귀 대기 시간 (초)
 # 제어 전략 설정
 # ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
 # ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
-CONTROL_STRATEGY = ControlMode.MODEL_ONLY
+CONTROL_STRATEGY = ControlMode.HYBRID
 
-# --- 하이브리드 제어 설정 ---
-PRE_PRESS_DISTANCE_M = 0.02 # 버튼 앞에서 대기할 거리 (2cm)
 
 # 모델 전용 모드에서 사용할 버튼의 3D 좌표 (로봇 베이스 기준, 단위: m)
 # 사용법: { button_id: np.array([x, y, z]) }
@@ -96,6 +94,7 @@ PREDEFINED_BUTTON_POSES_M = {
     # 3: np.array([0.25, -0.1, 0.15]),
 }
 
+
 # 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
 POSE_ANGLES_DEG = {
     Pose.INIT: np.array([0, 40, 170, 30]),
@@ -110,7 +109,38 @@ POSE_ANGLES_DEG = {
 # 기존 홈 포지션 변수도 이 딕셔너리를 활용할 수 있습니다.
 HOME_POSITION_SERVO_DEG = POSE_ANGLES_DEG[Pose.INIT]
 
+
 # --- 카메라 및 인식 설정 ---
+CAMERA_DEVICE_ID = 4 # 사용자의 카메라 장치 번호
+YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 IMAGE_WIDTH_PX = 800  # 사용하는 카메라의 가로 해상도 (픽셀)
 IMAGE_HEIGHT_PX = 600 # 사용하는 카메라의 세로 해상도 (픽셀)
 REAL_BUTTON_DIAMETER_M = 0.035 # 버튼의 실제 지름 (미터)
+
+# solvePnP를 위한 버튼의 3D 모델 정의 (단위: 미터)
+# 버튼 표면의 중심을 (0,0,0)으로 가정하고, 4개의 점을 정의
+BUTTON_RADIUS_M = REAL_BUTTON_DIAMETER_M / 2.0 
+OBJECT_POINTS_3D = np.array([
+    [BUTTON_RADIUS_M, 0, 0],              # 오른쪽 끝 (+X)
+    [-BUTTON_RADIUS_M, 0, 0],             # 왼쪽 끝 (-X)
+    [0, BUTTON_RADIUS_M, 0],              # 위쪽 끝 (+Y)
+    [0, -BUTTON_RADIUS_M, 0]              # 아래쪽 끝 (-Y)
+], dtype=np.float32)
+
+PNPR_REPROJ_ERROR_THRESHOLD_PX = 2.0    # PnP 재투영 오차 임계값 (픽셀)
+PNPR_MIN_INLIERS = 3    # PnP 계산에 필요한 최소 인라이어 수
+SERVOING_KP = 0.5       # 서보잉 제어의 비례 게인 (0.5 ~ 1.0 사이 추천)
+SERVOING_MAX_MOVE_M = 0.02  # 서보잉 제어에서 최대 이동 거리 (미터)
+# [2] 시각 정렬 시 목표로 할 '준비 위치' (카메라 기준)
+# 카메라가 버튼 정면 5cm 앞에, 정중앙에 위치하는 것을 목표로 함
+SERVOING_STANDBY_DISTANCE_M = 0.05
+
+# [3] '준비 위치'에서 버튼을 누르기 위해 '눈 감고' 전진할 거리 (6cm)
+PRESS_FORWARD_DISTANCE_M = 0.06
+
+# 서보잉 제어 목표 지점 (엔드 이펙터 기준)
+# 카메라(엔드 이펙터)가 버튼 정면 5cm 앞에, 정중앙에 위치하는 것을 목표로 함
+SERVOING_TARGET_POSE_IN_CAMERA = {
+    'tvec': np.array([0, 0, 0.05], dtype=np.float32), # 위치: Z축으로 5cm
+    'rvec': np.array([0, 0, 0], dtype=np.float32)  # 회전: 없음
+}

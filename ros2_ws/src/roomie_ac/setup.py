@@ -15,7 +15,7 @@ setup(
         (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
         (os.path.join('share', package_name, 'data'), glob('roomie_ac/data/*')),  
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'ikpy'],
     zip_safe=True,
     maintainer='mac',
     maintainer_email='jongbob1918@gmail.com',
