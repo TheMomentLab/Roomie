@@ -172,6 +172,7 @@ class Settings(BaseSettings):
     # DB 경로 설정
     DB_SCHEMA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_tables.sql"
     DB_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_data.sql"
+    DB_DUMMY_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_dummy.sql"
 
     # 정적 파일 경로
     STATIC_DIR: Path = PROJECT_ROOT / "resources"

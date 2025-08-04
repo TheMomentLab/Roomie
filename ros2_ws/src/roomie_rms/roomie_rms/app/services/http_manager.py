@@ -609,13 +609,13 @@ class HttpManager:
             if filters.end_date:
                 query += " AND t.task_creation_time <= %s"
                 params.append(filters.end_date)
-            if filters.task_type:
+            if filters.task_type and filters.task_type != "전체":
                 query += " AND tt.name = %s"
                 params.append(filters.task_type)
-            if filters.task_status:
+            if filters.task_status and filters.task_status != "전체":
                 query += " AND ts.name = %s"
                 params.append(filters.task_status)
-            if filters.destination:
+            if filters.destination and filters.destination != "전체":
                 query += " AND l.name = %s"
                 params.append(filters.destination)
 
@@ -684,10 +684,10 @@ class HttpManager:
             if filters.robot_id:
                 query += " AND r.id = %s"
                 params.append(int(filters.robot_id.replace("ROBOT_", "")))
-            if filters.model_name:
+            if filters.model_name and filters.model_name != "전체":
                 query += " AND r.model_name = %s"
                 params.append(filters.model_name)
-            if filters.robot_status:
+            if filters.robot_status and filters.robot_status != "전체":
                 query += " AND rs.name = %s"
                 params.append(filters.robot_status)
 
@@ -699,12 +699,12 @@ class HttpManager:
 
                         robot_list_models = []
                         for row in robots_from_db:
-                            # [수정] 작업이 없으면 로봇 상태, 있으면 작업 상태를 반환
+                            # 작업이 없으면 로봇 상태, 있으면 작업 상태를 반환
                             final_status = row['task_status'] if row['task_status'] else row['robot_status']
                             
-                            # [수정] RobotInDB 모델 생성 로직
+                            # RobotInDB 모델 생성 로직
                             robot_list_models.append(RobotInDB(
-                                robot_id=f"ROBOT_{row['robot_id']:02d}",
+                                robot_id=row['robot_id'],
                                 model_name=row['model_name'],
                                 battery_level=row['battery_level'],
                                 is_charging=bool(row['is_charging']),

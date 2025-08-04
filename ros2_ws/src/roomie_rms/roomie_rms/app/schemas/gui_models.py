@@ -147,10 +147,9 @@ class TaskInDB(BaseModel):
     task_type: str
     task_status: str
     destination: str
-    robot_id: int | None
+    robot_id: Optional[int] = None
     task_creation_time: datetime
     task_completion_time: datetime | None
-    task_cancellation_time: datetime | None
     
     @field_serializer('task_creation_time')
     def serialize_creation_time(self, value: datetime) -> str:
@@ -169,9 +168,8 @@ class RobotInDB(BaseModel):
     battery_level: int | None
     is_charging: bool
     robot_status: str | None
-    task_id: int | None
+    task_id: Optional[int] | None
     has_error: bool
-    error_code: str | None
 
 # ----------------------------------------------------------------
 # GGUI (Guest GUI) HTTP Interface Models
