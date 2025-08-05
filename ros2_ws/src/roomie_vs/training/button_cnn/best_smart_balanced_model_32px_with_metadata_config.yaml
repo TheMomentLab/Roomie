@@ -1,0 +1,54 @@
+dataset_info:
+  class_names:
+  - btn_1
+  - btn_10
+  - btn_11
+  - btn_12
+  - btn_2
+  - btn_3
+  - btn_4
+  - btn_5
+  - btn_6
+  - btn_7
+  - btn_8
+  - btn_9
+  - btn_b1
+  - btn_b2
+  - btn_close
+  - btn_downward
+  - btn_open
+  - btn_upward
+  dataset_path: classification_dataset_v2
+  num_classes: 18
+  total_images: 2514
+model_info:
+  architecture: CNN
+  input_size: &id001
+  - 32
+  - 32
+  name: BalancedButtonCNN
+  num_classes: 18
+  total_params: 351570
+preprocessing:
+  data_augmentation: balanced
+  image_size: *id001
+  normalize_mean:
+  - 0.485
+  - 0.456
+  - 0.406
+  normalize_std:
+  - 0.229
+  - 0.224
+  - 0.225
+system_info:
+  device: cuda
+  model_size_mb: 1.42
+  pytorch_version: 2.7.1+cu126
+  timestamp: '2025-08-04T16:31:51.461906'
+training_info:
+  batch_size: 16
+  best_val_acc: 95.0
+  epochs: 30
+  final_train_acc: 98.0
+  learning_rate: 0.002
+  optimizer: Adam
