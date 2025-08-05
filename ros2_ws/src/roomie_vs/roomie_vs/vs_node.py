@@ -2565,7 +2565,7 @@ class VSNode(Node):
             # 기본값 설정
             detected_floor = 5  # 기본 5층
             detected_direction = 0  # 기본 상행
-            success = True  # 임시 조치: 기본값을 True로 설정
+            success = False  # 임시 조치: 기본값을 True로 설정
             
             if current_color is not None:
                 # 객체 감지 수행
@@ -2794,8 +2794,8 @@ class VSNode(Node):
             if current_color is None:
                 self.get_logger().warn("카메라에서 이미지를 가져올 수 없음 - 문 상태 감지 실패")
                 response.robot_id = request.robot_id
-                response.success = True  # 임시 조치: 카메라 실패 시에도 True
-                response.door_opened = True  # 임시 조치: 카메라 실패 시에도 True
+                response.success = False  # 임시 조치: 카메라 실패 시에도 True
+                response.door_opened = False  # 임시 조치: 카메라 실패 시에도 True
                 return response
             
             # 객체 감지 수행
@@ -2827,7 +2827,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"문 상태 감지 에러: {e}")
             response.robot_id = request.robot_id
-            response.success = True  # 임시 조치: 예외 발생 시에도 True
+            response.success = False  # 임시 조치: 예외 발생 시에도 True
             response.door_opened = False
         
         return response
