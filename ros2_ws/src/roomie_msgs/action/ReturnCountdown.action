@@ -6,4 +6,4 @@ int32 robot_id
 bool success
 ---
 # Feedback
-int32 remaining_time 
+int32 remaining_time    # 초 단위로 남은 시간
