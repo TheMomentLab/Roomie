@@ -130,7 +130,7 @@ class TaskStatusUpdateEvent(BaseModel):
 # AGUI 로봇 상태 업데이트
 class RobotStatusUpdateEventPayload(BaseModel):
     total_robot_count: int
-    waiting_robot_count: int
+    active_robot_count: int
 
 class RobotStatusUpdateEvent(BaseModel):
     type: str = "event"
@@ -167,9 +167,10 @@ class RobotInDB(BaseModel):
     model_name: str
     battery_level: int | None
     is_charging: bool
-    robot_status: str | None
-    task_id: Optional[int] | None
-    has_error: bool
+    robot_status: str
+    floor_id: int
+    task_id: int | None
+    error_id: int | None
 
 # ----------------------------------------------------------------
 # GGUI (Guest GUI) HTTP Interface Models
@@ -361,6 +362,7 @@ class TaskDetailResponsePayload(BasePayload):
     pickup_completion_time: Optional[str] = None
     delivery_arrival_time: Optional[str] = None
     task_completion_time: Optional[str] = None
+    calculated_estimated_time: Optional[int] = None
 
 class TaskDetailResponse(BaseModel):
     type: str = "response"
@@ -369,7 +371,7 @@ class TaskDetailResponse(BaseModel):
 
 # 로봇 목록 요청
 class RobotListFilters(BaseModel):
-    robot_id: Optional[str] = None
+    robot_id: Optional[int] = None
     model_name: Optional[str] = None
     robot_status: Optional[str] = None
 

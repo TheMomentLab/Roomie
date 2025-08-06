@@ -20,3 +20,5 @@ int32 location_id
 # 102| ROOM_102
 # 201| ROOM_201
 # 202| ROOM_202 
+
+# ArUco marker 사용
