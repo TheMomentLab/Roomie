@@ -1,10 +1,58 @@
 import sys
+import logging
+import os
+from datetime import datetime
 from PyQt6 import QtWidgets, uic, QtCore
 from PyQt6.QtCore import pyqtSlot, QThreadPool, QThread
 from PyQt6.QtGui import QCloseEvent
 
 from config import *
-from communications import HttpWorker, WebSocketClient
+from communications import HttpWorker, WebSocketClient, ROS2TopicHandler
+
+# 로거 설정
+def setup_logger():
+    """로거 설정"""
+    logger = logging.getLogger('roomie_agui')
+    logger.setLevel(logging.INFO)
+    
+    # 기존 핸들러 제거 (중복 방지)
+    for handler in logger.handlers[:]:
+        logger.removeHandler(handler)
+    
+    # logs 폴더 생성
+    logs_dir = 'logs'
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
+    
+    # 현재 시간으로 로그 파일명 생성
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    log_filename = f'roomie_agui_{timestamp}.log'
+    log_filepath = os.path.join(logs_dir, log_filename)
+    
+    # 콘솔 핸들러
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # 파일 핸들러
+    file_handler = logging.FileHandler(log_filepath, encoding='utf-8')
+    file_handler.setLevel(logging.INFO)
+    
+    # 포맷터
+    formatter = logging.Formatter(
+        '[%(asctime)s] - [roomie_agui] - [%(levelname)s] - [%(filename)s:%(lineno)d] | %(message)s'
+    )
+    console_handler.setFormatter(formatter)
+    file_handler.setFormatter(formatter)
+    
+    # 핸들러 추가
+    logger.addHandler(console_handler)
+    logger.addHandler(file_handler)
+    
+    logger.info(f"로그 파일 생성: {log_filepath}")
+    
+    return logger
+
+logger = setup_logger()
 
 
 class Page:
@@ -126,11 +174,18 @@ class RobotCard(QtWidgets.QFrame):
 class MainWindow(QtWidgets.QMainWindow):
     def __init__(self):
         super().__init__()
+        logger.info("ROOMIE Admin GUI 초기화 시작")
+        
         uic.loadUi(UI_FILE, self)
         
         self.setWindowTitle("ROOMIE - Admin")
         self.threadpool = QThreadPool()
         self.Page = Page  # 페이지 상수 클래스 멤버로 추가
+        
+        # ROS2 초기화
+        self.ros_node = None
+        self.ros_topic_handler = ROS2TopicHandler(self)
+        self.setup_ros2()
         
         self.setup_ui_objects()
         self.apply_styles()
@@ -138,6 +193,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setup_websocket()
         
         self.init_ui()
+        logger.info("ROOMIE Admin GUI 초기화 완료")
 
     def setup_ui_objects(self):
         """UI 객체 설정 및 상태바 추가"""
@@ -156,6 +212,62 @@ class MainWindow(QtWidgets.QMainWindow):
         for frame_name in frames:
             frame = self.findChild(QtWidgets.QFrame, frame_name)
             if frame: frame.setObjectName(frame_name)
+        
+        # 자동 연결 방지를 위해 lineEdit_id의 objectName을 임시로 변경
+        self.lineEdit_id.setObjectName('__temp_line_edit_id')
+
+    def setup_ros2(self):
+        """ROS2 노드 및 토픽 구독 설정"""
+        logger.info("ROS2 초기화 시작")
+        try:
+            # ROS2 노드 생성
+            import rclpy
+            from rclpy.node import Node
+            from rclpy.qos import QoSProfile, ReliabilityPolicy, DurabilityPolicy
+            from roomie_msgs.msg import RoomiePose
+            
+            rclpy.init()
+            self.ros_node = Node('roomie_agui_node')
+            self.ros_topic_handler.setup_node(self.ros_node)
+            
+            # ROS2TopicHandler의 시그널 연결
+            self.ros_topic_handler.robot_pose_updated.connect(self.handle_robot_pose_update)
+            
+            # QoS 설정
+            qos = QoSProfile(
+                reliability=ReliabilityPolicy.BEST_EFFORT,
+                durability=DurabilityPolicy.VOLATILE,
+                depth=10
+            )
+            
+            # /roomie/status/roomie_pose 토픽 구독
+            self.roomie_pose_subscription = self.ros_node.create_subscription(
+                RoomiePose,
+                '/roomie/status/roomie_pose',
+                self.ros_topic_handler.roomie_pose_callback,
+                qos
+            )
+            
+            # ROS2 메시지 처리를 위한 타이머 설정
+            self.ros_timer = QtCore.QTimer()
+            self.ros_timer.timeout.connect(self.process_ros2_messages)
+            self.ros_timer.start(100)  # 100ms마다 실행
+            
+            logger.info("ROS2 토픽 구독 설정 완료 - /roomie/status/roomie_pose")
+            
+        except Exception as e:
+            logger.error(f"ROS2 초기화 오류: {e}")
+            print(f"ROS2 초기화 오류: {e}")
+
+    def process_ros2_messages(self):
+        """ROS2 메시지 처리"""
+        if self.ros_node:
+            try:
+                import rclpy
+                rclpy.spin_once(self.ros_node, timeout_sec=0.01)
+            except Exception as e:
+                logger.error(f"ROS2 메시지 처리 오류: {e}")
+                print(f"ROS2 메시지 처리 오류: {e}")
 
     def setup_connections(self):
         """버튼 연결 설정 (페이지 상수 사용)"""
@@ -225,7 +337,8 @@ class MainWindow(QtWidgets.QMainWindow):
         filters = {}
         if self.lineEdit_id.text():
             try:
-                filters["robot_id"] = int(self.lineEdit_id.text())
+                robot_id = int(self.lineEdit_id.text())
+                filters["robot_id"] = robot_id
             except ValueError:
                 return
         
@@ -241,12 +354,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def populate_robot_list(self, data: dict):
         """로봇 리스트 표시"""
         robot_list = data.get("payload", {}).get("robots", [])
-        container = self.findChild(QtWidgets.QWidget, 'robotcard')
-        if not container: return
+        logger.info(f"로봇 목록 수신 - {len(robot_list)}개 로봇")
         
+        container = self.findChild(QtWidgets.QWidget, 'robotcard')        
         self._clear_layout(container.layout())
         
         if not robot_list:
+            logger.info("조건에 맞는 로봇이 없음")
             container.layout().addWidget(QtWidgets.QLabel("조건에 맞는 로봇을 찾을 수 없습니다."))
         else:
             for robot in robot_list:
@@ -270,6 +384,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def populate_task_table(self, data: dict):
         """작업 테이블 표시"""
         tasks = data.get("payload", {}).get("tasks", [])
+        logger.info(f"작업 목록 수신 - {len(tasks)}개 작업")
+        
         self.tableWidget.setRowCount(len(tasks))
         
         headers = ["Task ID", "작업 유형", "작업 상태", "목적지", "할당 로봇 ID", "작업 생성 시각", "작업 완료 시각"]
@@ -311,6 +427,7 @@ class MainWindow(QtWidgets.QMainWindow):
         task_id = int(self.tableWidget.item(selected_rows[0].row(), 0).text())
         payload = {"type": "request", "action": "task_detail", "payload": {"task_id": task_id}}
         self.run_http_worker("task_detail", payload, self.populate_task_detail)
+        logger.info(f"작업 상세 정보 요청 전송 - Task ID: {task_id}")
 
     @pyqtSlot(dict)
     def populate_task_detail(self, data: dict):
@@ -369,17 +486,20 @@ class MainWindow(QtWidgets.QMainWindow):
                 actual_duration = f"{minutes}분 {seconds}초"
             except:
                 pass
+
+        estimated_time = detail.get("calculated_estimated_time")
+        estimated_time_min = f"{estimated_time}분" if estimated_time is not None else "N/A"
         
         # 정보 레이블들 생성
         info_items = [
             ("Task ID", task_id),
             ("작업 종류", task_type),
             ("목적지", room_number),
-            ("배정 로봇", f"R-{int(robot_id):02d}" if robot_id != "N/A" and robot_id.isdigit() else "N/A"),
+            ("배정 로봇 ID", robot_id if robot_id != "N/A" else "N/A"),
             ("상태", task_status),
             ("요청 시간", creation_time),
             ("완료 시간", completion_time if completion_time != "N/A" else "진행중"),
-            ("예상 소요 시간", "40분"),  # 이 값은 설정값이므로 유지
+            ("예상 소요 시간", estimated_time_min),  # 이 값은 설정값이므로 유지
             ("실제 소요 시간", actual_duration)
         ]
         
@@ -544,14 +664,10 @@ class MainWindow(QtWidgets.QMainWindow):
         if action == "task_status_update":
             self.label_totaltask.setText(str(payload.get("total_task_count", "N/A")))
             self.label_waitingtask.setText(str(payload.get("waiting_task_count", "N/A")))
-            if self.stackedWidget.currentIndex() == self.Page.TASK_HISTORY:
-                self.search_tasks()
 
         elif action == "robot_status_update":
             self.label_totalrobot.setText(str(payload.get("total_robot_count", "N/A")))
             self.label_activerobot.setText(str(payload.get("active_robot_count", "N/A")))
-            if self.stackedWidget.currentIndex() == self.Page.ROBOT_MANAGEMENT:
-                self.search_robots()
 
     @pyqtSlot(bool)
     def update_connection_status(self, connected: bool):
@@ -561,20 +677,42 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.statusBar().showMessage("서버 연결 끊김 - 재연결 시도 중...")
 
+    def handle_robot_pose_update(self, robot_id: int, floor_id: int, pose):
+        """로봇 위치 정보 업데이트 처리"""
+        logger.info(f"로봇 {robot_id} 위치 업데이트 - 층: {floor_id}, 위치: ({pose.position.x:.2f}, {pose.position.y:.2f})")
+        print(f"로봇 {robot_id} 위치 업데이트 - 층: {floor_id}, 위치: ({pose.position.x:.2f}, {pose.position.y:.2f})")
+        
+        # 현재 로봇 관리 페이지에 있다면 로봇 목록을 새로고침
+        if self.stackedWidget.currentIndex() == self.Page.ROBOT_MANAGEMENT:
+            logger.debug(f"로봇 관리 페이지에서 로봇 목록 새로고침 실행")
+            self.search_robots()
+
     def apply_styles(self):
         """스타일시트 적용"""
         self.setStyleSheet(APP_STYLE)
 
     def closeEvent(self, event: QCloseEvent):
         """앱 종료 시 리소스 정리"""
-        if hasattr(self, 'ws_client'): self.ws_client.disconnect()
+        
+        if hasattr(self, 'ws_client'): 
+            self.ws_client.disconnect()
         if hasattr(self, 'ws_thread'):
             self.ws_thread.quit()
             self.ws_thread.wait()
+        
+        # ROS2 리소스 정리
+        if hasattr(self, 'ros_timer'):
+            self.ros_timer.stop()
+        if hasattr(self, 'ros_node') and self.ros_node:
+            self.ros_node.destroy_node()
+
+            rclpy.shutdown()
+        
         super().closeEvent(event)
 
 def main():
     """메인 함수"""
+    logger.info("ROOMIE Admin GUI 애플리케이션 시작")
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("ROOMIE Admin")
     window = MainWindow()
