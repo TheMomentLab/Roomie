@@ -2599,58 +2599,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"❌ 장애물 감지 및 발행 실패: {e}")
     
-    def simulate_tracking_sequence(self, robot_id: int = 0, task_id: int = 1):
-        """추적 시뮬레이션 시퀀스"""
-        import threading
-        import time
-        
-        def tracking_simulation():
-            self.get_logger().info(f"추적 시뮬레이션 시작: robot_id={robot_id}")
-            
-            # 등록모드로 자동 전환
-            old_mode_id = self.current_rear_mode_id
-            old_mode_name = self.mode_names.get(old_mode_id, "Unknown")
-            
-            self.get_logger().info(f"자동 모드 전환: {old_mode_name} → 등록모드")
-            self.current_rear_mode_id = 1
-            
-            time.sleep(1)
-            
-            # 등록 완료 이벤트 발행 (삭제됨)
-            self.get_logger().info("[1/6] 등록 완료 이벤트 발행 (기능 삭제됨)")
-            self.get_logger().info("등록 완료")
-            
-            time.sleep(2)
-            
-            # 추적모드로 자동 전환
-            self.get_logger().info("자동 모드 전환: 등록모드 → 추적모드")
-            self.current_rear_mode_id = 2
-            
-            time.sleep(1)
-            
-            # 추적 시퀀스 실행 (기능 삭제됨)
-            tracking_events = [
-                (1, "maintain - 정상 추적"),
-                (0, "slow_down - 속도 감소 요청"),
-                (1, "maintain - 추적 재개"),
-                (2, "lost - 추적 대상 상실"),
-                (3, "resume - 추적 복구")
-            ]
-            
-            for i, (event_id, description) in enumerate(tracking_events):
-                time.sleep(2)
-                self.get_logger().info(f"[{i+2}/6] {description} (기능 삭제됨)")
-                self.get_logger().info(f"추적 이벤트 발행 성공 (기능 삭제됨)")
-            
-            # 원래 모드로 복원
-            time.sleep(1)
-            if old_mode_id != self.current_rear_mode_id:
-                self.get_logger().info(f"모드 복원: 추적모드 → {old_mode_name}")
-                self.current_rear_mode_id = old_mode_id
-            
-            self.get_logger().info("추적 시뮬레이션 완료")
-        
-        threading.Thread(target=tracking_simulation, daemon=True).start()
+
     
     def set_vs_mode_callback(self, request, response):
         """VS 모드 설정 처리 - 전방/후방 독립적 관리"""
@@ -4817,12 +4766,11 @@ def main(args=None):
                         if key == 27:  # ESC
                             node.get_logger().info("ESC 키 눌림 - GUI 종료")
                             break
-                        elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션
-                            node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
-                            node.simulate_tracking_sequence(robot_id=0, task_id=1)
-                        elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트 (기능 삭제됨)
+                        elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션 (삭제됨)
+                            node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 기능이 삭제되었습니다")
+                        elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트 (삭제됨)
                             node.get_logger().info("'T' 키 눌림 - 추적 이벤트 발행 기능이 삭제되었습니다")
-                        elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트 (기능 삭제됨)
+                        elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트 (삭제됨)
                             node.get_logger().info("'G' 키 눌림 - 등록 완료 이벤트 발행 기능이 삭제되었습니다")
                         elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
                             model_info = node.model_detector.get_current_model_info()
