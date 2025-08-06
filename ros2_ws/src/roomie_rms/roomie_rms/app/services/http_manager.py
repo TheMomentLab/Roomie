@@ -606,7 +606,11 @@ class HttpManager:
             )
 
             try:
-                task_id = int(task_id_str.replace("TASK_", ""))
+                # task_id_str이 정수인 경우와 문자열인 경우를 모두 처리
+                if isinstance(task_id_str, str):
+                    task_id = int(task_id_str.replace("TASK_", ""))
+                else:
+                    task_id = int(task_id_str)
                 new_status = "준비 완료"
                 rms_node = request.app.state.rms_node
 

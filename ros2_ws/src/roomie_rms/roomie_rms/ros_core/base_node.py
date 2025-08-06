@@ -7,10 +7,9 @@ from app.config import settings
 from app.services import db_manager
 
 from roomie_msgs.msg import (
-    RobotState, TaskState, Arrival, BatteryStatus, RoomiePose
-    # PickupCompleted, DeliveryCompleted  # 주석처리됨
+    RobotState, BatteryStatus, RoomiePose
 )
-from roomie_msgs.srv import GetLocations, CreateTask
+from roomie_msgs.srv import GetLocations
 from roomie_msgs.action import PerformTask, PerformReturn
 
 logger = get_logger(__name__)
@@ -75,13 +74,13 @@ class RmsBaseNode(Node):
         """
         
         # --- Publishers (RMS -> RC) ---
-        self.task_state_pub = self.create_publisher(TaskState, settings.ros.TASK_STATE_TOPIC, 10)
+        # self.task_state_pub = self.create_publisher(TaskState, settings.ros.TASK_STATE_TOPIC, 10)
 
         # --- Subscribers (RC -> RMS) ---
         # 실제 콜백 함수는 TopicHandler에서 구현됩니다.
         self.create_subscription(RobotState, settings.ros.ROBOT_STATE_TOPIC, self.robot_state_callback, 10)
-        self.create_subscription(TaskState, settings.ros.TASK_STATE_TOPIC, self.task_state_callback, 10)
-        self.create_subscription(Arrival, settings.ros.ARRIVAL_TOPIC, self.arrival_callback, 10)  # 활성화됨
+        # self.create_subscription(TaskState, settings.ros.TASK_STATE_TOPIC, self.task_state_callback, 10)
+        # self.create_subscription(Arrival, settings.ros.ARRIVAL_TOPIC, self.arrival_callback, 10)  # 활성화됨
         self.create_subscription(BatteryStatus, settings.ros.BATTERY_STATUS_TOPIC, self.battery_status_callback, 10)
         self.create_subscription(RoomiePose, settings.ros.ROOMIE_POSE_TOPIC, self.roomie_pose_callback, 10)
         # self.create_subscription(PickupCompleted, settings.ros.PICKUP_COMPLETED_TOPIC, self.pickup_completed_callback, 10)  # 주석처리됨
@@ -96,7 +95,7 @@ class RmsBaseNode(Node):
         )
 
         # --- Service Clients ---
-        self.create_task_cli = self.create_client(CreateTask, settings.ros.CREATE_TASK_SERVICE)
+        # self.create_task_cli = self.create_client(CreateTask, settings.ros.CREATE_TASK_SERVICE)
 
         # --- Action Clients ---
         self._perform_task_ac = ActionClient(self, PerformTask, settings.ros.PERFORM_TASK_ACTION)

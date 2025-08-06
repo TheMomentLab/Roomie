@@ -15,7 +15,7 @@ class TopicHandler:
         self.robot_manager = robot_manager
         self.task_manager = task_manager
         self.node = node
-        self.task_state_pub = node.task_state_pub if node else None
+        # self.task_state_pub = node.task_state_pub if node else None
 
     #------- 상태 다이어그램이 수정됨에 따라 RC에게 작업 상태를 전송하지 않음 -------
     # def publish_task_state(self, task_id, status_id):
