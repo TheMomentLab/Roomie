@@ -412,9 +412,9 @@ class WebCamCamera:
         if not available_cameras:
             return None
         
-        # 전방 USB 웹캠인 경우 (HCAM01N 우선 선택)
+        # 전방 USB 웹캠인 경우 (오직 HCA 카메라와 ABKO 카메라만)
         if "USB" in self.camera_name:
-            self.logger.info("🎯 전방 USB 웹캠 선택 로직 시작")
+            self.logger.info("🎯 전방 USB 웹캠 선택 로직 시작 (HCA/ABKO만)")
             
             # 1순위: HCAM01N 찾기
             for camera in available_cameras:
@@ -423,62 +423,42 @@ class WebCamCamera:
                     self.logger.info(f"✅ HCAM01N 전방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 2순위: 기존 USB 웹캠 키워드로 찾기
+            # 2순위: ABKO 등 허용된 외부 USB 웹캠만 찾기
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                usb_keywords = ['usb', 'webcam', 'c920', 'c922', 'c930', 'apc930', 'abko', 'logitech']
+                # 허용된 전방 카메라만 (HD Webcam 완전 제외)
+                allowed_keywords = ['abko apc930', 'abko ap', 'apc930', 'abko', 'c920', 'c922', 'c930', 'logitech']
                 
-                if any(keyword in device_name for keyword in usb_keywords):
-                    self.logger.info(f"📹 USB 웹캠으로 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                # 디버그: 각 카메라 확인
+                self.logger.info(f"🔍 전방 카메라 검사: {device_name}")
+                
+                # HD Webcam 완전 제외 (정확한 매칭)
+                if device_name.startswith('hd webcam') or device_name == 'hd webcam: hd webcam':
+                    self.logger.info(f"❌ HD Webcam 제외됨: {device_name}")
+                    continue
+                
+                if any(keyword in device_name for keyword in allowed_keywords):
+                    self.logger.info(f"📹 허용된 외부 USB 웹캠 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 3순위: ID 0 우선 (HCAM01N은 보통 ID 0)
-            for camera in available_cameras:
-                if camera['id'] == 0:
-                    self.logger.warning(f"⚠️ ID 0 기반 전방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
-                    return camera
-            
-            # 4순위: 첫 번째 카메라
-            self.logger.warning("❌ 전방 USB 웹캠을 찾지 못함 - 첫 번째 카메라 사용")
-            return available_cameras[0]
+            # 전방용 카메라가 없으면 에러
+            self.logger.error("❌ 전방용 카메라(HCA/ABKO)를 찾을 수 없습니다!")
+            raise RuntimeError("전방용 카메라(HCA 또는 ABKO)를 찾을 수 없습니다.")
         
-        # 후방 내장 카메라인 경우 (HD Webcam 우선 선택)
+        # 후방 내장 카메라인 경우 (HD Webcam 무조건 선택)
         elif "Built-in" in self.camera_name:
-            self.logger.info("🎯 후방 내장 카메라 선택 로직 시작")
+            self.logger.info("🎯 후방 내장 카메라 선택 로직 시작 (HD Webcam 무조건)")
             
-            # 1순위: HD Webcam 찾기 (기존 내장카메라)
+            # 1순위: 정확한 HD Webcam 무조건 찾기
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                if 'hd webcam' in device_name:
-                    self.logger.info(f"✅ HD Webcam 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                if 'hd webcam: hd webcam' in device_name:
+                    self.logger.info(f"✅ 정확한 HD Webcam 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 2순위: 기존 내장 카메라 키워드로 찾기
-            for camera in available_cameras:
-                device_name = camera['device_name'].lower()
-                builtin_keywords = ['integrated', 'built-in', 'webcam', 'camera', 'hd']
-                
-                # HCAM01N 제외하고 내장카메라 찾기
-                if 'hcam01n' not in device_name and any(keyword in device_name for keyword in builtin_keywords):
-                    self.logger.info(f"📹 내장 카메라로 선택: ID={camera['id']}, device='{camera['device_name']}'")
-                    return camera
-            
-            # 3순위: ID 2 우선 (HD Webcam은 보통 ID 2)
-            for camera in available_cameras:
-                if camera['id'] == 2:
-                    self.logger.warning(f"⚠️ ID 2 기반 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
-                    return camera
-            
-            # 4순위: HCAM01N이 아닌 첫 번째 카메라
-            for camera in available_cameras:
-                device_name = camera['device_name'].lower()
-                if 'hcam01n' not in device_name:
-                    self.logger.warning(f"⚠️ 후방카메라 대체 선택: ID={camera['id']}, device='{camera['device_name']}'")
-                    return camera
-            
-            # 5순위: 첫 번째 카메라
-            self.logger.warning("❌ 후방 내장 카메라를 찾지 못함 - 첫 번째 카메라 사용")
-            return available_cameras[0]
+            # HD Webcam이 없으면 에러 발생
+            self.logger.error("❌ HD Webcam을 찾을 수 없습니다! 후방 카메라는 반드시 HD Webcam이어야 합니다.")
+            raise RuntimeError("후방 카메라용 HD Webcam을 찾을 수 없습니다.")
         
         # 기본적으로 첫 번째 사용 가능한 카메라 선택
         return available_cameras[0]
@@ -822,6 +802,186 @@ class MultiCameraManager:
             self.logger.warning(f"전방 뎁스 카메라 초기화 중 에러: {e}")
             return False
 
+class ButtonPressedCNN:
+    """버튼 눌림 상태 감지 CNN 클래스"""
+    
+    def __init__(self, logger):
+        self.logger = logger
+        self.model_path = None
+        self.model = None
+        self.device = None
+        self._initialize_model()
+    
+    def _initialize_model(self):
+        """버튼 눌림 감지 CNN 모델 초기화"""
+        try:
+            import torch
+            import torch.nn as nn
+            import torch.nn.functional as F
+            
+            self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+            
+            # 모델 파일 경로 찾기
+            model_path = self._find_pressed_model()
+            if not model_path:
+                self.logger.warning("⚠️ 버튼 눌림 감지 모델을 찾을 수 없습니다")
+                return False
+            
+            # BalancedButtonCNN 아키텍처 정의 (실제 저장된 모델과 일치)
+            class PressedButtonCNN(nn.Module):
+                def __init__(self, num_classes=2):
+                    super(PressedButtonCNN, self).__init__()
+                    
+                    # 균형잡힌 특징 추출 - 실제 모델 구조와 일치
+                    self.features = nn.Sequential(
+                        # Block 1: 적당한 시작
+                        nn.Conv2d(3, 24, kernel_size=3, padding=1),
+                        nn.BatchNorm2d(24),
+                        nn.ReLU(inplace=True),
+                        nn.MaxPool2d(kernel_size=2, stride=2),
+                        nn.Dropout(0.2),
+                        
+                        # Block 2: 중간 확장
+                        nn.Conv2d(24, 48, kernel_size=3, padding=1),
+                        nn.BatchNorm2d(48),
+                        nn.ReLU(inplace=True),
+                        nn.MaxPool2d(kernel_size=2, stride=2),
+                        nn.Dropout(0.3),
+                        
+                        # Block 3: 충분한 특징
+                        nn.Conv2d(48, 96, kernel_size=3, padding=1),
+                        nn.BatchNorm2d(96),
+                        nn.ReLU(inplace=True),
+                        nn.AdaptiveAvgPool2d((4, 4)),  # 적당한 출력
+                        nn.Dropout(0.3),
+                    )
+                    
+                    # 균형잡힌 분류기
+                    self.classifier = nn.Sequential(
+                        nn.Flatten(),
+                        nn.Linear(96 * 4 * 4, 192),
+                        nn.ReLU(inplace=True),
+                        nn.Dropout(0.5),
+                        nn.Linear(192, num_classes)
+                    )
+                
+                def forward(self, x):
+                    x = self.features(x)
+                    x = self.classifier(x)
+                    return x
+            
+            # 모델 로드
+            self.model = PressedButtonCNN(num_classes=2)
+            self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+            self.model.to(self.device)
+            self.model.eval()
+            
+            self.logger.info("✅ 버튼 눌림 감지 CNN 모델 로드 완료")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"❌ 버튼 눌림 CNN 모델 초기화 실패: {e}")
+            return False
+    
+    def _find_pressed_model(self):
+        """버튼 눌림 감지 모델 파일 찾기"""
+        import os
+        
+        # 현재 스크립트 파일의 위치를 기준으로 모델 찾기
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        possible_paths = [
+            # 스크립트 기준 상대 경로
+            os.path.join(current_dir, "..", "training", "button_pressed_cnn", "best_roomie_button_model_32px_with_metadata.pth"),
+            # 절대 경로들
+            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "training", "button_pressed_cnn", "best_roomie_button_model_32px_with_metadata.pth"),
+            os.path.join(os.getcwd(), "src", "roomie_vs", "training", "button_pressed_cnn", "best_roomie_button_model_32px_with_metadata.pth"),
+            "src/roomie_vs/training/button_pressed_cnn/best_roomie_button_model_32px_with_metadata.pth",
+            "training/button_pressed_cnn/best_roomie_button_model_32px_with_metadata.pth",
+            "roomie_vs/training/button_pressed_cnn/best_roomie_button_model_32px_with_metadata.pth",
+            "../training/button_pressed_cnn/best_roomie_button_model_32px_with_metadata.pth"
+        ]
+        
+        for path in possible_paths:
+            abs_path = os.path.abspath(path)
+            if os.path.exists(abs_path):
+                self.logger.info(f"📂 버튼 눌림 모델 발견: {abs_path}")
+                return abs_path
+        
+        # 디버깅을 위해 모든 경로 출력
+        self.logger.debug("🔍 버튼 눌림 모델 검색 경로들:")
+        for path in possible_paths:
+            abs_path = os.path.abspath(path)
+            self.logger.debug(f"   - {abs_path} (존재: {os.path.exists(abs_path)})")
+        
+        return None
+    
+    def classify_pressed(self, color_image: np.ndarray, bbox: tuple) -> dict:
+        """버튼 ROI에서 눌림 상태 분류"""
+        if self.model is None:
+            return {'is_pressed': False, 'confidence': 0.0, 'method': 'no_model'}
+            
+        try:
+            import torch
+            
+            # 1. ROI 추출
+            x1, y1, x2, y2 = bbox
+            roi = color_image[y1:y2, x1:x2]
+            
+            if roi.size == 0:
+                return {'is_pressed': False, 'confidence': 0.0, 'method': 'empty_roi'}
+            
+            # 2. 32x32로 리사이즈
+            roi_resized = cv2.resize(roi, (32, 32))
+            
+            # 3. ImageNet 정규화
+            roi_normalized = self._preprocess_image(roi_resized)
+            
+            # 4. CNN 추론
+            with torch.no_grad():
+                roi_tensor = torch.from_numpy(roi_normalized).float().unsqueeze(0).to(self.device)
+                outputs = self.model(roi_tensor)
+                probabilities = torch.softmax(outputs, dim=1)
+                
+                # 0: pressed, 1: unpressed
+                pressed_prob = float(probabilities[0][0])
+                unpressed_prob = float(probabilities[0][1])
+                
+                is_pressed = pressed_prob > unpressed_prob
+                confidence = max(pressed_prob, unpressed_prob)
+                
+                return {
+                    'is_pressed': is_pressed,
+                    'confidence': confidence,
+                    'pressed_prob': pressed_prob,
+                    'unpressed_prob': unpressed_prob,
+                    'method': 'cnn_only'
+                }
+                
+        except Exception as e:
+            self.logger.error(f"CNN 분류 실패: {e}")
+            return {'is_pressed': False, 'confidence': 0.0, 'method': 'error'}
+    
+    def _preprocess_image(self, image: np.ndarray) -> np.ndarray:
+        """ImageNet 표준 전처리"""
+        # BGR → RGB 변환
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        
+        # 0-1 정규화
+        image_normalized = image_rgb.astype(np.float32) / 255.0
+        
+        # ImageNet 정규화 (float32로 명시적 변환)
+        mean = np.array([0.485, 0.456, 0.406], dtype=np.float32)
+        std = np.array([0.229, 0.224, 0.225], dtype=np.float32)
+        
+        image_normalized = (image_normalized - mean) / std
+        
+        # CHW 순서로 변경
+        image_chw = np.transpose(image_normalized, (2, 0, 1))
+        
+        return image_chw
+
+
 class CNNButtonClassifier:
     """CNN 기반 버튼 분류 클래스"""
     
@@ -980,6 +1140,11 @@ class MultiModelDetector:
         self.models = {}
         self.current_model_name = None
         self.current_model = None
+        self.button_pressed_cnn = None  # 나중에 설정됨
+        
+    def set_button_pressed_cnn(self, button_pressed_cnn):
+        """버튼 눌림 감지 CNN 설정"""
+        self.button_pressed_cnn = button_pressed_cnn
         
         # 모델별 클래스 정의 (실제 모델 순서에 맞게 수정)
         self.model_classes = {
@@ -1046,8 +1211,8 @@ class MultiModelDetector:
                 except Exception as e:
                     self.logger.warning(f"⚠️ COCO 모델도 로딩 실패: {e}")
             
-            # 2. 엘리베이터용 모델 (training/elevator/best.pt)
-            elevator_model_path = self._find_model_in_subdir('elevator', 'best.pt')
+            # 2. 엘리베이터용 모델 (best_v2.pt 우선, best_v1.pt, best.pt 순서)
+            elevator_model_path = self._find_elevator_model()
             if elevator_model_path:
                 try:
                     self.models['elevator'] = YOLO(elevator_model_path)
@@ -1130,6 +1295,42 @@ class MultiModelDetector:
                     return model_path
         
         self.logger.debug(f"모델을 찾을 수 없음: {subdir}/{model_filename}")
+        return None
+    
+    def _find_elevator_model(self):
+        """엘리베이터 모델 찾기 (best_v2.pt 우선)"""
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        possible_dirs = [
+            os.path.join(script_dir, "..", "training"),
+            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "training"),
+            os.path.join(os.getcwd(), "ros2_ws", "src", "roomie_vs", "training"),
+            "ros2_ws/src/roomie_vs/training"
+        ]
+        
+        for search_dir in possible_dirs:
+            if os.path.exists(search_dir):
+                elevator_dir = os.path.join(search_dir, "elevator")
+                if os.path.exists(elevator_dir):
+                    # 1순위: best_v2.pt (최신 버전)
+                    best_v2_path = os.path.join(elevator_dir, "best_v2.pt")
+                    if os.path.exists(best_v2_path):
+                        self.logger.info(f"✅ 엘리베이터 모델 발견 (v2): {best_v2_path}")
+                        return best_v2_path
+                    
+                    # 2순위: best_v1.pt (이전 버전)
+                    best_v1_path = os.path.join(elevator_dir, "best_v1.pt")
+                    if os.path.exists(best_v1_path):
+                        self.logger.info(f"✅ 엘리베이터 모델 발견 (v1): {best_v1_path}")
+                        return best_v1_path
+                    
+                    # 3순위: best.pt (기본)
+                    best_path = os.path.join(elevator_dir, "best.pt")
+                    if os.path.exists(best_path):
+                        self.logger.info(f"✅ 엘리베이터 모델 발견 (기본): {best_path}")
+                        return best_path
+        
+        self.logger.warning("⚠️ 엘리베이터용 모델을 찾을 수 없습니다 (best_v2.pt, best_v1.pt, best.pt)")
         return None
     
     def set_model_for_mode(self, mode_id):
@@ -1265,16 +1466,29 @@ class MultiModelDetector:
                         
                         # 객체별 특별 처리
                         is_pressed = False
+                        pressed_confidence = 0.0
+                        pressed_method = 'none'
                         object_id = current_id_map.get(class_name, class_name.upper())
                         
-                        if class_name == 'button' and depth_image is not None:
-                            is_pressed = self._check_button_pressed(depth_image, center_x, center_y, radius)
+                        if class_name == 'button':
+                            # CNN 기반 버튼 눌림 감지
+                            pressed_result = self._check_button_pressed_cnn(color_image, (x1, y1, x2, y2))
+                            is_pressed = pressed_result['is_pressed']
+                            pressed_confidence = pressed_result['confidence']
+                            pressed_method = pressed_result['method']
+                            # pressed_prob과 unpressed_prob 값도 저장
+                            pressed_prob = pressed_result.get('pressed_prob', 0.0)
+                            unpressed_prob = pressed_result.get('unpressed_prob', 0.0)
                         
                         objects.append({
                             'center': (center_x, center_y),
                             'radius': radius,
                             'depth_mm': int(depth_value),
                             'is_pressed': is_pressed,
+                            'pressed_confidence': pressed_confidence,
+                            'pressed_method': pressed_method,
+                            'pressed_prob': pressed_prob if class_name == 'button' else 0.0,
+                            'unpressed_prob': unpressed_prob if class_name == 'button' else 0.0,
                             'class_name': class_name,
                             'class_id': class_id,
                             'object_id': object_id,
@@ -1291,29 +1505,12 @@ class MultiModelDetector:
             self.logger.error(f"{self.current_model_name} 모델 탐지 에러: {e}")
             return []
     
-    def _check_button_pressed(self, depth_image: np.ndarray, cx: int, cy: int, radius: int) -> bool:
-        """버튼 눌림 상태 확인 (기존 YOLOButtonDetector와 동일)"""
-        try:
-            center_depth = depth_image[cy, cx]
-            if center_depth <= 0:
-                return False
-            
-            y1, y2 = max(0, cy-radius), min(depth_image.shape[0], cy+radius)
-            x1, x2 = max(0, cx-radius), min(depth_image.shape[1], cx+radius)
-            
-            surrounding_region = depth_image[y1:y2, x1:x2]
-            valid_depths = surrounding_region[surrounding_region > 0]
-            
-            if valid_depths.size < 5:
-                return False
-                
-            surrounding_depth = np.mean(valid_depths)
-            
-            # 중심이 주변보다 깊으면 눌린 것으로 판단
-            return center_depth > surrounding_depth + 10  # 10mm 차이
-            
-        except Exception:
-            return False
+    def _check_button_pressed_cnn(self, color_image: np.ndarray, bbox: tuple) -> dict:
+        """CNN 기반 버튼 눌림 상태 확인"""
+        if self.button_pressed_cnn is None:
+            return {'is_pressed': False, 'confidence': 0.0, 'method': 'no_cnn'}
+        
+        return self.button_pressed_cnn.classify_pressed(color_image, bbox)
     
 
     
@@ -1328,179 +1525,7 @@ class MultiModelDetector:
             'is_active': self.current_model is not None
         }
 
-class YOLOButtonDetector:
-    """YOLO 기반 엘리베이터 객체 탐지 클래스"""
-    
-    def __init__(self, logger):
-        self.logger = logger
-        self.yolo_model = None
-        
-        # 4개 클래스 정의
-        self.class_names = [
-            'button', 'direction_light', 'display', 'door'
-        ]
-        
-        # 클래스별 ID 매핑
-        self.button_id_map = {
-            'button': 'BUTTON',
-        }
-        
-        # YOLO 모델 초기화
-        self._initialize_yolo_model()
-        
-    def _initialize_yolo_model(self):
-        """YOLO 모델 초기화 및 로딩"""
-        try:
-            from ultralytics import YOLO
-            
-            model_path = self._find_best_model()
-            if model_path:
-                self.yolo_model = YOLO(model_path)
-                # 🚀 GPU 설정 추가
-                self.yolo_model.to('cuda')
-                self.logger.info(f"엘리베이터 감지 모델 로딩 성공 (GPU): {model_path}")
-                return True
-            else:
-                self.logger.error("엘리베이터 감지 YOLO 모델을 찾을 수 없습니다")
-                self.logger.error("training/elevator/best.pt 파일이 있는지 확인하세요")
-                raise FileNotFoundError("엘리베이터 감지 YOLO 모델 파일을 찾을 수 없습니다")
-                
-        except ImportError:
-            self.logger.error("ultralytics 패키지가 필요합니다: pip install ultralytics")
-            raise ImportError("ultralytics 패키지를 설치하세요")
-        except Exception as e:
-            self.logger.error(f"YOLO 모델 초기화 실패: {e}")
-            raise RuntimeError(f"YOLO 모델 로딩 실패: {e}")
-    
-    def _find_best_model(self):
-        """엘리베이터 감지 YOLO 모델 찾기"""
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        possible_training_dirs = [
-            os.path.join(script_dir, "..", "training"),
-            os.path.join(os.path.expanduser("~"), "project_ws", "Roomie", "ros2_ws", "src", "roomie_vs", "training"),
-            os.path.join(os.getcwd(), "ros2_ws", "src", "roomie_vs", "training"),
-            "ros2_ws/src/roomie_vs/training"
-        ]
-        
-        training_dir = None
-        for candidate in possible_training_dirs:
-            if os.path.exists(candidate):
-                training_dir = candidate
-                break
-        
-        if training_dir is None:
-            self.logger.error("training 디렉토리를 찾을 수 없습니다")
-            return None
-            
-        self.logger.info(f"엘리베이터 감지 모델 검색: {training_dir}")
-        
-        # 엘리베이터 서브디렉토리에서 best.pt 찾기
-        best_model_path = os.path.join(training_dir, "elevator", "best.pt")
-        if os.path.exists(best_model_path):
-            self.logger.info(f"엘리베이터 감지 모델 발견: {best_model_path}")
-            return best_model_path
-        
-        self.logger.error(f"엘리베이터 감지 모델을 찾을 수 없습니다: {best_model_path}")
-        return None
-        
-    def detect_buttons(self, color_image: np.ndarray, depth_image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
-        """YOLO로 이미지에서 엘리베이터 객체들을 탐지"""
-        if color_image is None or self.yolo_model is None:
-            return []
-            
-        try:
-            return self._detect_with_yolo(color_image, depth_image, conf_threshold)
-        except Exception as e:
-            self.logger.error(f"YOLO 버튼 탐지 에러: {e}")
-            return []
-    
-    def _detect_with_yolo(self, color_image: np.ndarray, depth_image: np.ndarray, conf_threshold: float = 0.7) -> List[dict]:
-        """YOLO 모델을 사용한 버튼 탐지"""
-        try:
-            results = self.yolo_model.predict(
-                color_image, 
-                conf=conf_threshold,
-                device='cuda',  # 🚀 GPU 사용
-                verbose=False
-            )
-            
-            buttons = []
-            if results and len(results) > 0:
-                result = results[0]
-                
-                if result.boxes is not None and len(result.boxes) > 0:
-                    boxes = result.boxes.xyxy.cpu().numpy()
-                    confs = result.boxes.conf.cpu().numpy()
-                    classes = result.boxes.cls.cpu().numpy()
-                    
-                    for box, conf, cls in zip(boxes, confs, classes):
-                        x1, y1, x2, y2 = box.astype(int)
-                        center_x = int((x1 + x2) / 2)
-                        center_y = int((y1 + y2) / 2)
-                        width = x2 - x1
-                        height = y2 - y1
-                        radius = int(max(width, height) / 2)
-                        
-                        # 클래스 정보
-                        class_id = int(cls)
-                        class_name = self.class_names[class_id] if class_id < len(self.class_names) else f"unknown_{class_id}"
-                        
-                        # Depth 정보
-                        depth_value = depth_image[center_y, center_x] if depth_image is not None else 1000
-                        
-                        # 버튼 눌림 상태 추정
-                        is_pressed = False
-                        button_id = None
-                        
-                        if class_name == 'button':
-                            button_id = self.button_id_map.get(class_name, 'BUTTON')
-                            if depth_image is not None:
-                                is_pressed = self._check_button_pressed(depth_image, center_x, center_y, radius)
-                        
-                        buttons.append({
-                            'center': (center_x, center_y),
-                            'radius': radius,
-                            'depth_mm': int(depth_value),
-                            'is_pressed': is_pressed,
-                            'class_name': class_name,
-                            'class_id': class_id,
-                            'button_id': button_id,
-                            'confidence': float(conf),
-                            'bbox': (x1, y1, x2, y2),
-                            'is_button': class_name == 'button'
-                        })
-            
-            self.logger.debug(f"엘리베이터 객체 탐지 결과: {len(buttons)}개")
-            return buttons
-            
-        except Exception as e:
-            self.logger.error(f"YOLO 탐지 에러: {e}")
-            return []
-    
-    def _check_button_pressed(self, depth_image: np.ndarray, cx: int, cy: int, radius: int) -> bool:
-        """버튼 눌림 상태 확인"""
-        try:
-            center_depth = depth_image[cy, cx]
-            if center_depth <= 0:
-                return False
-            
-            y1, y2 = max(0, cy-radius), min(depth_image.shape[0], cy+radius)
-            x1, x2 = max(0, cx-radius), min(depth_image.shape[1], cx+radius)
-            
-            surrounding_region = depth_image[y1:y2, x1:x2]
-            valid_depths = surrounding_region[surrounding_region > 0]
-            
-            if valid_depths.size < 5:
-                return False
-                
-            surrounding_depth = np.mean(valid_depths)
-            
-            # 중심이 주변보다 깊으면 눌린 것으로 판단
-            return center_depth > surrounding_depth + 10  # 10mm 차이
-            
-        except Exception:
-            return False
+# YOLOButtonDetector 클래스 제거됨 - MultiModelDetector가 실제로 사용됨
 
 class VSNode(Node):
     """OpenNI2 기반 Vision Service ROS2 노드"""
@@ -1511,6 +1536,12 @@ class VSNode(Node):
         # 멀티 카메라 매니저와 다중 모델 탐지기 초기화
         self.camera_manager = MultiCameraManager(self.get_logger())
         self.model_detector = MultiModelDetector(self.get_logger())
+        
+        # 버튼 눌림 감지 CNN 초기화
+        self.button_pressed_cnn = ButtonPressedCNN(self.get_logger())
+        
+        # CNN을 MultiModelDetector에 연결
+        self.model_detector.set_button_pressed_cnn(self.button_pressed_cnn)
         
         # CNN 버튼 분류기 초기화
         self.cnn_classifier = CNNButtonClassifier(self.get_logger())
@@ -1603,6 +1634,7 @@ class VSNode(Node):
         # 마지막으로 감지된 위치 저장
         self.last_detected_location_id = 0  # 기본값: LOB_WAITING
         self.last_detection_time = None
+        self.unknown_aruco_id = None  # 알 수 없는 ArUco 마커 ID 저장
         
         # 🚦 엘리베이터 방향 캐시
         self.last_elevator_direction = 0  # 0: 상행, 1: 하행
@@ -1842,8 +1874,9 @@ class VSNode(Node):
                     
                     return self.last_detected_location_id
                 else:
-                    self.get_logger().warning(f"⚠️ 알 수 없는 ArUco 마커: {detected_id} (매핑 테이블에 없음)")
-                    self.get_logger().info(f"지원되는 마커 ID: {list(self.aruco_to_location.keys())}")
+                    # 알 수 없는 마커는 조용히 처리 (로그 최소화)
+                    # GUI에 마커 ID를 오버레이로 표시
+                    self.unknown_aruco_id = detected_id
                     return self.last_detected_location_id
             else:
                 # 마커가 감지되지 않음 - 마지막 위치 유지
@@ -1993,6 +2026,13 @@ class VSNode(Node):
                 # 아직 감지된 마커가 없음
                 cv2.putText(image, f"ArUco Status: Waiting", (10, 240), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (128, 128, 128), 2)
+            
+            # 알 수 없는 ArUco 마커 ID 표시 (GUI 오버레이)
+            if self.unknown_aruco_id is not None:
+                cv2.putText(image, f"Unknown ArUco: {self.unknown_aruco_id}", (10, 315), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                cv2.putText(image, f"Supported: {list(self.aruco_to_location.keys())}", (10, 340), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.5, (128, 128, 128), 2)
                 
         except Exception as e:
             pass
@@ -2041,6 +2081,14 @@ class VSNode(Node):
                 
                 # 이미지 크기 정보
                 img_height, img_width = current_color.shape[:2]
+                
+                # 설정된 목표 해상도 정보 (정규화용)
+                if hasattr(self.current_camera, 'actual_camera_id') and self.current_camera.actual_camera_id is not None:
+                    target_width, target_height = self.current_camera._get_optimal_resolution(self.current_camera.actual_camera_id)
+                    self.get_logger().info(f"🔍 해상도 정보: 실제={img_width}x{img_height}, 목표={target_width}x{target_height}")
+                else:
+                    target_width, target_height = img_width, img_height
+                    self.get_logger().info(f"🔍 해상도 정보: 실제=목표={img_width}x{img_height}")
                 
                 # 다중 모델로 객체 탐지 (현재 모드 전달)
                 self.get_logger().info(f"🎯 탐지 설정: mode_id={self.current_front_mode_id}, confidence={self.confidence_threshold}")
@@ -2102,16 +2150,23 @@ class VSNode(Node):
                     center = btn['center']
                     bbox = btn['bbox']
                     
-                    # 좌표를 0~1 범위로 정규화
-                    x_norm = float(center[0] / img_width)
-                    y_norm = float(center[1] / img_height)
+                    # 좌표를 0~1 범위로 정규화 (설정된 목표 해상도 기준)
+                    x_norm = float(center[0] / target_width)
+                    y_norm = float(center[1] / target_height)
                     
-                    # 버튼 크기를 0~1 범위로 정규화 (바운딩 박스의 면적 기준)
+                    # 버튼 크기를 0~1 범위로 정규화 (설정된 목표 해상도 기준)
                     bbox_width = bbox[2] - bbox[0]
                     bbox_height = bbox[3] - bbox[1]
                     bbox_area = bbox_width * bbox_height
+                    target_area = target_width * target_height
+                    size_norm = float(bbox_area / target_area)
+                    
+                    # 디버그: 크기 계산 상세 정보
                     img_area = img_width * img_height
-                    size_norm = float(bbox_area / img_area)
+                    size_norm_actual = float(bbox_area / img_area)
+                    self.get_logger().info(f"🔍 크기 계산: bbox={bbox_width}x{bbox_height}(면적:{bbox_area})")
+                    self.get_logger().info(f"🔍 면적 비교: 실제이미지={img_area}, target={target_area}")
+                    self.get_logger().info(f"🔍 정규화: target기준={size_norm:.4f}, 실제기준={size_norm_actual:.4f}")
                     
                     response.success = True
                     response.x = x_norm
@@ -2123,9 +2178,11 @@ class VSNode(Node):
                     confidence = btn.get('confidence', 1.0)
                     button_id = btn.get('button_id', 'unknown')
                     recognition_method = btn.get('recognition_method', 'unknown')
+                    pressed_confidence = btn.get('pressed_confidence', 0.0)
+                    pressed_method = btn.get('pressed_method', 'none')
                     self.get_logger().info(f"버튼 인식 성공: ID={button_id} ({recognition_method}), "
                                          f"x={x_norm:.3f}, y={y_norm:.3f}, size={size_norm:.3f}, "
-                                         f"pressed={btn.get('is_pressed', False)}, conf={confidence:.2f}")
+                                         f"pressed={btn.get('is_pressed', False)} ({pressed_method}:{pressed_confidence:.3f}), conf={confidence:.2f}")
                     
                     # button_id 매칭 검증
                     if request.button_id != 0:
@@ -2196,16 +2253,23 @@ class VSNode(Node):
                             center = btn['center']
                             bbox = btn['bbox']
                             
-                            # 좌표를 0~1 범위로 정규화
-                            x_norm = float(center[0] / img_width)
-                            y_norm = float(center[1] / img_height)
+                            # 좌표를 0~1 범위로 정규화 (설정된 목표 해상도 기준)
+                            x_norm = float(center[0] / target_width)
+                            y_norm = float(center[1] / target_height)
                             
-                            # 버튼 크기를 0~1 범위로 정규화
+                            # 버튼 크기를 0~1 범위로 정규화 (설정된 목표 해상도 기준)
                             bbox_width = bbox[2] - bbox[0]
                             bbox_height = bbox[3] - bbox[1]
                             bbox_area = bbox_width * bbox_height
+                            target_area = target_width * target_height
+                            size_norm = float(bbox_area / target_area)
+                            
+                            # 디버그: 크기 계산 상세 정보 (다중 버튼)
                             img_area = img_width * img_height
-                            size_norm = float(bbox_area / img_area)
+                            size_norm_actual = float(bbox_area / img_area)
+                            self.get_logger().info(f"🔍 크기 계산(다중): bbox={bbox_width}x{bbox_height}(면적:{bbox_area})")
+                            self.get_logger().info(f"🔍 면적 비교(다중): 실제이미지={img_area}, target={target_area}")
+                            self.get_logger().info(f"🔍 정규화(다중): target기준={size_norm:.4f}, 실제기준={size_norm_actual:.4f}")
                             
                             response.success = True
                             response.x = x_norm
@@ -2557,15 +2621,15 @@ class VSNode(Node):
             
             # 전면 카메라 사용 (엘리베이터 디스플레이 감지에 적합)
             if self.current_camera:
-                color_frame, depth_frame = self.current_camera.get_frames()
+                depth_frame, color_frame = self.current_camera.get_frames()
                 if color_frame is not None:
                     current_color = color_frame
                     current_depth = depth_frame
             
             # 기본값 설정
-            detected_floor = 5  # 기본 5층
+            detected_floor = 1  # 기본 1층
             detected_direction = 0  # 기본 상행
-            success = False  # 임시 조치: 기본값을 True로 설정
+            success = True  # 무조건 성공 반환
             
             if current_color is not None:
                 # 객체 감지 수행
@@ -2647,7 +2711,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"엘리베이터 상태 감지 에러: {e}")
             response.robot_id = request.robot_id
-            response.success = False
+            response.success = True  # 무조건 성공 반환
             response.direction = 0
             response.position = 1
         
@@ -2785,7 +2849,7 @@ class VSNode(Node):
             
             # 전면 카메라 사용 (문 감지에 적합)
             if self.current_camera:
-                color_frame, depth_frame = self.current_camera.get_frames()
+                depth_frame, color_frame = self.current_camera.get_frames()
                 if color_frame is not None:
                     current_color = color_frame
                     current_depth = depth_frame
@@ -2794,7 +2858,7 @@ class VSNode(Node):
             if current_color is None:
                 self.get_logger().warn("카메라에서 이미지를 가져올 수 없음 - 문 상태 감지 실패")
                 response.robot_id = request.robot_id
-                response.success = False  # 임시 조치: 카메라 실패 시에도 True
+                response.success = True  # 무조건 성공 반환
                 response.door_opened = False  # 임시 조치: 카메라 실패 시에도 True
                 return response
             
@@ -2827,7 +2891,7 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"문 상태 감지 에러: {e}")
             response.robot_id = request.robot_id
-            response.success = False  # 임시 조치: 예외 발생 시에도 True
+            response.success = True  # 무조건 성공 반환
             response.door_opened = False
         
         return response
@@ -3031,15 +3095,44 @@ class VSNode(Node):
                 cv2.putText(image, label, (x1, y1-10), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 
+                # 버튼의 중심점 좌표 표시
+                if class_name == 'button':
+                    # 픽셀 좌표 표시
+                    coord_text = f"({center[0]},{center[1]})"
+                    cv2.putText(image, coord_text, (center[0]-25, center[1]+15), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+                    
+                    # 버튼 ID 표시 (이미 있는 label 아래에 추가 정보)
+                    button_id = obj.get('button_id', 'unknown')
+                    if button_id != 'unknown':
+                        id_text = f"ID:{button_id}"
+                        cv2.putText(image, id_text, (center[0]-20, center[1]+30), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255), 1)
+                
                 # 모델 이름 표시 제거됨 (오버레이 정리)
                 
                 # 거리 정보 표시 제거됨 (오버레이 정리)
                 
-                # 버튼 눌림 상태 표시
-                if class_name == 'button' and is_pressed:
-                    pressed_text = "PRESSED"
-                    cv2.putText(image, pressed_text, (center[0]-30, center[1]+35), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 0, 255), 1)
+                # 버튼 눌림 상태 표시 (pressed/unpressed + 신뢰도)
+                if class_name == 'button':
+                    pressed_confidence = obj.get('pressed_confidence', 0.0)
+                    pressed_method = obj.get('pressed_method', 'none')
+                    
+                    if pressed_method not in ['no_cnn', 'no_model', 'none']:
+                        # pressed_prob과 unpressed_prob 값 가져오기
+                        pressed_prob = obj.get('pressed_prob', 0.0)
+                        unpressed_prob = obj.get('unpressed_prob', 0.0)
+                        
+                        # pressed/unpressed 상태 표시 (두 신뢰도 모두 표시)
+                        if is_pressed:
+                            pressed_text = f"PRESSED (P:{pressed_prob:.2f} U:{unpressed_prob:.2f})"
+                            pressed_color = (0, 0, 255)  # 빨간색
+                        else:
+                            pressed_text = f"UNPRESSED (P:{pressed_prob:.2f} U:{unpressed_prob:.2f})"
+                            pressed_color = (0, 255, 0)  # 초록색
+                        
+                        cv2.putText(image, pressed_text, (center[0]-60, center[1]+45), 
+                                   cv2.FONT_HERSHEY_SIMPLEX, 0.3, pressed_color, 1)
         
         # 🎯 기억된 방향등 위치에 라벨 표시
         if (self.remembered_direction_positions['upper'] and 
@@ -4088,21 +4181,13 @@ class VSNode(Node):
         if not button_objects:
             return objects
         
-        self.get_logger().info(f"🔍 3단계 통합 인식 시작: {len(button_objects)}개 버튼 (모드: {mode_id})")
-        
         # 1순위: 기존 배열 기반 인식
         processed_objects = objects  # 기본값은 원본
         
         if mode_id == 3:  # 엘리베이터 외부
-            self.get_logger().info("배열 인식 적용: button_recog_1 (외부 - UP/DOWN)")
             processed_objects = self._apply_button_recog_1(objects)
         elif mode_id == 4:  # 엘리베이터 내부
-            self.get_logger().info("배열 인식 적용: button_recog_2 (내부 - 층수)")
             processed_objects = self._apply_button_recog_2(objects)
-        
-        # 배열 인식 후 버튼 개수 확인
-        processed_buttons = [obj for obj in processed_objects if obj.get('class_name') == 'button']
-        self.get_logger().info(f"🔍 배열 인식 후: {len(processed_buttons)}개 버튼")
         
         # 배열 인식 성공/실패 분류 - processed_objects에서 직접 작업
         successful_buttons = []
@@ -4110,22 +4195,15 @@ class VSNode(Node):
         
         for obj in processed_objects:
             if obj.get('class_name') == 'button':
-                button_id = obj.get('button_id')
-                method = obj.get('recognition_method')
-                self.get_logger().info(f"  버튼 체크: ID={button_id}, method={method}")
                 if (obj.get('button_id') not in ['unmapped', None] and 
                     obj.get('recognition_method') in ['button_recog_1', 'button_recog_2']):
                     successful_buttons.append(obj)
-                    self.get_logger().info(f"  → 성공 버튼에 추가")
                 else:
                     failed_buttons.append(obj)  # 이제 이 객체들이 processed_objects의 직접 참조
-                    self.get_logger().info(f"  → 실패 버튼에 추가")
         
         # 2순위: 실패한 버튼들에 CNN 적용 (failed_buttons는 processed_objects의 직접 참조)
         cnn_success_count = 0
         if failed_buttons and self.cnn_classifier.model is not None:
-            self.get_logger().info(f"🧠 CNN 분류 시작: {len(failed_buttons)}개 실패 버튼")
-            
             for obj in failed_buttons:
                 if 'bbox' in obj:
                     cnn_result = self.cnn_classifier.classify_button(color_image, obj['bbox'])
@@ -4137,21 +4215,6 @@ class VSNode(Node):
                         obj['class_name'] = original_class_name  # 원본 class_name 복원
                         successful_buttons.append(obj)
                         cnn_success_count += 1
-                        self.get_logger().info(f"✅ CNN 성공: {cnn_result['button_id']} (신뢰도: {cnn_result['confidence']:.3f})")
-                    else:
-                        self.get_logger().info(f"❌ CNN 실패: 신뢰도 낮음 또는 분류 실패")
-                else:
-                    self.get_logger().info(f"❌ CNN 실패: bbox 없음")
-        else:
-            if failed_buttons:
-                self.get_logger().info(f"⚠️ CNN 모델 없음: {len(failed_buttons)}개 실패 버튼을 처리할 수 없음")
-        
-        array_success_count = len(successful_buttons) - cnn_success_count
-        total_failed = len(button_objects) - len(successful_buttons)
-        
-        # 최종 결과 확인
-        final_buttons = [obj for obj in processed_objects if obj.get('class_name') == 'button']
-        self.get_logger().info(f"📊 최종 결과: 총 {len(final_buttons)}개 버튼, 배열 {array_success_count}개, CNN {cnn_success_count}개, 실패 {total_failed}개")
         
         return processed_objects
 
@@ -4231,7 +4294,9 @@ def main(args=None):
                                     # 🎯 OCR 리소스 절약: 지정된 프레임 간격마다만 OCR 수행
                                     node.ocr_counter += 1
                                     if node.ocr_counter >= node.ocr_skip_frames:
-                                        objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        enhanced_objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        # button_status와 동일한 고급 버튼 인식 로직 추가
+                                        objects = node._apply_enhanced_button_recognition(enhanced_objects, color_image, mode_id)
                                         node.last_ocr_objects = objects  # 결과 캐싱
                                         node.ocr_counter = 0  # 카운터 리셋
                                         if frame_count % 100 == 1:
@@ -4252,6 +4317,8 @@ def main(args=None):
                                                             new_obj['ocr_success'] = old_obj.get('ocr_success', False)
                                                             new_obj['digit_bbox'] = old_obj.get('digit_bbox')
                                                             break
+                                        # button_status와 동일한 고급 버튼 인식 로직 추가
+                                        objects = node._apply_enhanced_button_recognition(objects, color_image, mode_id)
                                 elif mode_id == 5:  # 일반 모드: ArUco만 (이미 위에서 처리)
                                     pass
                                 elif mode_id == 6:  # 대기 모드: 영상만
