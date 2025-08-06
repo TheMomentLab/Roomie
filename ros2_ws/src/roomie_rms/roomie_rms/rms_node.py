@@ -4,8 +4,8 @@ Roomie RMS 통합 노드
 ROS2 노드와 FastAPI 서버를 통합하여 운영하는 메인 모듈입니다.
 """
 import asyncio
+from typing import Optional
 import threading
-import time
 import uvicorn
 import rclpy
 from rclpy.executors import MultiThreadedExecutor

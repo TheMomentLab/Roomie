@@ -193,7 +193,6 @@ class TaskManager:
                         'task_id': task_id,
                         'robot_id': robot_id,
                         'task_type_id': task_to_assign['task_type_id'], # 인터페이스 명세에 따라 추가
-                        'task_status_id': moving_status_id, # '픽업 장소로 이동' 상태로 전송
                         'target_location_id': task_to_assign['location_id'], # 명확한 이름으로 변경
                         'pickup_location_id': pickup_location_id,
                         'order_info': order_info_json

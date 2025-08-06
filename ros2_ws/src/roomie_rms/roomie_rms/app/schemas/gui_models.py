@@ -321,6 +321,33 @@ class GetOrderHistoryResponse(BaseModel):
     payload: GetOrderHistoryResponsePayload
 
 # ----------------------------------------------------------------
+# Guest Client HTTP Interface Models
+# ----------------------------------------------------------------
+
+# 특정 위치의 작업 목록 조회 요청/응답
+class GetTaskListRequestPayload(BasePayload):
+    location_name: str
+
+class GetTaskListRequest(BaseModel):
+    type: str = "request"
+    action: str = "get_task_list"
+    payload: GetTaskListRequestPayload
+
+class TaskListItem(BaseModel):
+    task_name: str
+    task_type_name: str
+    created_at: str
+
+class GetTaskListResponsePayload(BasePayload):
+    location_name: str
+    tasks: List[TaskListItem]
+
+class GetTaskListResponse(BaseModel):
+    type: str = "response"
+    action: str = "get_task_list"
+    payload: GetTaskListResponsePayload
+
+# ----------------------------------------------------------------
 # AGUI (Admin GUI) HTTP Interface Models
 # ----------------------------------------------------------------
 
