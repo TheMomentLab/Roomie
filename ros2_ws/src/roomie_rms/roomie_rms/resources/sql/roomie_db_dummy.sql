@@ -1,7 +1,7 @@
 INSERT INTO `robot_current_state` (robot_id, robot_status_id, battery_level, is_charging, floor_id, error_id, last_updated_time) VALUES
-(1, 12, 45, FALSE, 0, NULL, '2025-08-04 14:30:00'),
-(2, 1, 15, TRUE, 0, NULL, '2025-08-04 14:25:00'),
-(3, 90, 73, FALSE, 1, 101, '2025-08-04 14:32:00');
+(0, 12, 45, FALSE, 0, NULL, '2025-08-04 14:30:00'),
+(1, 1, 15, TRUE, 0, NULL, '2025-08-04 14:25:00'),
+(2, 90, 73, FALSE, 1, 101, '2025-08-04 14:32:00');
 
 INSERT INTO `task` (id, task_type_id, task_status_id, location_id, robot_id, task_creation_time, robot_assignment_time, pickup_completion_time, delivery_arrival_time, task_completion_time, task_cancellation_time) VALUES
 (1, 0, 7, 101, 0, '2025-02-20 09:15:00', '2025-02-20 09:16:00', '2025-02-20 09:25:00', '2025-02-20 09:32:00', '2025-02-20 09:35:00', NULL),
