@@ -139,10 +139,18 @@ export function renderCart(containerId, orderButtonId) {
   if (orderBtn) {
     orderBtn.addEventListener("click", async () => {
       const payload = {
-        location_name: ROOM_ID,
-        task_type_name: "비품배송",
-        order_details: {
-          items: cart.map(item => ({ name: item.name, quantity: item.quantity }))
+        type: "request",
+        action: "create_delivery_task",
+        payload: {
+          location_name: ROOM_ID,
+          task_type_name: "비품배송",
+          order_details: {
+            items: cartData.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price
+            }))
+          }
         }
       };
 

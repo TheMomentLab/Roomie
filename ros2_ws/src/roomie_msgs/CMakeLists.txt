@@ -47,8 +47,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   
   # Services - Sensor
   "srv/sensor/ButtonStatus.srv"
-  "srv/sensor/SpaceAvailability.srv"
-  "srv/sensor/ReadCardInfo.srv"
   "srv/sensor/CheckItemLoaded.srv"
   "srv/sensor/CheckDoorState.srv"
   "srv/sensor/CheckItemLoaded.srv"

@@ -46,7 +46,7 @@ URDF_FILE = os.path.join(get_package_share_directory('roomie_ac'), 'urdf', 'room
 CAMERA_PARAMS_FILE = os.path.join(DATA_DIR, 'camera_params.npz')  
 HAND_EYE_MATRIX_FILE = os.path.join(DATA_DIR, 'hand_eye_matrix.npy')
 # 시리얼 통신 설정
-SERIAL_PORT = "/dev/ttyUSB2"
+SERIAL_PORT = "/dev/ttyUSB0"
 SERIAL_BAUD_RATE = 115200
 SERIAL_TIMEOUT = 5.0 # 시리얼 연결 및 응답 대기 타임아웃
 
@@ -98,7 +98,7 @@ MAX_CLICK_ATTEMPTS = 3
 
 
 # --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 8  # 사용자의 카메라 장치 번호
+CAMERA_DEVICE_ID = 4  # 사용자의 카메라 장치 번호
 YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 
 
