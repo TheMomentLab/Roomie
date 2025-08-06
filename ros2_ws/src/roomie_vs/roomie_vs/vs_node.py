@@ -255,7 +255,7 @@ class OpenNI2Camera:
             raise RuntimeError(f"카메라 프레임 획득 실패: {e}")
     
     def pixel_to_3d(self, u: int, v: int, depth_mm: int, is_flipped: bool = False) -> Tuple[float, float, float]:
-        """2D 픽셀 좌표를 3D 월드 좌표로 변환 (XZ 좌표계 기반)"""
+        """2D 픽셀 좌표를 3D 월드 좌표로 변환 (카메라 내부 파라미터 기반)"""
         if depth_mm <= 0:
             return 0.0, 0.0, 0.0
         
@@ -263,14 +263,17 @@ class OpenNI2Camera:
         if is_flipped:
             u = int(self.depth_cx * 2) - u  # 640 - u (해상도가 640x480인 경우)
             
-        z = depth_mm / 1000.0  # mm to meters (정면 거리)
+        # Z축 계산: 역산으로 수정
+        z = 1000.0 / depth_mm if depth_mm > 0 else 0.0  # 역산
         
-        # X축 계산: 픽셀 오프셋을 실제 거리로 변환
+        # 카메라 내부 파라미터를 사용한 정확한 3D 좌표 계산
+        # X축 계산: 픽셀 오프셋을 실제 거리로 변환 (스케일링 조정)
         pixel_offset_x = u - self.depth_cx  # 중심에서 픽셀 차이
-        # 간단한 비례 관계: depth에 비례해서 좌우 거리 계산
-        x = pixel_offset_x * z * 0.001  # 스케일 팩터 (실험적으로 조정 필요)
+        x = (pixel_offset_x * z) / self.depth_fx  # 원래 크기로 조정
         
-        y = 0.0  # 높이는 무시
+        # Y축 계산: 픽셀 오프셋을 실제 거리로 변환 (스케일링 조정)
+        pixel_offset_y = v - self.depth_cy  # 중심에서 픽셀 차이
+        y = (pixel_offset_y * z) / self.depth_fy  # 원래 크기로 조정
         
         return x, y, z
     
@@ -1154,6 +1157,12 @@ class MultiModelDetector:
         self.current_model = None
         self.button_pressed_cnn = None  # 나중에 설정됨
         
+        # 📦 박스 안정화를 위한 변수들
+        self.previous_objects = []  # 이전 프레임 객체들
+        self.object_tracking_threshold = 0.5  # IoU 임계값 (겹침 판정)
+        self.stability_frames = 3  # 안정화를 위한 최소 프레임 수
+        self.object_history = {}  # 객체별 히스토리 {id: [frame_data, ...]}
+        
     def set_button_pressed_cnn(self, button_pressed_cnn):
         """버튼 눌림 감지 CNN 설정"""
         self.button_pressed_cnn = button_pressed_cnn
@@ -1510,8 +1519,11 @@ class MultiModelDetector:
                             'model_name': self.current_model_name
                         })
             
-            self.logger.debug(f"{self.current_model_name} 모델로 {len(objects)}개 객체 탐지")
-            return objects
+            # 📦 박스 안정화 적용
+            stabilized_objects = self._apply_box_stabilization(objects)
+            
+            self.logger.debug(f"{self.current_model_name} 모델로 {len(objects)}개 객체 탐지 → {len(stabilized_objects)}개 안정화")
+            return stabilized_objects
             
         except Exception as e:
             self.logger.error(f"{self.current_model_name} 모델 탐지 에러: {e}")
@@ -1524,8 +1536,162 @@ class MultiModelDetector:
         
         return self.button_pressed_cnn.classify_pressed(color_image, bbox)
     
-
+    def _apply_box_stabilization(self, objects: List[dict]) -> List[dict]:
+        """박스 겹침 안정화 적용"""
+        if not objects:
+            return objects
+        
+        # 1. NMS (Non-Maximum Suppression) 적용
+        nms_objects = self._apply_nms(objects)
+        
+        # 2. 객체 추적 및 안정화
+        tracked_objects = self._apply_object_tracking(nms_objects)
+        
+        # 3. 신뢰도 기반 필터링
+        filtered_objects = self._apply_confidence_filtering(tracked_objects)
+        
+        return filtered_objects
     
+    def _apply_nms(self, objects: List[dict], iou_threshold: float = 0.5) -> List[dict]:
+        """Non-Maximum Suppression을 적용하여 겹치는 박스 제거"""
+        if len(objects) <= 1:
+            return objects
+        
+        # 클래스별로 NMS 적용
+        class_groups = {}
+        for obj in objects:
+            class_name = obj['class_name']
+            if class_name not in class_groups:
+                class_groups[class_name] = []
+            class_groups[class_name].append(obj)
+        
+        nms_objects = []
+        for class_name, class_objects in class_groups.items():
+            if len(class_objects) <= 1:
+                nms_objects.extend(class_objects)
+                continue
+            
+            # 신뢰도 기준으로 정렬
+            class_objects.sort(key=lambda x: x['confidence'], reverse=True)
+            
+            keep_objects = []
+            while class_objects:
+                # 가장 높은 신뢰도 객체 선택
+                current = class_objects.pop(0)
+                keep_objects.append(current)
+                
+                # 나머지 객체들과 IoU 계산하여 겹치는 것들 제거
+                remaining = []
+                for obj in class_objects:
+                    iou = self._calculate_iou(current['bbox'], obj['bbox'])
+                    if iou < iou_threshold:
+                        remaining.append(obj)
+                class_objects = remaining
+            
+            nms_objects.extend(keep_objects)
+        
+        return nms_objects
+    
+    def _calculate_iou(self, box1: tuple, box2: tuple) -> float:
+        """두 박스 간의 IoU (Intersection over Union) 계산"""
+        x1_1, y1_1, x2_1, y2_1 = box1
+        x1_2, y1_2, x2_2, y2_2 = box2
+        
+        # 교집합 영역 계산
+        x1_inter = max(x1_1, x1_2)
+        y1_inter = max(y1_1, y1_2)
+        x2_inter = min(x2_1, x2_2)
+        y2_inter = min(y2_1, y2_2)
+        
+        if x2_inter <= x1_inter or y2_inter <= y1_inter:
+            return 0.0
+        
+        inter_area = (x2_inter - x1_inter) * (y2_inter - y1_inter)
+        
+        # 합집합 영역 계산
+        area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
+        area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
+        union_area = area1 + area2 - inter_area
+        
+        return inter_area / union_area if union_area > 0 else 0.0
+    
+    def _apply_object_tracking(self, objects: List[dict]) -> List[dict]:
+        """객체 추적을 통한 안정화"""
+        if not hasattr(self, 'previous_objects'):
+            self.previous_objects = objects
+            return objects
+        
+        tracked_objects = []
+        import time
+        current_time = time.time()
+        
+        for obj in objects:
+            # 이전 프레임 객체들과 매칭
+            best_match = None
+            best_iou = 0.0
+            
+            for prev_obj in self.previous_objects:
+                if prev_obj['class_name'] == obj['class_name']:
+                    iou = self._calculate_iou(obj['bbox'], prev_obj['bbox'])
+                    if iou > best_iou and iou > self.object_tracking_threshold:
+                        best_iou = iou
+                        best_match = prev_obj
+            
+            if best_match:
+                # 기존 객체와 매칭됨 - 위치 스무딩 적용
+                obj['center'] = self._smooth_position(obj['center'], best_match['center'], 0.7)
+                obj['bbox'] = self._smooth_bbox(obj['bbox'], best_match['bbox'], 0.7)
+                obj['tracking_id'] = best_match.get('tracking_id', f"obj_{len(tracked_objects)}")
+                obj['stable_frames'] = best_match.get('stable_frames', 0) + 1
+            else:
+                # 새로운 객체
+                obj['tracking_id'] = f"obj_{current_time}_{len(tracked_objects)}"
+                obj['stable_frames'] = 1
+            
+            tracked_objects.append(obj)
+        
+        self.previous_objects = tracked_objects.copy()
+        return tracked_objects
+    
+    def _smooth_position(self, current_pos: tuple, prev_pos: tuple, alpha: float = 0.7) -> tuple:
+        """위치 스무딩 (지수 이동 평균)"""
+        curr_x, curr_y = current_pos
+        prev_x, prev_y = prev_pos
+        
+        smooth_x = int(alpha * curr_x + (1 - alpha) * prev_x)
+        smooth_y = int(alpha * curr_y + (1 - alpha) * prev_y)
+        
+        return (smooth_x, smooth_y)
+    
+    def _smooth_bbox(self, current_bbox: tuple, prev_bbox: tuple, alpha: float = 0.7) -> tuple:
+        """바운딩박스 스무딩"""
+        curr_x1, curr_y1, curr_x2, curr_y2 = current_bbox
+        prev_x1, prev_y1, prev_x2, prev_y2 = prev_bbox
+        
+        smooth_x1 = int(alpha * curr_x1 + (1 - alpha) * prev_x1)
+        smooth_y1 = int(alpha * curr_y1 + (1 - alpha) * prev_y1)
+        smooth_x2 = int(alpha * curr_x2 + (1 - alpha) * prev_x2)
+        smooth_y2 = int(alpha * curr_y2 + (1 - alpha) * prev_y2)
+        
+        return (smooth_x1, smooth_y1, smooth_x2, smooth_y2)
+    
+    def _apply_confidence_filtering(self, objects: List[dict]) -> List[dict]:
+        """신뢰도 기반 필터링 및 안정성 체크"""
+        filtered_objects = []
+        
+        for obj in objects:
+            # 기본 신뢰도 필터링
+            if obj['confidence'] < 0.3:  # 매우 낮은 신뢰도 제거
+                continue
+            
+            # 안정성 체크 (새로운 객체는 높은 신뢰도 요구)
+            stable_frames = obj.get('stable_frames', 1)
+            min_confidence = 0.7 if stable_frames < self.stability_frames else 0.5
+            
+            if obj['confidence'] >= min_confidence:
+                filtered_objects.append(obj)
+        
+        return filtered_objects
 
     
     def get_current_model_info(self):
@@ -2407,9 +2573,9 @@ class VSNode(Node):
                     
                     self.obstacle_pub.publish(obstacle_msg)
                     
-                    # 로그 출력
+                    # 로그 출력 (디버그 레벨로 변경하여 스팸 방지)
                     obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
-                    self.get_logger().info(
+                    self.get_logger().debug(
                         f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
                         f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m) "
                         f"거리: {obstacle_info['distance']:.2f}m"
@@ -3088,9 +3254,17 @@ class VSNode(Node):
         
         return response
 
-    def _draw_objects_on_image(self, image: np.ndarray, objects: List[dict]) -> np.ndarray:
+    def _draw_objects_on_image(self, image: np.ndarray, objects: List[dict], mode_id: int = None) -> np.ndarray:
         """YOLO로 탐지된 객체들을 이미지에 시각화"""
         import cv2
+        
+        # 현재 모드 ID 가져오기 (매개변수로 전달되지 않은 경우)
+        if mode_id is None:
+            mode_id = self.get_active_mode_id()
+        
+        # 화면 중심점 계산
+        image_height, image_width = image.shape[:2]
+        screen_center = (image_width // 2, image_height // 2)
         
         # 객체 타입별 색상 정의
         color_map = {
@@ -3349,6 +3523,55 @@ class VSNode(Node):
                         cv2.putText(image, pressed_text, (center[0]-60, center[1]+45), 
                                    cv2.FONT_HERSHEY_SIMPLEX, 0.3, pressed_color, 1)
         
+        # 🚗 일반주행 모드에서 장애물 전용 시각화
+        if mode_id == 5:  # 일반 주행 모드
+            # 화면 중심에 수직선 항상 표시 (파란색)
+            cv2.line(image, (screen_center[0], 0), (screen_center[0], image_height), (255, 0, 0), 2)
+            
+            # 장애물에 대해서만 처리
+            obstacle_objects = [obj for obj in objects if obj.get('is_obstacle', False)]
+            
+            for obj in obstacle_objects:
+                center = obj['center']
+                object_center_x = int(center[0])
+                world_x = obj.get('world_x', 0.0)
+                
+                # 장애물 중심점에 수직선 그리기 (빨간색)
+                cv2.line(image, (object_center_x, 0), (object_center_x, image_height), (0, 0, 255), 2)
+                
+                # X 차이 계산 (월드 좌표 기준)
+                x_diff = abs(world_x)  # 화면 중심에서의 X 거리 (미터)
+                
+                # 양방향 화살표 그리기 (화면 하단에)
+                arrow_y = image_height - 50
+                arrow_start = screen_center[0]
+                arrow_end = object_center_x
+                
+                # 화살표 선
+                cv2.line(image, (arrow_start, arrow_y), (arrow_end, arrow_y), (0, 255, 0), 3)
+                
+                # 화살표 머리 그리기
+                arrow_size = 10
+                if arrow_end > arrow_start:  # 오른쪽 화살표
+                    cv2.arrowedLine(image, (arrow_end - 20, arrow_y), (arrow_end, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+                    cv2.arrowedLine(image, (arrow_start + 20, arrow_y), (arrow_start, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+                else:  # 왼쪽 화살표
+                    cv2.arrowedLine(image, (arrow_end + 20, arrow_y), (arrow_end, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+                    cv2.arrowedLine(image, (arrow_start - 20, arrow_y), (arrow_start, arrow_y), (0, 255, 0), 3, tipLength=0.3)
+                
+                # X 차이 텍스트 표시 (화살표 위에)
+                x_diff_text = f"{x_diff:.2f}m"
+                text_x = (arrow_start + arrow_end) // 2
+                text_size = cv2.getTextSize(x_diff_text, cv2.FONT_HERSHEY_SIMPLEX, 0.7, 2)[0]
+                
+                # 배경 사각형
+                cv2.rectangle(image, (text_x - text_size[0]//2 - 5, arrow_y - 35), 
+                             (text_x + text_size[0]//2 + 5, arrow_y - 10), (0, 0, 0), -1)
+                
+                # 텍스트
+                cv2.putText(image, x_diff_text, (text_x - text_size[0]//2, arrow_y - 15), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
         # 🎯 기억된 방향등 위치에 라벨 표시
         if (self.remembered_direction_positions['upper'] and 
             self.remembered_direction_positions['lower']):
@@ -3437,15 +3660,15 @@ class VSNode(Node):
         cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         
-        # 장애물 정보 추가 (이모지 제거, 위치 조정)
+        # 장애물 정보 추가 (위치 조정하여 겹침 방지)
         obstacle_objects = [obj for obj in objects if obj.get('is_obstacle', False)]
         if obstacle_objects:
             dynamic_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'dynamic'])
             static_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'static'])
             
-            # 장애물 요약 정보 (겹치지 않는 위치로 조정)
+            # 장애물 요약 정보 (더 아래로 이동)
             cv2.putText(image, f"OBSTACLES: Dynamic={dynamic_count} | Static={static_count}", 
-                       (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
             
             # 가장 가까운 장애물 정보
             closest_obstacle = min(obstacle_objects, key=lambda x: x.get('distance_m', float('inf')))
@@ -3456,10 +3679,10 @@ class VSNode(Node):
                 world_y = closest_obstacle.get('world_y', 0.0)
                 
                 cv2.putText(image, f"CLOSEST: {obstacle_type.upper()} at {distance:.1f}m ({world_x:.2f}, {world_y:.2f})", 
-                           (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+                           (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
         else:
             cv2.putText(image, "NO OBSTACLES DETECTED", 
-                       (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
         
         # 🔥 방향등 기억된 위치 정보 표시
         if (self.remembered_direction_positions['upper'] and self.remembered_direction_positions['lower']):
@@ -4566,7 +4789,7 @@ def main(args=None):
                             
                             display_image = color_image.copy()
                             if objects:
-                                display_image = node._draw_objects_on_image(display_image, objects)
+                                display_image = node._draw_objects_on_image(display_image, objects, mode_id)
                             node._add_info_text(display_image, objects, camera_name)
                             
                             # GUI 표시 (헤드리스 모드가 아닐 때만)
