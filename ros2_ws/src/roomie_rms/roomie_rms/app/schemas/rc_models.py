@@ -91,7 +91,6 @@ class PerformTaskGoal(BaseModel):
     robot_id: int
     task_id: int
     task_type_id: int
-    task_status_id: int
     target_location_id: int
     pickup_location_id: int
     order_info: str  # JSON 문자열
@@ -107,7 +106,6 @@ class PerformTaskFeedback(BaseModel):
     """작업 할당 피드백"""
     robot_id: int
     task_id: int
-    task_status_id: int
 
 class PerformReturnGoal(BaseModel):
     """복귀 목표 (/roomie/action/perform_return)"""

@@ -166,17 +166,15 @@ class ActionHandler:
         """액션 수행 중 RC로부터 피드백을 수신하여 처리하는 콜백"""
         feedback = feedback_msg.feedback
         task_id = feedback.task_id
-        new_status_id = feedback.task_status_id
         
         logger.info(
-            f"피드백 수신 - 새로운 상태: {new_status_id}",
+            f"피드백 수신",
             category="ROS2", subcategory="ACTION-FEEDBACK",
-            details={"TaskID": task_id, "NewStatusID": new_status_id}
+            details={"TaskID": task_id}
         )
         
         # DB의 작업 상태를 피드백에 따라 업데이트
         # self.task_manager.update_task_status(task_id, new_status_id)
-        # 예시: UPDATE task SET task_status_id = %s WHERE id = %s
 
     def return_feedback_callback(self, feedback_msg):
         """복귀 액션 수행 중 RC로부터 피드백을 수신하여 처리하는 콜백"""
@@ -208,6 +206,10 @@ class ActionHandler:
             )
             # 작업이 완전히 끝났으므로, '수령 완료' 등의 최종 상태로 업데이트
             # self.task_manager.update_task_status(task_id, settings.db_consts.task_status['수령 완료'])
+            
+            # 다음 작업 할당 확인
+            robot_id = 0  # 현재 사용 중인 로봇 ID
+            self.task_manager.execute_task_assignment(robot_id)
         else:
             logger.error(
                 f"최종 작업 실패. 메시지: {message}",

@@ -21,11 +21,9 @@ class ObstacleDetector:
         
         for obj in objects:
             if obj['class_name'] in ['person', 'chair']:
-                self.logger.info(f"🔍 장애물 후보 감지: class={obj['class_name']}, depth_mm={obj.get('depth_mm', 'None')}")
                 # 뎁스 정보 확인
                 if 'depth_mm' in obj and obj['depth_mm'] > 0:
                     distance_m = obj['depth_mm'] / 1000.0  # mm to meters
-                    self.logger.info(f"🔍 Distance: {distance_m:.2f}m (범위: {self.min_distance_m}-{self.max_distance_m}m)")
                     
                     # 거리 필터링
                     if self.min_distance_m <= distance_m <= self.max_distance_m:

@@ -521,6 +521,76 @@ class HttpManager:
                 logger.error(f"GGUI 주문 내역 조회 중 오류: {e}", category="API", subcategory="ERROR")
                 raise HTTPException(status_code=500, detail="GGUI 주문 내역 조회 실패")
 
+        @self.router.post("/get_task_list", response_model=GetTaskListResponse)
+        async def get_task_list(request: GetTaskListRequest):
+            """(Guest) 특정 위치의 작업 목록 조회 요청"""
+            payload = request.payload
+            location_name = payload.location_name
+            logger.info(
+                "Guest 작업 목록 조회 요청 수신",
+                category="API", subcategory="HTTP-REQ",
+                details={"Client": "Guest", "Method": "POST", "Path": "/api/gui/get_task_list", "Location": location_name}
+            )
+
+            try:
+                with safe_database_connection(db_manager.get_connection) as conn:
+                    with database_transaction(conn) as cursor:
+                        # 특정 위치의 작업 목록 조회
+                        query = """
+                        SELECT
+                            t.id as task_id,
+                            tt.name as task_type_name,
+                            t.task_creation_time
+                        FROM task t
+                        JOIN task_type tt ON t.task_type_id = tt.id
+                        JOIN location l ON t.location_id = l.id
+                        WHERE l.name = %s
+                        ORDER BY t.task_creation_time DESC
+                        """
+                        cursor.execute(query, (location_name,))
+                        tasks_from_db = cursor.fetchall()
+
+                        # TaskListItem 모델로 변환
+                        task_items = []
+                        for row in tasks_from_db:
+                            # task_id를 TASK_XXX 형식으로 변환
+                            task_name = f"TASK_{row['task_id']:03d}"
+                            
+                            task_type_name = row['task_type_name']
+                            # task_type_name을 요청 형식에 맞게 변환                            
+                            # if task_type_name == "음식배송":
+                            #     task_type_name = "음식배달"
+                            # elif task_type_name == "비품배송":
+                            #     task_type_name = "비품배달"
+                            # elif task_type_name == "호출":
+                            #     task_type_name = "로봇호출"
+                            
+                            # 시간 포맷 변환 (ISO 8601 + 한국 시간대)
+                            created_at = row['task_creation_time'].isoformat() + "+09:00" if row['task_creation_time'] else None
+                            
+                            task_items.append(TaskListItem(
+                                task_name=task_name,
+                                task_type_name=task_type_name,
+                                created_at=created_at
+                            ))
+
+                        response_payload = GetTaskListResponsePayload(
+                            location_name=location_name,
+                            tasks=task_items
+                        )
+                        response = GetTaskListResponse(payload=response_payload)
+                        
+                        logger.info(
+                            "Guest 작업 목록 응답 전송",
+                            category="API", subcategory="HTTP-RES",
+                            details={"Client": "Guest", "Location": location_name, "Count": len(task_items)}
+                        )
+                        return response
+
+            except Exception as e:
+                logger.error(f"Guest 작업 목록 조회 중 오류: {e}", category="API", subcategory="ERROR")
+                raise HTTPException(status_code=500, detail="작업 목록 조회 실패")
+
         # --- SGUI HTTP 동기 인터페이스 ---
 
         @self.router.post("/food_order_status_change", response_model=FoodOrderStatusChangeResponse)
