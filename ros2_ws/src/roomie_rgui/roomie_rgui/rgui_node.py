@@ -5,7 +5,7 @@ from rclpy.action import ActionServer
 from PyQt6.QtWidgets import QApplication
 import threading
 from roomie_msgs.msg import RobotGuiEvent
-from roomie_msgs.srv import UnlockDoor
+
 from roomie_msgs.action import StartCountdown, ReturnCountdown
 
 from .screen_manager import ScreenManager
@@ -24,8 +24,7 @@ class RobotGuiNode(Node):
         # Subscriber
         self.event_sub = self.create_subscription(RobotGuiEvent, '/robot_gui/event', self.on_robot_event, 10)
 
-        # Service Client
-        self.unlock_door_cli = self.create_client(UnlockDoor, '/robot_gui/unlock_door')
+
         
         # Action Servers
         self.departure_action_srv = ActionServer(
@@ -495,12 +494,7 @@ class RobotGuiNode(Node):
         else:
             self.get_logger().warn(f"처리되지 않은 이벤트 ID: {event_id}")
 
-    def request_unlock_door(self, robot_id: int, task_id: int):
-        """도어 잠금 해제 요청"""
-        req = UnlockDoor.Request()
-        req.robot_id = robot_id
-        req.task_id = task_id
-        call_service(self, self.unlock_door_cli, req)
+
 
 
 def main():
