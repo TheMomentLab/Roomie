@@ -1,5 +1,5 @@
-from app.utils.logger import get_logger, log_ros_event, log_database_operation
-from app.utils.error_handler import handle_database_errors, database_transaction, safe_database_connection
+from app.utils.logger import get_logger, log_database_operation
+from app.utils.error_handler import handle_database_errors, safe_database_connection
 from app.utils.exceptions import DatabaseException
 from app.services import db_manager
 
@@ -15,7 +15,7 @@ class ServiceHandler:
     def get_locations_callback(self, request, response):
         """RC로부터 위치 정보 요청을 받아 DB에 저장된 모든 위치 정보를 반환합니다."""
         logger.info(
-            "위치 정보 요청",
+            "위치 정보(좌표 데이터) 요청",
             category="ROS2", subcategory="SERVICE-REQ",
             details={"RobotID": request.robot_id, "Service": "/roomie/command/get_locations"}
         )

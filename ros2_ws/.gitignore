@@ -1,0 +1,21 @@
+# ROS2 워크스페이스 빌드 관련 폴더들
+build/
+log/
+install/
+
+# Python 캐시 파일들
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# IDE 관련 파일들
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS 관련 파일들
+.DS_Store
+Thumbs.db 

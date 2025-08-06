@@ -16,7 +16,7 @@ def init_db_pool():
     """데이터베이스 커넥션 풀을 초기화합니다."""
     global db_pool
     if db_pool is not None:
-        logger.warning("DB 커넥션 풀이 이미 초기화되어 있습니다")
+        logger.warning("[DB] 커넥션 풀이 이미 초기화되어 있습니다")
         return
 
     try:
@@ -59,7 +59,7 @@ def get_connection():
 
 def _load_constants_from_db():
     """DB의 lookup 테이블에서 상수 값들을 로드하여 settings 객체에 저장합니다."""
-    logger.info("DB에서 애플리케이션 상수 로드를 시작합니다...")
+    logger.info("[DB] 애플리케이션 상수 로드를 시작합니다...")
     
     try:
         conn = get_connection()
@@ -115,7 +115,6 @@ def _execute_sql_from_file(cursor, filepath):
         logger.error(f"[DB] SQL 파일 실행 중 오류 발생 ({filepath}): {e}")
         raise
 
-
 def _check_and_create_database():
     """데이터베이스가 존재하는지 확인하고, 없으면 생성합니다."""
     conn = None
@@ -159,6 +158,8 @@ def _check_and_create_schema():
             _execute_sql_from_file(cursor, settings.DB_SCHEMA_PATH)
             # 2. 초기 데이터 파일 실행
             _execute_sql_from_file(cursor, settings.DB_DATA_PATH)
+            # 3. 더미 데이터 추가 (선택 사항)
+            _execute_sql_from_file(cursor, settings.DB_DUMMY_DATA_PATH)
             conn.commit()
             logger.info("[DB] 스키마 및 초기 데이터 생성 완료.")
         else:

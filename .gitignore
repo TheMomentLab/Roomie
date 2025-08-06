@@ -6,6 +6,11 @@ __pycache__/
 # C extensions
 *.so
 
+# ROS2 워크스페이스 빌드 관련 폴더들
+build/
+log/
+install/
+
 # Distribution / packaging
 .Python
 build/
@@ -25,6 +30,11 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
+
+# ROS 2 workspace build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
@@ -205,3 +215,28 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific (Roomie)
+# Debug files and directories
+**/debug/
+ros2_ws/src/roomie_vs/debug/
+debug/
+*.debug.jpg
+*.debug.png
+*_debug_*.jpg
+*_debug_*.png
+easyocr_input_debug_*
+roi_*_debug_*
+test_results_*
+
+# ROS2 build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+install/
+log/
+build/
+
+# Temporary files
+*.tmp
+*.temp

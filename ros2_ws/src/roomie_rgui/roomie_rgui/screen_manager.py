@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import QStackedWidget
 from .ui_loader import load_ui
 
 # 컨트롤러 import
-from .ui_controllers import BaseController, CommonController, DeliveryController
+from .ui_controllers import BaseController, CommonController, DeliveryController, ElevatorController
 
 
 class ScreenManager(QStackedWidget):
@@ -51,6 +51,13 @@ class ScreenManager(QStackedWidget):
             "DELIVERY_ARRIVED": "ui/delivery/DELI_6_DELIVERY_ARRIVAL.ui",
             "DELIVERY_DRAWER_CONTROL": "ui/delivery/DELI_7_DELIVERY_DRAWER_CONTROL.ui",
             "THANK_YOU": "ui/delivery/DELI_8_THANK_YOU.ui",
+            
+            # 엘리베이터 화면들
+            "ELEVATOR_MANIPULATING": "ui/elevator/ELE_1_MANIPULATING.ui",
+            "ELEVATOR_CALLING": "ui/elevator/ELE_2_CALLING.ui",
+            "ELEVATOR_BOARDING": "ui/elevator/ELE_3_BOARDING.ui",
+            "ELEVATOR_MOVING_TO_TARGET": "ui/elevator/ELE_4_MOVING_TO_TARGET.ui",
+            "ELEVATOR_EXITING": "ui/elevator/ELE_5_EXITING.ui",
         }
 
         # 컨트롤러 팩토리 매핑
@@ -67,6 +74,11 @@ class ScreenManager(QStackedWidget):
             "DELIVERY_ARRIVED": DeliveryController,
             "DELIVERY_DRAWER_CONTROL": DeliveryController,
             "THANK_YOU": DeliveryController,
+            "ELEVATOR_MANIPULATING": ElevatorController,
+            "ELEVATOR_CALLING": ElevatorController,
+            "ELEVATOR_BOARDING": ElevatorController,
+            "ELEVATOR_MOVING_TO_TARGET": ElevatorController,
+            "ELEVATOR_EXITING": ElevatorController,
         }
 
 

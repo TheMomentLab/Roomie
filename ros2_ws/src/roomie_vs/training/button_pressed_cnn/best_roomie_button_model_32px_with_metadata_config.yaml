@@ -1,0 +1,38 @@
+dataset_info:
+  class_names:
+  - pressed
+  - unpressed
+  dataset_path: cnn_v1_yolo_v1
+  num_classes: 2
+  total_images: 3259
+model_info:
+  architecture: BalancedButtonCNN
+  input_size: &id001
+  - 32
+  - 32
+  name: RoommateButtonClassifier
+  num_classes: 2
+  total_params: 348482
+preprocessing:
+  data_augmentation: class_balanced
+  image_size: *id001
+  normalize_mean:
+  - 0.485
+  - 0.456
+  - 0.406
+  normalize_std:
+  - 0.229
+  - 0.224
+  - 0.225
+system_info:
+  device: cuda
+  model_size_mb: 1.41
+  pytorch_version: 2.7.1+cu126
+  timestamp: '2025-08-05T16:29:03.702163'
+training_info:
+  batch_size: 16
+  best_val_acc: 100.0
+  epochs: 30
+  final_train_acc: 100.0
+  learning_rate: 0.002
+  optimizer: Adam

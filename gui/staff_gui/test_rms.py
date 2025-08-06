@@ -79,7 +79,7 @@ async def send_test_order():
         "type": "event",
         "action": "food_order_creation",
         "payload": {
-            "task_id": f"TASK_{int(time.time())}",
+            "task_id": int(time.time()),
             "request_location": "ROOM_307",
             "order_details": {
                 "items": [
@@ -108,7 +108,7 @@ async def send_robot_arrival():
         "type": "event", 
         "action": "food_pickup_arrival",
         "payload": {
-            "task_id": "TASK_001",
+            "task_id": 1,
             "robot_id": "ROBOT_01"
         }
     }
@@ -123,14 +123,14 @@ def run_auto_orders():
     async def auto_order_loop():
         counter = 1
         while True:
-            await asyncio.sleep(30)  # 30초마다
+            await asyncio.sleep(15)  # 30초마다
             
             if connected_clients:  # 연결된 클라이언트가 있을 때만
                 order_event = {
                     "type": "event",
                     "action": "food_order_creation", 
                     "payload": {
-                        "task_id": f"AUTO_{counter:03d}",
+                        "task_id": counter,
                         "request_location": f"ROOM_{300 + (counter % 20)}",
                         "order_details": {
                             "items": [
@@ -145,7 +145,7 @@ def run_auto_orders():
                 }
                 
                 await send_to_all_clients(order_event)
-                print(f"자동 주문 전송: AUTO_{counter:03d}")
+                print(f"자동 주문 전송: {counter}")
                 counter += 1
     
     # 새 이벤트 루프에서 실행

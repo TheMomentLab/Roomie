@@ -11,4 +11,4 @@ int32 position
 # direction values:
 # 0: upward
 # 1: downward
-# position: 현재 층 
+# position: 엘리베이터 현재 층 

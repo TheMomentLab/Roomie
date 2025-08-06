@@ -4,6 +4,12 @@ RMS_PORT = 8000
 RMS_WS_URL = f"ws://{RMS_HOST}:{RMS_PORT}/api/gui/ws/staff/staff_01"
 RMS_HTTP_URL = f"http://{RMS_HOST}:{RMS_PORT}/api/gui"
 
+# # config.py
+# RMS_HOST = "localhost"
+# RMS_PORT = 8000
+# RMS_WS_URL = f"ws://{RMS_HOST}:{RMS_PORT}/ws"
+# RMS_HTTP_URL = f"http://{RMS_HOST}:{RMS_PORT}"
+
 # 음식 타입 매핑
 FOOD_TYPES = {
     0: "스파게티",

@@ -28,6 +28,7 @@ setup(
         ('share/' + package_name + '/ui/countdown', glob.glob('ui/countdown/*.ui')),
         ('share/' + package_name + '/ui/call', glob.glob('ui/call/*.ui')),
         ('share/' + package_name + '/ui/guide', glob.glob('ui/guide/*.ui')),
+        ('share/' + package_name + '/ui/elevator', glob.glob('ui/elevator/*.ui')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,

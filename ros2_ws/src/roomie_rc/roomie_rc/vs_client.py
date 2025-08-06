@@ -44,6 +44,10 @@ class VSClient:
             # 비동기 호출만 (데드락 방지)
             future = self.location_client.call_async(request)
             self.node.get_logger().info('VS 위치 감지 요청 전송 완료')
+            
+            # TODO: 실제 서비스 응답 처리 (현재는 시뮬레이션)
+            # future.result()를 통해 Location.Response를 받아서
+            # response.success와 response.location_id를 확인해야 함
             return 0  # 시뮬레이션용 기본값
                 
         except Exception as e:

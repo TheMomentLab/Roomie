@@ -1,7 +1,7 @@
-import asyncio
+from app.config import settings
 from app.utils.logger import get_logger
 from app.utils.error_handler import handle_ros_errors
-from roomie_msgs.action import PerformTask, PerformReturn # 인터페이스 임포트
+from roomie_msgs.action import PerformTask, PerformReturn
 
 logger = get_logger(__name__)
 
@@ -50,7 +50,7 @@ class ActionHandler:
         
         # Future가 완료되면(목표 수락/거부 응답이 오면) goal_response_callback을 실행하도록 등록
         # task_id를 콜백에서 사용할 수 있도록 lambda로 래핑
-        send_goal_future.add_done_callback(lambda future: self.goal_response_callback(future, task_id))
+        send_goal_future.add_done_callback(lambda future: self.node.get_loop().call_soon_threadsafe(self.goal_response_callback, future, task_id))
         
         logger.info(
             "PerformTask 목표 전송을 요청했습니다.",
@@ -80,9 +80,15 @@ class ActionHandler:
 
         # 기본 복귀 위치 설정 (LOB_WAITING)
         if return_location_id is None:
-            from app.config import settings
-            # LOB_WAITING 위치 ID를 DB에서 조회하거나 설정에서 가져옴
-            return_location_id = 1  # 기본값, 실제로는 DB에서 조회해야 함
+            try:
+                lob_waiting_name = settings.const.LOCATION_LOB_WAITING
+                return_location_id = settings.db_consts.location[lob_waiting_name]
+            except KeyError:
+                logger.error(
+                    f"기본 복귀 위치 '{settings.const.LOCATION_LOB_WAITING}'의 ID를 찾을 수 없습니다. DB 상수를 확인하세요.",
+                    category="ROS2", subcategory="CONFIG-ERROR"
+                )
+                return
 
         goal_data = {
             'robot_id': robot_id,
@@ -169,7 +175,7 @@ class ActionHandler:
         )
         
         # DB의 작업 상태를 피드백에 따라 업데이트
-        # self.task_manager.update_task_status(task_id, new_status_id) # 이러한 메서드가 필요합니다.
+        # self.task_manager.update_task_status(task_id, new_status_id)
         # 예시: UPDATE task SET task_status_id = %s WHERE id = %s
 
     def return_feedback_callback(self, feedback_msg):

@@ -3,9 +3,6 @@ import json
 from datetime import datetime
 from typing import Dict, Any
 
-# ActionHandler를 사용하기 위해 임포트가 필요할 수 있습니다. (구조에 따라 다름)
-# from app.services.action_handler import ActionHandler 
-
 from app.utils.logger import get_logger, log_database_operation
 from app.utils.error_handler import handle_exceptions, safe_database_connection, database_transaction
 from app.utils.exceptions import raise_validation_error
@@ -37,7 +34,7 @@ class TaskManager:
 
                 # 2. 'task' 테이블에 새로운 작업 삽입
                 task_query = """
-                    INSERT INTO task (type_id, task_status_id, location_id, task_creation_time)
+                    INSERT INTO task (task_type_id, task_status_id, location_id, task_creation_time)
                     VALUES (%s, %s, %s, %s)
                 """
                 creation_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -144,9 +141,9 @@ class TaskManager:
                 with database_transaction(conn) as cursor:
                     # 1. 할당할 작업 찾기
                     query = """
-                        SELECT t.id, t.type_id, t.location_id, tt.name as task_type_name, l.name as location_name
+                        SELECT t.id, t.task_type_id, t.location_id, tt.name as task_type_name, l.name as location_name
                         FROM task t
-                        JOIN task_type tt ON t.type_id = tt.id
+                        JOIN task_type tt ON t.task_type_id = tt.id
                         JOIN location l ON t.location_id = l.id
                         WHERE t.task_status_id = %s
                         ORDER BY t.task_creation_time ASC LIMIT 1 FOR UPDATE
@@ -195,7 +192,7 @@ class TaskManager:
                     goal_data = {
                         'task_id': task_id,
                         'robot_id': robot_id,
-                        'task_type_id': task_to_assign['type_id'], # 인터페이스 명세에 따라 추가
+                        'task_type_id': task_to_assign['task_type_id'], # 인터페이스 명세에 따라 추가
                         'task_status_id': moving_status_id, # '픽업 장소로 이동' 상태로 전송
                         'target_location_id': task_to_assign['location_id'], # 명확한 이름으로 변경
                         'pickup_location_id': pickup_location_id,
@@ -211,8 +208,8 @@ class TaskManager:
             )
             self.action_handler.send_perform_task_goal(goal_data)
 
-            # RC에게 변경된 작업 상태를 명확히 알려줌
-            self.action_handler.publish_task_state(task_id, moving_status_id)
+            # # RC에게 변경된 작업 상태를 명확히 알려줌
+            # self.action_handler.publish_task_state(task_id, moving_status_id)
 
         except Exception as e:
             logger.error(

@@ -8,3 +8,5 @@ geometry_msgs/Pose pose
 # 1: 2층
 # 2: 3층
 # 3: 4층
+
+# 주의사항 : button_id와 다름.

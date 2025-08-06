@@ -11,44 +11,44 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 
+# Find Python3 and NumPy
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development NumPy)
+
+# Get NumPy include dir
+execute_process(
+  COMMAND ${Python3_EXECUTABLE} -c "import numpy; print(numpy.get_include())"
+  OUTPUT_VARIABLE NUMPY_INCLUDE_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+
+include_directories(${NUMPY_INCLUDE_DIR})
+message(STATUS "NumPy include path: ${NUMPY_INCLUDE_DIR}")
+
 # Generate interfaces
 rosidl_generate_interfaces(${PROJECT_NAME}
   # Messages - Robot Status
   "msg/robot_status/RobotState.msg"
   "msg/robot_status/BatteryStatus.msg"
   "msg/robot_status/RoomiePose.msg"
-  "msg/robot_status/Arrival.msg"
-  
-  # Messages - Task Management
-  "msg/task_management/TaskState.msg"
-  "msg/task_management/PickupCompleted.msg"
-  "msg/task_management/DeliveryCompleted.msg"
+  "msg/robot_status/Obstacle.msg"
+  "msg/robot_status/GlassDoorStatus.msg"
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
-  "msg/user_interface/TrackingEvent.msg"
-  "msg/user_interface/Registered.msg"
   
   # Services - Robot Control
-  "srv/robot_control/CreateTask.srv"
   "srv/robot_control/SetVSMode.srv"
   "srv/robot_control/Location.srv"
   "srv/robot_control/GetLocations.srv"
   
   # Services - Door/Elevator
-  "srv/door_elevator/UnlockDoor.srv"
-  "srv/door_elevator/ElevatorWidth.srv"
-  "srv/door_elevator/ElevatorStatus.srv"
   "srv/door_elevator/DoorStatus.srv"
+  "srv/door_elevator/ElevatorStatus.srv"
   
   # Services - Sensor
   "srv/sensor/ButtonStatus.srv"
-  "srv/sensor/SpaceAvailability.srv"
-  "srv/sensor/ReadCardInfo.srv"
   "srv/sensor/CheckItemLoaded.srv"
   "srv/sensor/CheckDoorState.srv"
-  
-
   
   # Services - Security
   "srv/security/ControlLock.srv"
@@ -58,6 +58,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/PerformReturn.action"
   "action/StartCountdown.action"
   "action/ReturnCountdown.action"
+  "action/SetPose.action"
+  "action/ClickButton.action"
   
   DEPENDENCIES
     geometry_msgs
@@ -69,4 +71,4 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_package() 
+ament_package()
