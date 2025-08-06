@@ -23,6 +23,9 @@ try:
 except ImportError:
     TORCH_AVAILABLE = False
 
+# 장애물 감지 import
+from .obstacle_detector import ObstacleDetector
+
 # CNN 모델 아키텍처 정의 (실제 훈련된 모델과 일치)
 class BalancedButtonCNN(nn.Module):
     """성능과 메모리 균형을 맞춘 CNN 모델"""
@@ -82,7 +85,7 @@ from roomie_msgs.srv import (
     DoorStatus,
     Location
 )
-from roomie_msgs.msg import TrackingEvent, Registered
+from roomie_msgs.msg import Obstacle, GlassDoorStatus
 
 # OpenNI2 환경변수 설정
 import os
@@ -1546,6 +1549,9 @@ class VSNode(Node):
         # CNN 버튼 분류기 초기화
         self.cnn_classifier = CNNButtonClassifier(self.get_logger())
         
+        # 🚧 장애물 감지기 초기화
+        self.obstacle_detector = ObstacleDetector(self.get_logger())
+        
         # 🔥 최적화된 DisplayOCR 초기화 (EasyOCR만 사용, GPU 리소스 절약)
         self.display_ocr = DisplayOCR(self.get_logger())
         # EasyOCR test_all_models_on_roi와 동일한 단순 크롭 방식 사용
@@ -1555,6 +1561,15 @@ class VSNode(Node):
         self.ocr_counter = 0
         self.ocr_skip_frames = 5  # 5프레임마다 한 번씩 OCR 수행 (기존보다 느리게)
         self.last_ocr_objects = []  # 마지막 OCR 결과 캐싱
+        
+        # 🚪 유리 문 상태 이벤트 기반 발행을 위한 변수
+        self.last_glass_door_opened = None  # 이전 유리 문 상태 (None: 초기화되지 않음)
+        
+        # 🚧 장애물 감지 1초 종합 평가를 위한 변수들
+        self.obstacle_detection_history = {}  # {class_name: [detection_count, total_frames]}
+        self.last_obstacle_publish_time = None  # 마지막 장애물 발행 시간
+        self.obstacle_publish_interval = 1.0  # 장애물 발행 간격 (1초)
+        self.obstacle_detection_threshold = 0.6  # 60% 이상 감지되어야 장애물로 인정
         
         # 🎮 GPU 리소스 모니터링 초기화
         try:
@@ -1766,21 +1781,25 @@ class VSNode(Node):
             reliability=ReliabilityPolicy.RELIABLE
         )
         
-        self.tracking_event_pub = self.create_publisher(
-            TrackingEvent,
-            '/vs/tracking_event',
+
+        
+        # 🚧 장애물 토픽 퍼블리셔 추가
+        self.obstacle_pub = self.create_publisher(
+            Obstacle,
+            '/vs/obstacle',
             qos_profile
         )
         
-        self.registered_pub = self.create_publisher(
-            Registered,
-            '/vs/registered',
+        # 🚪 유리 문 상태 토픽 퍼블리셔 추가
+        self.glass_door_pub = self.create_publisher(
+            GlassDoorStatus,
+            '/vs/glass_door_status',
             qos_profile
         )
         
         self.get_logger().info("모든 VS 인터페이스 초기화 완료!")
         self.get_logger().info("구현된 서비스 5개: set_vs_mode, button_status, elevator_status, door_status, location")
-        self.get_logger().info("구현된 토픽 2개: tracking_event, registered")
+        self.get_logger().info("구현된 토픽 2개: obstacle, glass_door_status")
         self.get_logger().info("ArUco 마커 기반 위치 감지 시스템 활성화")
         self.get_logger().info("🎯 GPU 리소스 절약형 동적 카메라 VS Node 초기화 완료!")
         self.get_logger().info(f"🚀 시작 모드: 전방 {self.mode_names[self.current_front_mode_id]} (ID: {self.current_front_mode_id}), 후방 {self.mode_names[self.current_rear_mode_id]} (ID: {self.current_rear_mode_id})")
@@ -2307,55 +2326,94 @@ class VSNode(Node):
     
     # 토픽 퍼블리시 메소드들
     
-    def publish_tracking_event(self, robot_id: int, tracking_event_id: int, task_id: int = 1):
-        """추적 이벤트 발행 (추적모드에서만 동작)"""
-        try:
-            if self.current_rear_mode_id != 2:
-                current_mode = self.mode_names.get(self.current_rear_mode_id, "Unknown")
-                self.get_logger().warning(f"추적 이벤트 발행 실패: 현재 모드가 '{current_mode}'입니다")
-                return False
-            
-            msg = TrackingEvent()
-            msg.robot_id = robot_id
-            msg.tracking_event_id = tracking_event_id
-            msg.task_id = task_id
-            msg.timestamp = self.get_clock().now().to_msg()
-            
-            self.tracking_event_pub.publish(msg)
-            
-            event_names = {
-                0: "slow_down",
-                1: "maintain", 
-                2: "lost",
-                3: "resume"
-            }
-            event_name = event_names.get(tracking_event_id, f"unknown({tracking_event_id})")
-            self.get_logger().info(f"추적 이벤트 발행: {event_name} (robot_id={robot_id}, task_id={task_id})")
-            return True
-            
-        except Exception as e:
-            self.get_logger().error(f"추적 이벤트 발행 에러: {e}")
-            return False
+
     
-    def publish_registered_event(self, robot_id: int):
-        """추적 대상 등록 완료 이벤트 발행 (등록모드에서만 동작)"""
+    def detect_and_publish_obstacles(self, objects, depth_camera, mode_id):
+        """뎁스 카메라 기반 장애물 감지 및 발행 (1초 종합 평가)"""
+        if mode_id != 5:  # 일반 주행 모드가 아니면 스킵
+            return
+            
+        # 뎁스 카메라가 없으면 스킵
+        if depth_camera is None or not hasattr(depth_camera, 'pixel_to_3d'):
+            return
+            
         try:
-            if self.current_rear_mode_id != 1:
-                current_mode = self.mode_names.get(self.current_rear_mode_id, "Unknown")
-                self.get_logger().warning(f"등록 완료 이벤트 발행 실패: 현재 모드가 '{current_mode}'입니다")
-                return False
+            current_time = self.get_clock().now()
             
-            msg = Registered()
-            msg.robot_id = robot_id
-            msg.timestamp = self.get_clock().now().to_msg()
+            # 현재 프레임에서 감지된 장애물들 수집
+            current_obstacles = self.obstacle_detector.detect_obstacles_from_objects(
+                objects, depth_camera
+            )
             
-            self.registered_pub.publish(msg)
-            self.get_logger().info(f"등록 완료 이벤트 발행: robot_id={robot_id}")
-            return True
+            # 감지 히스토리 업데이트
+            detected_classes = set()
+            for obstacle_info in current_obstacles:
+                class_name = obstacle_info['class_name']
+                detected_classes.add(class_name)
+                
+                if class_name not in self.obstacle_detection_history:
+                    self.obstacle_detection_history[class_name] = [0, 0]  # [detection_count, total_frames]
+                
+                self.obstacle_detection_history[class_name][0] += 1  # 감지 횟수 증가
             
+            # 모든 클래스의 총 프레임 수 증가
+            for class_name in self.obstacle_detection_history:
+                self.obstacle_detection_history[class_name][1] += 1
+            
+            # 1초마다 종합 평가 및 발행
+            if (self.last_obstacle_publish_time is None or 
+                (current_time - self.last_obstacle_publish_time).nanoseconds / 1e9 >= self.obstacle_publish_interval):
+                
+                # 종합 평가: 임계값 이상 감지된 장애물만 발행
+                confirmed_obstacles = []
+                
+                for class_name, (detection_count, total_frames) in self.obstacle_detection_history.items():
+                    if total_frames > 0:
+                        detection_ratio = detection_count / total_frames
+                        
+                        if detection_ratio >= self.obstacle_detection_threshold:
+                            # 임계값 이상 감지된 경우, 가장 최근 감지 정보 사용
+                            for obstacle_info in current_obstacles:
+                                if obstacle_info['class_name'] == class_name:
+                                    confirmed_obstacles.append(obstacle_info)
+                                    break
+                            
+                            self.get_logger().info(
+                                f"🚧 장애물 종합 평가: {class_name} "
+                                f"감지율 {detection_ratio:.1%} ({detection_count}/{total_frames}) "
+                                f"→ 발행 확정"
+                            )
+                        else:
+                            self.get_logger().debug(
+                                f"🚧 장애물 종합 평가: {class_name} "
+                                f"감지율 {detection_ratio:.1%} ({detection_count}/{total_frames}) "
+                                f"→ 노이즈로 판단, 발행 안함"
+                            )
+                
+                # 확정된 장애물들 발행
+                for obstacle_info in confirmed_obstacles:
+                    obstacle_msg = Obstacle()
+                    obstacle_msg.robot_id = obstacle_info['robot_id']
+                    obstacle_msg.dynamic = obstacle_info['dynamic']
+                    obstacle_msg.x = obstacle_info['x']  # 실제 월드 X 좌표 (미터)
+                    obstacle_msg.y = obstacle_info['y']  # 실제 월드 Y 좌표 (미터)
+                    
+                    self.obstacle_pub.publish(obstacle_msg)
+                    
+                    # 로그 출력
+                    obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
+                    self.get_logger().info(
+                        f"🚧 장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
+                        f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m) "
+                        f"거리: {obstacle_info['distance']:.2f}m"
+                    )
+                
+                # 히스토리 초기화 및 발행 시간 업데이트
+                self.obstacle_detection_history.clear()
+                self.last_obstacle_publish_time = current_time
+                
         except Exception as e:
-            self.get_logger().error(f"등록 완료 이벤트 발행 에러: {e}")
-            return False
+            self.get_logger().error(f"❌ 장애물 감지 및 발행 실패: {e}")
     
     def simulate_tracking_sequence(self, robot_id: int = 1, task_id: int = 1):
         """추적 시뮬레이션 시퀀스"""
@@ -2374,10 +2432,9 @@ class VSNode(Node):
             
             time.sleep(1)
             
-            # 등록 완료 이벤트 발행
-            self.get_logger().info("[1/6] 등록 완료 이벤트 발행")
-            if self.publish_registered_event(robot_id):
-                self.get_logger().info("등록 완료")
+            # 등록 완료 이벤트 발행 (삭제됨)
+            self.get_logger().info("[1/6] 등록 완료 이벤트 발행 (기능 삭제됨)")
+            self.get_logger().info("등록 완료")
             
             time.sleep(2)
             
@@ -2387,7 +2444,7 @@ class VSNode(Node):
             
             time.sleep(1)
             
-            # 추적 시퀀스 실행
+            # 추적 시퀀스 실행 (기능 삭제됨)
             tracking_events = [
                 (1, "maintain - 정상 추적"),
                 (0, "slow_down - 속도 감소 요청"),
@@ -2398,9 +2455,8 @@ class VSNode(Node):
             
             for i, (event_id, description) in enumerate(tracking_events):
                 time.sleep(2)
-                self.get_logger().info(f"[{i+2}/6] {description}")
-                if self.publish_tracking_event(robot_id, event_id, task_id):
-                    self.get_logger().info(f"추적 이벤트 발행 성공")
+                self.get_logger().info(f"[{i+2}/6] {description} (기능 삭제됨)")
+                self.get_logger().info(f"추적 이벤트 발행 성공 (기능 삭제됨)")
             
             # 원래 모드로 복원
             time.sleep(1)
@@ -2901,6 +2957,50 @@ class VSNode(Node):
         
         return response
     
+    def detect_and_publish_glass_door_status(self, objects, mode_id):
+        """유리 문 상태 감지 및 발행 (이벤트 기반)"""
+        if mode_id != 5:  # 전방 일반 주행 모드에서만 (뎁스 카메라 사용)
+            return
+            
+        try:
+            # door 객체가 감지되었는지 확인
+            door_detected = False
+            
+            for obj in objects:
+                if obj['class_name'] == 'door':
+                    door_detected = True
+                    break
+            
+            # 현재 상태 계산 (문이 안 보이면 열린 것)
+            current_opened = not door_detected
+            
+            # 이전 상태와 비교하여 변경되었을 때만 발행
+            if self.last_glass_door_opened is None:
+                # 첫 번째 실행 시 초기화
+                self.last_glass_door_opened = current_opened
+                self.get_logger().info(f"🚪 유리 문 상태 초기화: {'열림' if current_opened else '닫힘'}")
+                return
+            
+            # 상태가 변경되었을 때만 발행
+            if self.last_glass_door_opened != current_opened:
+                # 유리 문 상태 메시지 생성 및 발행
+                glass_door_msg = GlassDoorStatus()
+                glass_door_msg.robot_id = 1
+                glass_door_msg.opened = current_opened
+                
+                self.glass_door_pub.publish(glass_door_msg)
+                
+                # 상태 업데이트
+                old_state = "열림" if self.last_glass_door_opened else "닫힘"
+                new_state = "열림" if current_opened else "닫힘"
+                self.last_glass_door_opened = current_opened
+                
+                # 로그 출력
+                self.get_logger().info(f"🚪 유리 문 상태 변경: {old_state} → {new_state} (이벤트 발행)")
+                
+        except Exception as e:
+            self.get_logger().error(f"❌ 유리 문 상태 감지 및 발행 실패: {e}")
+    
 
     
     def location_callback(self, request, response):
@@ -2976,8 +3076,8 @@ class VSNode(Node):
         
         # 객체 타입별 색상 정의
         color_map = {
-            'person': (255, 0, 255),      # 보라색
-            'chair': (0, 255, 255),       # 노란색  
+            'person': (255, 0, 0),        # 빨간색 (동적 장애물)
+            'chair': (0, 255, 255),       # 노란색 (정적 장애물)
             'door': (255, 255, 0),        # 청록색
             'button': (0, 255, 0),        # 초록색
             'direction_light': (255, 165, 0),  # 주황색
@@ -2997,13 +3097,23 @@ class VSNode(Node):
             if bbox and len(bbox) == 4:
                 x1, y1, x2, y2 = bbox
                 
-                # 객체별 색상 선택 (버튼은 눌림 상태에 따라)
+                # 장애물 여부 확인
+                is_obstacle = obj.get('is_obstacle', False)
+                
+                # 색상과 두께 결정
                 if class_name == 'button' and is_pressed:
                     color = (0, 0, 255)  # 빨간색 (눌린 버튼)
+                    thickness = 2
+                elif is_obstacle:
+                    # 장애물인 경우 더 두껍게 표시
+                    color = color_map.get(class_name, (128, 128, 128))
+                    thickness = 3
                 else:
-                    color = color_map.get(class_name, (128, 128, 128))  # 기본 회색
+                    # 일반 객체
+                    color = color_map.get(class_name, (128, 128, 128))
+                    thickness = 2
                 
-                cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
+                cv2.rectangle(image, (x1, y1), (x2, y2), color, thickness)
                 
                 # 클래스 이름과 신뢰도 표시
                 if class_name == 'button':
@@ -3128,8 +3238,40 @@ class VSNode(Node):
                 else:
                     label = f"{class_name}: {confidence:.2f}"
                 
-                cv2.putText(image, label, (x1, y1-10), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
+                # 장애물인 경우 특별한 라벨 생성
+                if is_obstacle:
+                    obstacle_type = obj.get('obstacle_type', 'unknown')
+                    distance_m = obj.get('distance_m', 0.0)
+                    world_x = obj.get('world_x', 0.0)
+                    world_y = obj.get('world_y', 0.0)
+                    
+                    # 장애물 타입과 거리 표시
+                    if obstacle_type == 'dynamic':
+                        label = f"DYNAMIC OBSTACLE: {distance_m:.1f}m"
+                    else:
+                        label = f"STATIC OBSTACLE: {distance_m:.1f}m"
+                    
+                    # 라벨 배경 (가독성 향상)
+                    label_size = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 2)[0]
+                    cv2.rectangle(image, (x1, y1-25), (x1+label_size[0], y1), color, -1)
+                    cv2.putText(image, label, (x1, y1-5), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    
+                    # 월드 좌표 표시 (객체 아래쪽)
+                    coord_text = f"({world_x:.2f}m, {world_y:.2f}m)"
+                    coord_size = cv2.getTextSize(coord_text, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 1)[0]
+                    cv2.rectangle(image, (x1, y2), (x1+coord_size[0], y2+20), (0, 0, 0), -1)
+                    cv2.putText(image, coord_text, (x1, y2+15), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
+                    
+                    # 장애물 아이콘 표시 (객체 위쪽)
+                    icon_text = "🚧" if obstacle_type == 'dynamic' else "🪑"
+                    cv2.putText(image, icon_text, (x1, y1-30), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                else:
+                    # 기존 객체 라벨
+                    cv2.putText(image, label, (x1, y1-10), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
                 
                 # 버튼의 중심점 좌표 표시
                 if class_name == 'button':
@@ -3279,6 +3421,30 @@ class VSNode(Node):
         # 탐지된 객체 수
         cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
+        
+        # 🚧 장애물 정보 추가
+        obstacle_objects = [obj for obj in objects if obj.get('is_obstacle', False)]
+        if obstacle_objects:
+            dynamic_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'dynamic'])
+            static_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'static'])
+            
+            # 장애물 요약 정보
+            cv2.putText(image, f"🚧 OBSTACLES: Dynamic={dynamic_count} | Static={static_count}", 
+                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+            
+            # 가장 가까운 장애물 정보
+            closest_obstacle = min(obstacle_objects, key=lambda x: x.get('distance_m', float('inf')))
+            if closest_obstacle:
+                obstacle_type = closest_obstacle.get('obstacle_type', 'unknown')
+                distance = closest_obstacle.get('distance_m', 0.0)
+                world_x = closest_obstacle.get('world_x', 0.0)
+                world_y = closest_obstacle.get('world_y', 0.0)
+                
+                cv2.putText(image, f"⚠️ CLOSEST: {obstacle_type.upper()} at {distance:.1f}m ({world_x:.2f}, {world_y:.2f})", 
+                           (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+        else:
+            cv2.putText(image, "✅ NO OBSTACLES DETECTED", 
+                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
         
         # 🔥 방향등 기억된 위치 정보 표시
         if (self.remembered_direction_positions['upper'] and self.remembered_direction_positions['lower']):
@@ -4332,6 +4498,16 @@ def main(args=None):
                                 if mode_id == 5:  # 일반 모드: 뎁스에 일반 YOLO (OCR 불필요 - ArUco만)
                                     detected_objects = node.model_detector.detect_objects(color_image, depth_image, node.confidence_threshold, mode_id)
                                     objects = detected_objects  # OCR 없이 그대로 사용
+                                    
+                                    # 🚧 장애물 감지 및 발행 추가
+                                    node.detect_and_publish_obstacles(
+                                        objects, depth_camera, mode_id
+                                    )
+                                    
+                                    # 🚪 유리 문 상태 감지 및 발행 추가
+                                    node.detect_and_publish_glass_door_status(
+                                        objects, mode_id
+                                    )
                                 elif mode_id in [3, 4, 6]:  # 엘리베이터/대기 모드: 뎁스는 영상만
                                     pass
                             elif camera_type in ['rear', 'front']:
@@ -4406,20 +4582,10 @@ def main(args=None):
                         elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션
                             node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
                             node.simulate_tracking_sequence(robot_id=1, task_id=1)
-                        elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트
-                            current_mode = node.get_active_mode_name()
-                            node.get_logger().info(f"'T' 키 눌림 - 추적 이벤트 발행 시도 (현재: {current_mode})")
-                            import random
-                            event_id = random.choice([0, 1, 2, 3])
-                            success = node.publish_tracking_event(robot_id=1, tracking_event_id=event_id, task_id=1)
-                            if not success:
-                                node.get_logger().info("추적 이벤트를 발행하려면 '1t' 명령으로 추적모드로 변경하세요")
-                        elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트
-                            current_mode = node.get_active_mode_name()
-                            node.get_logger().info(f"'G' 키 눌림 - 등록 완료 이벤트 발행 시도 (현재: {current_mode})")
-                            success = node.publish_registered_event(robot_id=1)
-                            if not success:
-                                node.get_logger().info("등록 완료 이벤트를 발행하려면 '1r' 명령으로 등록모드로 변경하세요")
+                        elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트 (기능 삭제됨)
+                            node.get_logger().info("'T' 키 눌림 - 추적 이벤트 발행 기능이 삭제되었습니다")
+                        elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트 (기능 삭제됨)
+                            node.get_logger().info("'G' 키 눌림 - 등록 완료 이벤트 발행 기능이 삭제되었습니다")
                         elif key == ord('b') or key == ord('B'):  # B키: 객체 탐지 결과 출력
                             model_info = node.model_detector.get_current_model_info()
                             # 안전한 모델 이름 표시
