@@ -120,39 +120,53 @@ class YoloVisionService(Node):
                 self.get_logger().error(f"이미지 발행 실패: {e}")
 
     def handle_request(self, request, response):
+        """
+        [디버깅 강화] 서비스 요청을 처리하고, 판단 과정을 상세히 로깅합니다.
+        """
+        self.get_logger().info(f"--- 🔮 서비스 요청 수신: button_id={request.button_id} ---")
+        
+        # 1. 현재 감지된 버튼 정보를 확인하기 위해 status_lock을 사용합니다.
         with self.status_lock:
-            # [Roomie 수정] 요청된 ID와 일치하는 모든 버튼을 리스트에 담습니다.
+            # 현재 감지된 모든 버튼의 상태를 로그로 출력합니다.
+            self.get_logger().info(f"현재 감지된 버튼 맵: {self.button_status_map}")
+
+            # 2. 요청된 ID와 일치하는 모든 버튼을 리스트에 담습니다.
             matches = []
-            for status in self.button_status_map.values():
+            for track_id, status in self.button_status_map.items():
+                self.get_logger().info(f"  - 확인 중: Track ID {track_id}, Button ID {status['button_id']}")
                 if status["button_id"] == request.button_id:
                     matches.append(status)
+                    self.get_logger().info(f"    -> ✅ 일치! 리스트에 추가합니다.")
             
-            # [Roomie 수정] 매칭된 버튼의 개수에 따라 응답을 다르게 처리합니다.
+            self.get_logger().info(f"요청된 button_id {request.button_id}와 일치하는 항목 수: {len(matches)}개")
+
+            # 3. 매칭된 버튼의 개수에 따라 응답을 다르게 처리합니다.
             if len(matches) == 1:
-                # ✨ [핵심 수정] 응답 필드를 새 형식에 맞게 채웁니다.
+                # 정상적으로 하나만 감지된 경우
                 matched_status = matches[0]
                 response.success = True
                 response.x = matched_status["x"]
                 response.y = matched_status["y"]
                 response.size = matched_status["size"]
                 response.is_pressed = matched_status["is_pressed"]
-                self.get_logger().info(f"✅ Button ID {request.button_id} 요청 처리 성공.")
+                self.get_logger().info(f"✔️ 처리 성공: Button ID {request.button_id}에 대한 정보를 응답합니다.")
                 
             elif len(matches) > 1:
-                # 2개 이상 중복으로 감지된 경우 (서비스 정의에 따름)
+                # 2개 이상 중복으로 감지된 경우
                 response.success = False
-                self.get_logger().warn(f"❌ Button ID {request.button_id}가 {len(matches)}개 중복 감지되어 처리 실패.")
+                self.get_logger().warn(f"⚠️ 처리 실패: Button ID {request.button_id}가 {len(matches)}개 중복 감지되었습니다.")
 
             else: # len(matches) == 0
                 # 하나도 감지되지 않은 경우
                 response.success = False
-                self.get_logger().warn(f"❌ Button ID {request.button_id}를 찾을 수 없어 처리 실패.")
+                self.get_logger().warn(f"⚠️ 처리 실패: 현재 감지된 버튼 중에 Button ID {request.button_id}가 없습니다.")
 
-        # [Roomie 수정] robot_id, button_id, timestamp는 성공/실패 여부와 관계없이 채워주는 것이 좋습니다.
+        # 4. robot_id, button_id, timestamp는 성공/실패 여부와 관계없이 채워줍니다.
         response.robot_id = request.robot_id
         response.button_id = request.button_id
         response.timestamp = self.get_clock().now().to_msg()
-            
+        
+        self.get_logger().info(f"--- 🔮 최종 응답 전송: success={response.success} ---")
         return response
     
     def destroy_node(self):

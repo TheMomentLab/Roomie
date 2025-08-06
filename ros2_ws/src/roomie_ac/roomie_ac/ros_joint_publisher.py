@@ -5,12 +5,14 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 import numpy as np 
 from . import config # config.py 임포트
+from rclpy.callback_groups import ReentrantCallbackGroup
 
 class ROSJointPublisher(Node):
-    def __init__(self):
+    def __init__(self, callback_group: ReentrantCallbackGroup):
         super().__init__('joint_publisher')
-        # /joint_states 토픽에 JointState 메시지를 발행하는 퍼블리셔를 생성합니다.
-        self.publisher_ = self.create_publisher(JointState, '/joint_states', 10)
+        
+        # ✨ create_publisher에 콜백 그룹을 전달
+        self.publisher_ = self.create_publisher(JointState, '/joint_states', 10, callback_group=callback_group)
         self.get_logger().info('ROSJointPublisher 노드 초기화됨.')
 
     def publish(self, joint_names, joint_positions_rad):

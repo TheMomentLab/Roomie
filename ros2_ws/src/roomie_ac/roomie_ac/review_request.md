@@ -36,7 +36,7 @@ roomie_ac (Arm Control Package):
 
 [최종 동작]: 정렬이 완료되면, ac_node가 motion_controller의 press_forward()와 retreat() 함수를 순서대로 호출하여 버튼 누름 및 후퇴 동작을 수행합니다.
 
-[결과 보고]: 모든 과정이 성공하면 Succeeded 결과를, 중간에 실패하면 Aborted 결과를 상위 서비스에 보고하며 시나리오가 종료됩니다.
+[결과 보고]: 모든 과정이 성공하면 Succeeded 결과를, 중간에 실패해도 일단 sucess 결과를 상위 서비스에 보고하며 시나리오가 종료됩니다.
 
 5. 인터페이스 및 데이터 정의
 서비스 정의

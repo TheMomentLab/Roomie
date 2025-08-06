@@ -18,7 +18,7 @@ def main():
     """
     YOLO 모델과 OCR을 사용하여 실시간으로 객체를 감지하고 테스트하는 메인 함수
     """
-    # 1. 모델 및 리더기 초기화
+    # 1. 모델 및 🔮 리더기 초기화
     print("YOLO 모델을 로드하는 중...")
     model = YOLO(MODEL_PATH)
     model.conf = CONFIDENCE_THRESHOLD

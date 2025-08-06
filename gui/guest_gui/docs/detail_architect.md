@@ -5,9 +5,6 @@ bash
 guest_gui/
 ├── index.html                   # 메인 엔트리 포인트 (모든 기능 포함 SPA)
 ├── config/
-│   ├── room_101.js              # ROOM_101에 대한 설정
-│   ├── room_201.js              # ROOM_201에 대한 설정
-│   └── lob_call.js              # LOB_CALL 등 공용 위치용
 ├── js/
 │   ├── app.js                   # 메인 앱 로직 (렌더링/이벤트 처리)
 │   ├── common.js                # 공용 유틸 및 API 통신 함수

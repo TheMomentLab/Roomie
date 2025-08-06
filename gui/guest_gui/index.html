@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ROOMIE - 객실 서비스</title>
-  <link rel="stylesheet" href="common.css" />
+  <link rel="stylesheet" href="css/common.css" />
   <style>
     body {
       font-family: 'Noto Sans KR', sans-serif;
@@ -86,33 +86,12 @@
   </style>
 </head>
 <body>
-  <script src="config.js"></script>
-  <script src="app.js"></script> 
-  <script src="common.js"></script> 
-  <script src="food.js"></script>
-  <script src="supply.js"></script>
-  <script src="robot.js"></script>
-  <script src="history.js"></script>
-
-  <header class="header">
-    <span id="room-name"></span>
-  </header>
-
-  <main class="main-content">
-    <h1>ROOMIE</h1>
-    <p class="subtitle">호텔 안내 & 주문 배송 서비스</p>
-    <p class="welcome">ROOMIE에 오신 걸 환영합니다.</p>
-  </main>
-
-  <div class="button-grid">
-    <button class="grid-button" id="btn-call-robot">로봇호출</button>
-    <button class="grid-button" id="btn-order-history">요청조회</button>
-    <button class="grid-button" id="btn-order-food">음식주문</button>
-    <button class="grid-button" id="btn-order-supply">비품주문</button>
-  </div>
-
+  <div id="app-container"></div>
+  
   <div id="global-toast" class="global-toast hidden">
     <img id="toast-full-image" class="toast-image" src="" alt="">
   </div>
+
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>

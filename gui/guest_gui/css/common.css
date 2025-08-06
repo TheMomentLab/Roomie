@@ -1,79 +1,229 @@
 /* Google Fonts Noto Sans KR 불러오기 */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
 
-/* --- 기본 스타일 리셋 --- */
+/* ==============================================
+  1. 전역 변수 및 기본 리셋 (Variables & Reset)
+==============================================
+*/
+:root {
+    --accent-color: #3B5E72;
+    --primary-text-color: #2F2F2F;
+    --secondary-text-color: #5B5B5B;
+    --light-text-color: #FFFFFF;
+    --container-bg-color: #F5F5F5;
+    --border-color: #E0E0E0;
+    --border-radius: 10px;
+    --main-font: 'Noto Sans KR', sans-serif;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
 }
 
-/* --- 전체 페이지 레이아웃 --- */
 body {
-    font-family: 'Noto Sans KR', sans-serif;
+    font-family: var(--main-font);
+    background-color: #333; /* 이미지 로딩 전 배경 */
+}
+
+/* ==============================================
+  2. 전역 레이아웃 및 컴포넌트 (Global Layouts & Components)
+==============================================
+*/
+
+#app-container {
+    width: 100%;
+    height: 100vh;
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
-    background-size: cover;
-    background-position: center;
 }
 
-/* --- 컨테이너 (스마트폰 화면) --- */
-.container {
+.app-layout {
     width: 100%;
     max-width: 486px;
-    height: 801px;
+    height: 100%;
+    max-height: 801px;
+    display: flex;
+    flex-direction: column;
+    color: var(--light-text-color);
+    background-size: cover;
+    background-position: center;
+    /* [수정] 모든 뷰의 배경 이미지 통일 및 가독성을 위한 오버레이 추가 */
+    background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png');
+    padding: 30px;
     position: relative;
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
 }
 
-/* --- 상단 헤더 (룸 번호) --- */
-.header {
-    padding: 70px 30px 0;
-    color: white;
-    font-size: 36px;
-    text-align: right;
-    font-weight: 500;
-}
-
-/* --- 메인 컨텐츠 영역 --- */
-.main-content {
-    flex-grow: 1;
-    background-color: white;
-    margin: 20px 11px 0;
-    border-radius: 19px;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    position: relative;
+/* [추가] 모든 뒤로가기 버튼 스타일 통합 */
+.back-button {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    width: 39px;
+    height: 39px;
+    background-image: url('../assets/images/back_button.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    cursor: pointer;
+    border: none;
+    background-color: transparent;
+    z-index: 10;
 }
 
 .global-toast {
-  position: fixed;
-  top: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  width: auto;
-  max-width: 80%;
-  height: auto;
+    position: fixed;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: var(--border-radius);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
-
-
-/* ✅ 모바일 화면에서는 더 작게 표시 */
-@media (max-width: 600px) {
-  .global-toast {
-    max-width: 90%;
-  }
-}
-
 .global-toast.hidden {
-  display: none; 
+    display: none; 
+}
+
+
+/* ==============================================
+  3. 뷰(View)별 스타일
+==============================================
+*/
+
+/* --- 뷰: 메인 홈 (view-home) --- */
+.view-home {
+    justify-content: space-between;
+    text-align: center;
+}
+.view-home .header {
+    width: 100%; text-align: right; font-size: 28px; font-weight: 700;
+}
+.view-home .main-content-home h1 {
+    font-size: 75px; font-weight: 700; margin-bottom: 8px;
+}
+.view-home .button-grid {
+    width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr;
+    gap: 15px; margin: 40px auto 0;
+}
+.view-home .grid-button {
+    background-color: var(--accent-color); color: var(--light-text-color);
+    border: none; border-radius: 12px; padding: 25px 10px;
+    font-family: var(--main-font); font-size: 24px; font-weight: 700;
+    cursor: pointer; transition: background-color 0.2s;
+}
+.view-home .grid-button:hover {
+    background-color: #4a758f;
+}
+
+/* --- 뷰: 음식/비품 메뉴 (view-menu, view-supply) --- */
+.view-menu .main-content-box, .view-supply .main-content-box {
+    padding-top: 60px; /* 뒤로가기 버튼 공간 확보 */
+}
+.view-menu .menu-list, .view-supply .menu-list {
+    flex-grow: 1; overflow-y: auto;
+}
+.view-menu .menu-item, .view-supply .menu-item {
+    display: flex; align-items: center; margin-bottom: 25px;
+}
+.view-menu .menu-image, .view-supply .menu-image {
+    width: 170px; height: 170px; background-color: var(--container-bg-color);
+    border-radius: var(--border-radius); margin-right: 20px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+}
+.view-menu .menu-details, .view-supply .menu-details {
+    flex-grow: 1; display: flex; flex-direction: column;
+    align-items: flex-start; gap: 25px;
+}
+.view-menu .quantity-control, .view-supply .quantity-control {
+    display: flex; align-items: center; gap: 15px;
+}
+
+/* [수정] 모든 수량 조절 버튼 스타일 통합 */
+.quantity-btn {
+    width: 36px; height: 36px; background-size: contain;
+    cursor: pointer; border: none; background-color: transparent;
+}
+.minus-btn { background-image: url('../assets/images/minus_button.png'); }
+.plus-btn { background-image: url('../assets/images/plus_button.png'); }
+
+.view-menu .quantity, .view-supply .quantity {
+    font-size: 20px; font-weight: 500; color: var(--secondary-text-color);
+    min-width: 25px; text-align: center;
+}
+.view-menu .select-button, .view-supply .select-button {
+    background-color: var(--accent-color); color: var(--light-text-color);
+    border: none; padding: 8px 24px; border-radius: 5px;
+    font-size: 20px; font-weight: 300; cursor: pointer;
+}
+.view-menu .footer, .view-supply .footer {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    width: calc(100% - 40px); height: 69px; background-color: var(--accent-color);
+    border-radius: var(--border-radius); display: flex; align-items: center;
+    justify-content: space-between; color: var(--light-text-color);
+    padding: 0 25px; font-size: 24px;
+}
+
+/* --- 뷰: 장바구니 (view-cart) --- */
+.view-cart .cart-title {
+    font-size: 24px; font-weight: 500; color: var(--primary-text-color);
+    margin-left: 15px;
+}
+.view-cart .cart-items {
+    flex-grow: 1; padding: 0 20px; overflow-y: auto;
+}
+.view-cart .item {
+    display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 20px 0;
+}
+.view-cart .item-image {
+    width: 90px; height: 90px; background-color: var(--container-bg-color);
+    border-radius: var(--border-radius); margin-right: 15px;
+    background-size: cover; background-position: center;
+}
+.view-cart .footer {
+    padding: 20px; background-color: white;
+}
+.view-cart .order-button:disabled {
+    background-color: #999;
+}
+
+/* --- 뷰: 주문/호출 성공 (view-order-success, view-robot-success) --- */
+.view-order-success .order-history-button, .view-robot-success .order-history-button {
+    position: absolute; top: 25px; right: 25px; background-color: var(--primary-text-color);
+    color: var(--light-text-color); border-radius: 7px; padding: 12px 20px;
+}
+.view-order-success .status-section, .view-robot-success .status-section {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 40px; margin-top: 80px;
+}
+.view-order-success .robot-icon-container .line, .view-robot-success .robot-icon-container .line {
+    width: 200px; height: 5px; background-color: var(--border-color);
+}
+.view-order-success .close-button, .view-robot-success .close-button {
+    width: 100%; padding: 20px; font-size: 24px;
+}
+
+/* --- 뷰: 요청 이력 상세 (view-history-detail) --- */
+.view-history-detail .status-card {
+    width: 100%; background-color: white; color: #474646; border-radius: 19px;
+    padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem;
+    margin-top: auto;
+}
+.view-history-detail .timeline-item {
+    display: flex; align-items: center; gap: 1.5rem;
+}
+.view-history-detail .point {
+    width: 20px; height: 20px; border-radius: 50%; background-color: var(--accent-color);
+}
+.view-history-detail .line {
+    width: 4px; height: 40px; background-color: var(--accent-color);
+}
+.view-history-detail .inactive .point, .view-history-detail .inactive .line {
+    background-color: var(--border-color);
+}
+.view-history-detail .timeline-item:last-child .line {
+    background-color: transparent;
 }

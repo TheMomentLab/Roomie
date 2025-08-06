@@ -16,6 +16,15 @@ window.common = {
     }
 };
 
+export function sendApiRequest(url, data) {
+  return fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(data),
+  }).then((res) => res.json());
+}
 
 // -----------------------------------------------------------
 // 💡 showToast 함수 (전역으로 바로 사용 가능하도록 정의)

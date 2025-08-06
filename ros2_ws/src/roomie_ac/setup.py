@@ -25,7 +25,9 @@ setup(
     entry_points={
         'console_scripts': [
             'ac_node = roomie_ac.ac_node:main',
-            'yolo_vision_service = roomie_ac.yolo_vision_service:main'
+            'yolo_vision_service = roomie_ac.yolo_vision_service:main',
+            'aruco_vision_service = roomie_ac.aruco_vision_service:main',
+            'coordinate_test_node = roomie_ac.coordinate_test_node:main',
         ],
     },
 )

@@ -85,22 +85,22 @@ class MotionController:
         
         return self.move_to_pose_ik(target_xyz, target_orientation_matrix)
 
-    def press_forward(self, distance_m=0.05) -> bool:
+    def press_forward_x(self, distance_m=0.05) -> bool:
         """
-        [Public] 현재 팔이 바라보는 방향(툴의 Z축)으로 전진하여 누릅니다.
+        [Public] 현재 팔이 바라보는 방향 기준, 로컬 X축으로 전진하여 누릅니다.
         """
-        self._log(f"{distance_m*100:.1f}cm 전진하여 누르기 동작을 수행합니다.")
-        # 로컬 Z축으로 전진하는 벡터
-        forward_vector_local = np.array([0, 0, distance_m])
+        self._log(f"{distance_m*100:.1f}cm 'X축으로' 전진하여 누르기 동작을 수행합니다.")
+        # 로컬 X축으로 전진하는 벡터
+        forward_vector_local = np.array([distance_m, 0, 0])
         return self.move_relative_cartesian(forward_vector_local)
 
-    def retreat(self, distance_m=0.05) -> bool:
+    def retreat_x(self, distance_m=0.05) -> bool:
         """
-        [Public] 현재 팔이 바라보는 방향의 반대 방향으로 후퇴합니다.
+        [Public] 현재 팔이 바라보는 방향 기준, 로컬 X축으로 후퇴합니다.
         """
-        self._log(f"{distance_m*100:.1f}cm 후퇴 동작을 수행합니다.")
-        # 로컬 Z축으로 후퇴하는 벡터
-        retreat_vector_local = np.array([0, 0, -distance_m])
+        self._log(f"{distance_m*100:.1f}cm 'X축으로' 후퇴 동작을 수행합니다.")
+        # 로컬 X축으로 후퇴하는 벡터
+        retreat_vector_local = np.array([-distance_m, 0, 0])
         return self.move_relative_cartesian(retreat_vector_local)
 
     # ------------------- Helper / Private Methods -------------------

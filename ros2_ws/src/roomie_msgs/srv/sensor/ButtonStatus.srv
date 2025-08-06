@@ -13,10 +13,12 @@ float32 size
 bool is_pressed
 builtin_interfaces/Time timestamp
 
+
+
+
 # x: 0~1
 # y: 0~1
 # size: 0~1
-
 # button_id values:
 # 0: (현재 유일하게 감지되는 버튼)
 # 버튼이 2개 이상 감지될 경우 success=false
