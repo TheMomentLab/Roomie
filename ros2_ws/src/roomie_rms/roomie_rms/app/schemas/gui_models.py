@@ -130,7 +130,7 @@ class TaskStatusUpdateEvent(BaseModel):
 # AGUI 로봇 상태 업데이트
 class RobotStatusUpdateEventPayload(BaseModel):
     total_robot_count: int
-    waiting_robot_count: int
+    active_robot_count: int
 
 class RobotStatusUpdateEvent(BaseModel):
     type: str = "event"
@@ -147,10 +147,9 @@ class TaskInDB(BaseModel):
     task_type: str
     task_status: str
     destination: str
-    robot_id: int | None
+    robot_id: Optional[int] = None
     task_creation_time: datetime
     task_completion_time: datetime | None
-    task_cancellation_time: datetime | None
     
     @field_serializer('task_creation_time')
     def serialize_creation_time(self, value: datetime) -> str:
@@ -168,10 +167,10 @@ class RobotInDB(BaseModel):
     model_name: str
     battery_level: int | None
     is_charging: bool
-    robot_status: str | None
+    robot_status: str
+    floor_id: int
     task_id: int | None
-    has_error: bool
-    error_code: str | None
+    error_id: int | None
 
 # ----------------------------------------------------------------
 # GGUI (Guest GUI) HTTP Interface Models
@@ -363,6 +362,7 @@ class TaskDetailResponsePayload(BasePayload):
     pickup_completion_time: Optional[str] = None
     delivery_arrival_time: Optional[str] = None
     task_completion_time: Optional[str] = None
+    calculated_estimated_time: Optional[int] = None
 
 class TaskDetailResponse(BaseModel):
     type: str = "response"
@@ -371,7 +371,7 @@ class TaskDetailResponse(BaseModel):
 
 # 로봇 목록 요청
 class RobotListFilters(BaseModel):
-    robot_id: Optional[str] = None
+    robot_id: Optional[int] = None
     model_name: Optional[str] = None
     robot_status: Optional[str] = None
 

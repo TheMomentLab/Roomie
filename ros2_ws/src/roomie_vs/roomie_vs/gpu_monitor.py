@@ -47,7 +47,12 @@ class GPUResourceMonitor:
             self.handle = pynvml.nvmlDeviceGetHandleByIndex(0)  # 첫 번째 GPU
             
             # GPU 정보 가져오기
-            name = pynvml.nvmlDeviceGetName(self.handle).decode('utf-8')
+            raw_name = pynvml.nvmlDeviceGetName(self.handle)
+            # 최신 pynvml에서는 이미 string으로 반환될 수 있음
+            if isinstance(raw_name, bytes):
+                name = raw_name.decode('utf-8')
+            else:
+                name = str(raw_name)
             memory_info = pynvml.nvmlDeviceGetMemoryInfo(self.handle)
             total_memory_mb = memory_info.total // (1024 * 1024)
             

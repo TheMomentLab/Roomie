@@ -609,13 +609,13 @@ class HttpManager:
             if filters.end_date:
                 query += " AND t.task_creation_time <= %s"
                 params.append(filters.end_date)
-            if filters.task_type:
+            if filters.task_type and filters.task_type != "전체":
                 query += " AND tt.name = %s"
                 params.append(filters.task_type)
-            if filters.task_status:
+            if filters.task_status and filters.task_status != "전체":
                 query += " AND ts.name = %s"
                 params.append(filters.task_status)
-            if filters.destination:
+            if filters.destination and filters.destination != "전체":
                 query += " AND l.name = %s"
                 params.append(filters.destination)
 
@@ -662,32 +662,41 @@ class HttpManager:
                 details={"Client": "AGUI", "Method": "POST", "Path": "/api/gui/robot_list", "Filters": filters.model_dump_json()}
             )
             query = """
+                WITH RankedTasks AS (
+                    SELECT
+                        t.id,
+                        t.robot_id,
+                        t.task_status_id,
+                        ROW_NUMBER() OVER(PARTITION BY t.robot_id ORDER BY t.task_creation_time DESC) as rn
+                    FROM task t
+                    WHERE t.task_status_id NOT IN (7, 13, 22)
+                )
                 SELECT
                     r.id as robot_id,
                     r.model_name,
                     rcs.battery_level,
                     rcs.is_charging,
+                    rcs.floor_id,
+                    rcs.error_id,
                     rs.name as robot_status,
-                    ts.name as task_status,
-                    t.id as task_id,
-                    (CASE WHEN e.id IS NOT NULL THEN TRUE ELSE FALSE END) as has_error
+                    rt.id as task_id
                 FROM robot r
                 LEFT JOIN robot_current_state rcs ON r.id = rcs.robot_id
                 LEFT JOIN robot_status rs ON rcs.robot_status_id = rs.id
                 LEFT JOIN error e ON rcs.error_id = e.id
-                LEFT JOIN task t ON r.id = t.robot_id AND t.task_status_id NOT IN (7, 13, 22)
-                LEFT JOIN task_status ts ON t.task_status_id = ts.id
+                LEFT JOIN RankedTasks rt ON r.id = rt.robot_id AND rt.rn = 1
+                LEFT JOIN task_status ts ON rt.task_status_id = ts.id
                 WHERE 1=1
             """
             params = []
 
             if filters.robot_id:
                 query += " AND r.id = %s"
-                params.append(int(filters.robot_id.replace("ROBOT_", "")))
-            if filters.model_name:
+                params.append(filters.robot_id)
+            if filters.model_name and filters.model_name != "전체":
                 query += " AND r.model_name = %s"
                 params.append(filters.model_name)
-            if filters.robot_status:
+            if filters.robot_status and filters.robot_status != "전체":
                 query += " AND rs.name = %s"
                 params.append(filters.robot_status)
 
@@ -698,19 +707,17 @@ class HttpManager:
                         robots_from_db = cursor.fetchall()
 
                         robot_list_models = []
-                        for row in robots_from_db:
-                            # [수정] 작업이 없으면 로봇 상태, 있으면 작업 상태를 반환
-                            final_status = row['task_status'] if row['task_status'] else row['robot_status']
-                            
-                            # [수정] RobotInDB 모델 생성 로직
+                        for row in robots_from_db:                            
+                            # RobotInDB 모델 생성 로직
                             robot_list_models.append(RobotInDB(
-                                robot_id=f"ROBOT_{row['robot_id']:02d}",
+                                robot_id=row['robot_id'],
                                 model_name=row['model_name'],
                                 battery_level=row['battery_level'],
-                                is_charging=bool(row['is_charging']),
-                                robot_status=final_status,
+                                is_charging=bool(row['is_charging']),                                
+                                robot_status=row['robot_status'],
+                                floor_id=row['floor_id'],
                                 task_id=row['task_id'],
-                                has_error=bool(row['has_error'])
+                                error_id=row.get('error_id', None),
                             ))
 
                         response_payload = RobotListResponsePayload(robots=robot_list_models)
@@ -732,24 +739,26 @@ class HttpManager:
         @self.router.post("/task_detail", response_model=TaskDetailResponse)
         async def task_detail(request: TaskDetailRequest):
             """(AGUI) 작업 상세 정보를 조회합니다."""
-            task_id_str = request.payload.task_id
+            task_id = request.payload.task_id
             logger.info(
                 "AGUI 작업 상세 정보 요청 수신",
                 category="API", subcategory="HTTP-REQ",
-                details={"Client": "AGUI", "Method": "POST", "Path": "/api/gui/task_detail", "TaskID": task_id_str}
+                details={"Client": "AGUI", "Method": "POST", "Path": "/api/gui/task_detail", "TaskID": task_id}
             )
 
             try:
-                task_id = int(task_id_str.replace("TASK_", ""))
-
                 query = """
                     SELECT
-                        robot_assignment_time,
-                        pickup_completion_time,
-                        delivery_arrival_time,
-                        task_completion_time
-                    FROM task
-                    WHERE id = %s
+                        t.robot_assignment_time,
+                        t.pickup_completion_time,
+                        t.delivery_arrival_time,
+                        t.task_completion_time,
+                        tt.name as task_type_name,
+                        l.name as location_name
+                    FROM task t
+                    JOIN task_type tt ON t.task_type_id = tt.id
+                    JOIN location l ON t.location_id = l.id
+                    WHERE t.id = %s
                 """
 
                 with safe_database_connection(db_manager.get_connection) as conn:
@@ -758,12 +767,61 @@ class HttpManager:
                         task_details = cursor.fetchone()
 
                         if not task_details:
-                            raise HTTPException(status_code=404, detail=f"작업을 찾을 수 없습니다: {task_id_str}")
+                            raise HTTPException(status_code=404, detail=f"작업을 찾을 수 없습니다: {task_id}")
+                        
+                        calculated_estimated_time = 0
+                        task_type_name = task_details['task_type_name']
+                        location_name = task_details['location_name']
+
+                        # 음식 배송인 경우 조리시간 + 배송시간 계산
+                        if task_type_name == "음식배송":
+                            # 주문된 음식들의 최대 조리시간 조회
+                            food_query = """
+                            SELECT MAX(f.cooking_time) as max_cooking_time
+                            FROM `order` o
+                            JOIN food_order_item foi ON o.id = foi.order_id
+                            JOIN food f ON foi.food_id = f.id
+                            WHERE o.task_id = %s
+                            """
+                            cursor.execute(food_query, (task_id,))
+                            food_result = cursor.fetchone()
+                            max_cooking_time = food_result['max_cooking_time'] if food_result and food_result['max_cooking_time'] else 0
+
+                            # 목적지 층수에 따른 배송시간 계산
+                            location_query = "SELECT floor_id FROM location WHERE name = %s"
+                            cursor.execute(location_query, (location_name,))
+                            location_info = cursor.fetchone()
+
+                            delivery_time = 5  # 기본값
+                            if location_info:
+                                if location_info['floor_id'] == 0:  # 1층
+                                    delivery_time = 5
+                                elif location_info['floor_id'] == 1:  # 2층
+                                    delivery_time = 10
+
+                            pickup_time = 5  # 픽업 시간
+                            calculated_estimated_time = max_cooking_time + pickup_time + delivery_time
+
+                        elif task_type_name == "비품배송":
+                            # 비품 배송의 경우 기본 시간 계산
+                            delivery_time = 5  # 기본값
+                            location_query = "SELECT floor_id FROM location WHERE name = %s"
+                            cursor.execute(location_query, (location_name,))
+                            location_info = cursor.fetchone()
+                            if location_info:
+                                if location_info['floor_id'] == 0:  # 1층
+                                    delivery_time = 5
+                                elif location_info['floor_id'] == 1:  # 2층
+                                    delivery_time = 10
+
+                            pickup_time = 5
+                            calculated_estimated_time = pickup_time + delivery_time
 
                         def format_time(dt):
                             return dt.isoformat() + 'Z' if dt else None
 
                         response_payload = TaskDetailResponsePayload(
+                            calculated_estimated_time=calculated_estimated_time,
                             robot_assignment_time=format_time(task_details.get('robot_assignment_time')),
                             pickup_completion_time=format_time(task_details.get('pickup_completion_time')),
                             delivery_arrival_time=format_time(task_details.get('delivery_arrival_time')),
@@ -779,7 +837,7 @@ class HttpManager:
                         return response
 
             except ValueError:
-                raise HTTPException(status_code=400, detail=f"잘못된 형식의 작업 ID: {task_id_str}")
+                raise HTTPException(status_code=400, detail=f"잘못된 형식의 작업 ID: {task_id}")
             except RoomieBaseException as e:
                 logger.error(f"작업 상세 정보 조회 중 DB 오류: {e.message}", category="API", subcategory="ERROR")
                 raise HTTPException(status_code=500, detail=e.message)

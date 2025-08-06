@@ -94,6 +94,6 @@ INSERT INTO `supply` (id, name, image) VALUES
 
 -- robot: 로봇 기본 정보 (정적 데이터)
 INSERT INTO `robot` (id, name, model_name, installation_date) VALUES
-(0, 'ROBOT_01', 'ServeBot_V1', '2024-03-04'),
-(1, 'ROBOT_02', 'ServeBot_V2', '2025-06-17'),
-(2, 'ROBOT_03', 'ServeBot_V2', '2025-06-17');
+(0, 'ROOMIE_01', 'ServeBot_V1', '2024-03-04'),
+(1, 'ROOMIE_02', 'ServeBot_V2', '2025-06-17'),
+(2, 'ROOMIE_03', 'ServeBot_V2', '2025-06-17');

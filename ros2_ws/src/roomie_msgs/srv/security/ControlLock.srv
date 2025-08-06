@@ -8,5 +8,5 @@ int32 robot_id
 bool success
 
 # locked values:
-# false: 열림
 # true: 잠금 
+# false: 열림

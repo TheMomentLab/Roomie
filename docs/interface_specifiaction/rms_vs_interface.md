@@ -221,6 +221,25 @@ builtin_interfaces/Time timestamp
 
 ---
 
+### 2.3 장애물 감지 결과
+- **From**: VS → RC
+- **Protocol**: ROS2 Topic
+- **Topic**: `/vs/obstacle`
+
+```msg
+# Obstacle.msg
+int32 robot_id
+bool dynamic
+float32 x
+float32 y
+```
+
+**dynamic 값:**
+- `False`: 정적 장애물
+- `True`: 동적 장애물
+
+---
+
 ## 3. 시스템 아키텍처
 
 ### 3.1 멀티 카메라 시스템
@@ -263,7 +282,13 @@ Vision Service는 3개의 카메라를 사용합니다:
 모든 서비스 및 메시지 정의는 `roomie_msgs` 패키지에 정의되어 있습니다:
 
 - **Services**: `roomie_msgs/srv/`
+  - `robot_control/SetVSMode.srv`
+  - `robot_control/Location.srv`
+  - `door_elevator/DoorStatus.srv`
+  - `door_elevator/ElevatorStatus.srv`
+  - `sensor/ButtonStatus.srv`
 - **Messages**: `roomie_msgs/msg/`
+  - `robot_status/Obstacle.msg`
 - **Actions**: `roomie_msgs/action/`
  
 

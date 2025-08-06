@@ -17,7 +17,7 @@ from roomie_msgs.srv import (
     DoorStatus,
     Location
 )
-from roomie_msgs.msg import TrackingEvent, Registered
+# from roomie_msgs.msg import TrackingEvent, Registered  # 더 이상 사용되지 않음
 
 
 class VSInterfaceTestClient(Node):
@@ -33,22 +33,22 @@ class VSInterfaceTestClient(Node):
             'location': self.create_client(Location, '/vs/command/location')
         }
         
-        # 🔧 Topic Subscribers (VS → RC)
-        self.tracking_event_sub = self.create_subscription(
-            TrackingEvent, '/vs/tracking_event', self.on_tracking_event, 10)
-        self.registered_sub = self.create_subscription(
-            Registered, '/vs/registered', self.on_registered, 10)
+        # 🔧 Topic Subscribers (VS → RC) - 현재 비활성화됨
+        # self.tracking_event_sub = self.create_subscription(
+        #     TrackingEvent, '/vs/tracking_event', self.on_tracking_event, 10)
+        # self.registered_sub = self.create_subscription(
+        #     Registered, '/vs/registered', self.on_registered, 10)
         
         self.get_logger().info("🧪 VS 인터페이스 테스트 클라이언트 시작")
         self.show_menu()
     
-    def on_tracking_event(self, msg):
-        """추적 이벤트 수신"""
-        self.get_logger().info(f"📡 추적 이벤트 수신: robot_id={msg.robot_id}, event_id={msg.tracking_event_id}, task_id={msg.task_id}")
+    # def on_tracking_event(self, msg):
+    #     """추적 이벤트 수신"""
+    #     self.get_logger().info(f"📡 추적 이벤트 수신: robot_id={msg.robot_id}, event_id={msg.tracking_event_id}, task_id={msg.task_id}")
     
-    def on_registered(self, msg):
-        """등록 완료 이벤트 수신"""
-        self.get_logger().info(f"📡 등록 완료 수신: robot_id={msg.robot_id}")
+    # def on_registered(self, msg):
+    #     """등록 완료 이벤트 수신"""
+    #     self.get_logger().info(f"📡 등록 완료 수신: robot_id={msg.robot_id}")
     
     def check_service_availability(self):
         """모든 서비스 가용성 확인"""
@@ -77,7 +77,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = SetVSMode.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         request.mode_id = mode_id
         
         self.get_logger().info(f"📞 VS 모드 설정 호출: mode_id={mode_id}")
@@ -101,7 +101,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = ButtonStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         request.button_id = button_id  # 단일 버튼 ID
         
         button_names = {
@@ -166,7 +166,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = ElevatorStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 엘리베이터 상태 호출")
         future = client.call_async(request)
@@ -190,7 +190,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = DoorStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 문 상태 호출")
         future = client.call_async(request)
@@ -216,7 +216,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = Location.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 위치 감지 호출")
         future = client.call_async(request)
@@ -296,9 +296,9 @@ class VSInterfaceTestClient(Node):
         print("  5  : Location - 위치 감지")
         print()
         print("📡 토픽 인터페이스 테스트 (VS → RC):")
-        print("  t1 : TrackingEvent 발행 요청")
-        print("  t2 : Registered 이벤트 발행 요청")
-        print("  ts : 추적 시뮬레이션 시퀀스 요청")
+        print("  t1 : TrackingEvent 발행 요청 (비활성화됨)")
+        print("  t2 : Registered 이벤트 발행 요청 (비활성화됨)")
+        print("  ts : 추적 시뮬레이션 시퀀스 요청 (비활성화됨)")
         print()
         print("🎯 통합 테스트:")
         print("  all    : 모든 서비스 순차 테스트")
@@ -309,8 +309,8 @@ class VSInterfaceTestClient(Node):
         print("  menu   : 이 메뉴 다시 표시")
         print("  quit   : 종료")
         print("="*70)
-        print("💡 실시간 모니터링: /vs/tracking_event, /vs/registered")
-        print("💡 VS 노드 키보드 제어: R(추적시뮬레이션), T(추적이벤트), G(등록완료)")
+        print("💡 실시간 모니터링: 토픽은 현재 비활성화됨")
+        print("💡 VS 노드 키보드 제어: 현재 토픽 발행 기능 비활성화됨")
         print("="*70)
         print("명령어를 입력하세요: ", end="")
     
@@ -325,59 +325,32 @@ class VSInterfaceTestClient(Node):
         print("🔍 수동 확인 명령어:")
         print("  ros2 node list                    # 실행 중인 노드 확인")
         print("  ros2 service list | grep vs       # VS 서비스 확인")  
-        print("  ros2 topic list | grep vs         # VS 토픽 확인")
-        print("  ros2 topic echo /vs/tracking_event  # 추적 이벤트 실시간 확인")
-        print("  ros2 topic echo /vs/registered     # 등록 이벤트 실시간 확인")
+        print("  ros2 topic list | grep vs         # VS 토픽 확인 (현재 비활성화됨)")
+        print("  ros2 topic echo /vs/tracking_event  # 추적 이벤트 실시간 확인 (비활성화됨)")
+        print("  ros2 topic echo /vs/registered     # 등록 이벤트 실시간 확인 (비활성화됨)")
         print("="*70)
         print("명령어를 입력하세요: ", end="")
     
     def request_tracking_event(self):
-        """단일 추적 이벤트 발행 요청"""
-        self.get_logger().info("📡 단일 추적 이벤트 발행 요청")
-        self.get_logger().info("💡 VS 노드에서 'T' 키를 눌러서 추적 이벤트를 발행하세요")
-        self.get_logger().info("   또는 다음 명령어를 사용하세요:")
-        self.get_logger().info("   ros2 topic pub /vs/tracking_event roomie_msgs/msg/TrackingEvent ...")
+        """단일 추적 이벤트 발행 요청 (비활성화됨)"""
+        self.get_logger().info("📡 단일 추적 이벤트 발행 요청 (현재 비활성화됨)")
+        self.get_logger().info("💡 해당 토픽은 더 이상 사용되지 않습니다.")
     
     def request_registered_event(self):
-        """등록 완료 이벤트 발행 요청"""
-        self.get_logger().info("📡 등록 완료 이벤트 발행 요청")
-        self.get_logger().info("💡 VS 노드에서 'G' 키를 눌러서 등록 완료 이벤트를 발행하세요")
-        self.get_logger().info("   또는 다음 명령어를 사용하세요:")
-        self.get_logger().info("   ros2 topic pub /vs/registered roomie_msgs/msg/Registered ...")
+        """등록 완료 이벤트 발행 요청 (비활성화됨)"""
+        self.get_logger().info("📡 등록 완료 이벤트 발행 요청 (현재 비활성화됨)")
+        self.get_logger().info("💡 해당 토픽은 더 이상 사용되지 않습니다.")
     
     def request_tracking_simulation(self):
-        """추적 시뮬레이션 시퀀스 요청"""
-        self.get_logger().info("🎬 추적 시뮬레이션 시퀀스 요청")
-        
-        # 먼저 등록 모드로 설정
-        self.test_set_vs_mode(1)  # 등록 모드
-        
-        self.get_logger().info("💡 VS 노드에서 'R' 키를 눌러서 완전한 추적 시뮬레이션을 실행하세요")
-        self.get_logger().info("   시뮬레이션 순서: 등록완료 → maintain → slow_down → maintain → lost → resume")
+        """추적 시뮬레이션 시퀀스 요청 (비활성화됨)"""
+        self.get_logger().info("🎬 추적 시뮬레이션 시퀀스 요청 (현재 비활성화됨)")
+        self.get_logger().info("💡 해당 토픽은 더 이상 사용되지 않습니다.")
     
     def test_all_topics(self):
-        """모든 토픽 테스트"""
-        self.get_logger().info("📡 모든 토픽 인터페이스 테스트 시작!")
-        
-        def run_topic_tests():
-            self.get_logger().info("🧪 [1/3] 등록 모드 설정 (토픽 발행 준비)")
-            self.test_set_vs_mode(1)  # 등록 모드
-            
-            import time
-            time.sleep(2)
-            
-            self.get_logger().info("🧪 [2/3] 단일 추적 이벤트 요청")
-            self.request_tracking_event()
-            
-            time.sleep(2)
-            
-            self.get_logger().info("🧪 [3/3] 등록 완료 이벤트 요청")
-            self.request_registered_event()
-            
-            self.get_logger().info("🎉 토픽 테스트 완료!")
-            self.get_logger().info("💡 실제 토픽 발행은 VS 노드에서 키보드로 제어하세요")
-        
-        threading.Thread(target=run_topic_tests, daemon=True).start()
+        """모든 토픽 테스트 (현재 비활성화됨)"""
+        self.get_logger().info("📡 모든 토픽 인터페이스 테스트 (현재 비활성화됨)")
+        self.get_logger().info("💡 TrackingEvent와 Registered 토픽은 더 이상 사용되지 않습니다.")
+        self.get_logger().info("💡 현재는 서비스 인터페이스만 사용 가능합니다.")
     
     def test_full_interface(self):
         """서비스 + 토픽 전체 인터페이스 테스트"""
@@ -391,8 +364,8 @@ class VSInterfaceTestClient(Node):
             import time
             time.sleep(3)
             
-            # 2. 토픽 테스트
-            self.get_logger().info("🧪 [2단계] 모든 토픽 테스트")  
+            # 2. 토픽 테스트 (현재 비활성화됨)
+            self.get_logger().info("🧪 [2단계] 토픽 테스트 (비활성화됨)")  
             self.test_all_topics()
             
             time.sleep(2)
@@ -400,8 +373,8 @@ class VSInterfaceTestClient(Node):
             self.get_logger().info("🎉 전체 인터페이스 테스트 완료!")
             self.get_logger().info("📋 인터페이스 요약:")
             self.get_logger().info("   ✅ 서비스 5개 타입: SetVSMode(7가지모드), ButtonStatus(단일값), ElevatorStatus, DoorStatus, Location")
-            self.get_logger().info("   ✅ 토픽 2개: TrackingEvent, Registered")
-            self.get_logger().info("   ✅ 총 테스트 케이스: 13개 서비스 + 2개 토픽 = 15개")
+            self.get_logger().info("   ⚠️ 토픽 2개: TrackingEvent, Registered (비활성화됨)")
+            self.get_logger().info("   ✅ 총 테스트 케이스: 13개 서비스")
             self.get_logger().info("   📋 모드: 후방 3개(대기,등록,추적) + 전방 4개(엘리베이터외부,엘리베이터내부,일반주행,대기)")
         
         threading.Thread(target=run_full_tests, daemon=True).start()

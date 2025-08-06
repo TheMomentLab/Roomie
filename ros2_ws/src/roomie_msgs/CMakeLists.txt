@@ -30,29 +30,20 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/robot_status/RobotState.msg"
   "msg/robot_status/BatteryStatus.msg"
   "msg/robot_status/RoomiePose.msg"
-  "msg/robot_status/Arrival.msg"
-  
-  # Messages - Task Management
-  "msg/task_management/TaskState.msg"
-  "msg/task_management/PickupCompleted.msg"
-  "msg/task_management/DeliveryCompleted.msg"
+  "msg/robot_status/Obstacle.msg"
+  "msg/robot_status/GlassDoorStatus.msg"
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
-  "msg/user_interface/TrackingEvent.msg"
-  "msg/user_interface/Registered.msg"
   
   # Services - Robot Control
-  "srv/robot_control/CreateTask.srv"
   "srv/robot_control/SetVSMode.srv"
   "srv/robot_control/Location.srv"
   "srv/robot_control/GetLocations.srv"
   
   # Services - Door/Elevator
-  "srv/door_elevator/UnlockDoor.srv"
-  "srv/door_elevator/ElevatorWidth.srv"
-  "srv/door_elevator/ElevatorStatus.srv"
   "srv/door_elevator/DoorStatus.srv"
+  "srv/door_elevator/ElevatorStatus.srv"
   
   # Services - Sensor
   "srv/sensor/ButtonStatus.srv"
@@ -60,6 +51,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/sensor/ReadCardInfo.srv"
   "srv/sensor/CheckItemLoaded.srv"
   "srv/sensor/CheckDoorState.srv"
+  "srv/sensor/CheckItemLoaded.srv"
   
   # Services - Security
   "srv/security/ControlLock.srv"

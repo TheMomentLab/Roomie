@@ -4,7 +4,7 @@
 
 ### 1.1 Service
 
-#### 길안내 작업 생성 요청 (`/roomie/command/create_task`)
+<!-- #### 길안내 작업 생성 요청 (`/roomie/command/create_task`)
 ```srv
 # CreateTask.srv
 
@@ -17,7 +17,7 @@ int32 robot_id
 int32 task_id
 bool success
 string message
-```
+``` -->
 
 #### 좌표 데이터 요청 (`/roomie/command/get_locations`)
 ```srv
@@ -46,22 +46,22 @@ int32 robot_id
 int32 robot_state_id
 ```
 
-#### 작업 상태 (`/roomie/status/task_state`)
+<!-- #### 작업 상태 (`/roomie/status/task_state`)
 ```msg
 # TaskState.msg
 
 int32 task_id
 int32 task_state_id
-```
+``` -->
 
-#### 장소 도착 (`/roomie/event/arrival`)
+<!-- #### 장소 도착 (`/roomie/event/arrival`)
 ```msg
 # Arrival.msg
 
 int32 robot_id
 int32 task_id
 int32 location_id
-```
+``` -->
 
 #### 배터리 잔량 (`/roomie/status/battery_status`)
 ```msg
@@ -81,7 +81,7 @@ int32 floor_id
 geometry_msgs/Pose pose
 ```
 
-#### 픽업 완료 (`/roomie/event/pickup_completed`)
+<!-- #### 픽업 완료 (`/roomie/event/pickup_completed`)
 ```msg
 #PickupCompleted.msg
 
@@ -97,7 +97,7 @@ builtin_interfaces/Time timestamp
 int32 robot_id
 int32 task_id
 builtin_interfaces/Time timestamp
-```
+``` -->
 
 ### 1.3 Action
 
@@ -109,7 +109,6 @@ builtin_interfaces/Time timestamp
 int32 robot_id
 int32 task_id
 int32 task_type_id
-int32 task_status_id
 int32 target_location_id
 int32 pickup_location_id
 string order_info        # 주문 정보 (JSON)
@@ -126,7 +125,6 @@ string message
 # Feedback (RCS(수행중) -> RMS 진행 상황)
 int32 robot_id
 int32 task_id
-int32 task_status_id
 ```
 
 #### 복귀 (`/roomie/action/perform_return`)
@@ -741,7 +739,7 @@ string message
   "action": "robot_status_update",
   "payload": {
     "total_robot_count": 5,
-    "waiting_robot_count": 2
+    "active_robot_count": 2
   }
 }
 ```
