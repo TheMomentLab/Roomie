@@ -58,6 +58,19 @@ QFrame#frame, QFrame#frame_2, QFrame#frame_3, QFrame#frame_4 {
     border-radius: 8px;
     padding: 10px;
 }
+QPushButton#btn_floor1, QPushButton#btn_floor2 {
+    background-color: #f0f0f0;
+    color: #555;
+    border: 1px solid #dcdcdc;
+    padding: 4px;
+}
+QPushButton#btn_floor1:checked, QPushButton#btn_floor2:checked {
+    background-color: #4a5a71;
+    color: white;
+    border: 1px solid #4a5a71;
+    font-weight: bold;
+    padding: 4px;
+}
 QLabel#label_totaltask, QLabel#label_waitingtask, QLabel#label_totalrobot, QLabel#label_activerobot {
     color: #2f3e4e;
     font-size: 26px;
