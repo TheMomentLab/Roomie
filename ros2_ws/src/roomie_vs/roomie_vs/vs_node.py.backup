@@ -4181,21 +4181,13 @@ class VSNode(Node):
         if not button_objects:
             return objects
         
-        self.get_logger().info(f"🔍 3단계 통합 인식 시작: {len(button_objects)}개 버튼 (모드: {mode_id})")
-        
         # 1순위: 기존 배열 기반 인식
         processed_objects = objects  # 기본값은 원본
         
         if mode_id == 3:  # 엘리베이터 외부
-            self.get_logger().info("배열 인식 적용: button_recog_1 (외부 - UP/DOWN)")
             processed_objects = self._apply_button_recog_1(objects)
         elif mode_id == 4:  # 엘리베이터 내부
-            self.get_logger().info("배열 인식 적용: button_recog_2 (내부 - 층수)")
             processed_objects = self._apply_button_recog_2(objects)
-        
-        # 배열 인식 후 버튼 개수 확인
-        processed_buttons = [obj for obj in processed_objects if obj.get('class_name') == 'button']
-        self.get_logger().info(f"🔍 배열 인식 후: {len(processed_buttons)}개 버튼")
         
         # 배열 인식 성공/실패 분류 - processed_objects에서 직접 작업
         successful_buttons = []
@@ -4203,22 +4195,15 @@ class VSNode(Node):
         
         for obj in processed_objects:
             if obj.get('class_name') == 'button':
-                button_id = obj.get('button_id')
-                method = obj.get('recognition_method')
-                self.get_logger().info(f"  버튼 체크: ID={button_id}, method={method}")
                 if (obj.get('button_id') not in ['unmapped', None] and 
                     obj.get('recognition_method') in ['button_recog_1', 'button_recog_2']):
                     successful_buttons.append(obj)
-                    self.get_logger().info(f"  → 성공 버튼에 추가")
                 else:
                     failed_buttons.append(obj)  # 이제 이 객체들이 processed_objects의 직접 참조
-                    self.get_logger().info(f"  → 실패 버튼에 추가")
         
         # 2순위: 실패한 버튼들에 CNN 적용 (failed_buttons는 processed_objects의 직접 참조)
         cnn_success_count = 0
         if failed_buttons and self.cnn_classifier.model is not None:
-            self.get_logger().info(f"🧠 CNN 분류 시작: {len(failed_buttons)}개 실패 버튼")
-            
             for obj in failed_buttons:
                 if 'bbox' in obj:
                     cnn_result = self.cnn_classifier.classify_button(color_image, obj['bbox'])
@@ -4230,21 +4215,6 @@ class VSNode(Node):
                         obj['class_name'] = original_class_name  # 원본 class_name 복원
                         successful_buttons.append(obj)
                         cnn_success_count += 1
-                        self.get_logger().info(f"✅ CNN 성공: {cnn_result['button_id']} (신뢰도: {cnn_result['confidence']:.3f})")
-                    else:
-                        self.get_logger().info(f"❌ CNN 실패: 신뢰도 낮음 또는 분류 실패")
-                else:
-                    self.get_logger().info(f"❌ CNN 실패: bbox 없음")
-        else:
-            if failed_buttons:
-                self.get_logger().info(f"⚠️ CNN 모델 없음: {len(failed_buttons)}개 실패 버튼을 처리할 수 없음")
-        
-        array_success_count = len(successful_buttons) - cnn_success_count
-        total_failed = len(button_objects) - len(successful_buttons)
-        
-        # 최종 결과 확인
-        final_buttons = [obj for obj in processed_objects if obj.get('class_name') == 'button']
-        self.get_logger().info(f"📊 최종 결과: 총 {len(final_buttons)}개 버튼, 배열 {array_success_count}개, CNN {cnn_success_count}개, 실패 {total_failed}개")
         
         return processed_objects
 
@@ -4324,7 +4294,9 @@ def main(args=None):
                                     # 🎯 OCR 리소스 절약: 지정된 프레임 간격마다만 OCR 수행
                                     node.ocr_counter += 1
                                     if node.ocr_counter >= node.ocr_skip_frames:
-                                        objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        enhanced_objects = node._enhance_objects_with_ocr(color_image, detected_objects)
+                                        # button_status와 동일한 고급 버튼 인식 로직 추가
+                                        objects = node._apply_enhanced_button_recognition(enhanced_objects, color_image, mode_id)
                                         node.last_ocr_objects = objects  # 결과 캐싱
                                         node.ocr_counter = 0  # 카운터 리셋
                                         if frame_count % 100 == 1:
@@ -4345,6 +4317,8 @@ def main(args=None):
                                                             new_obj['ocr_success'] = old_obj.get('ocr_success', False)
                                                             new_obj['digit_bbox'] = old_obj.get('digit_bbox')
                                                             break
+                                        # button_status와 동일한 고급 버튼 인식 로직 추가
+                                        objects = node._apply_enhanced_button_recognition(objects, color_image, mode_id)
                                 elif mode_id == 5:  # 일반 모드: ArUco만 (이미 위에서 처리)
                                     pass
                                 elif mode_id == 6:  # 대기 모드: 영상만

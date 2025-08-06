@@ -2666,37 +2666,42 @@ class VSNode(Node):
             else:
                 self.get_logger().warn("카메라에서 이미지를 가져올 수 없음")
             
-            # direction_light 객체로 방향 감지 - 색상 기반 방향 판단
-            if current_color is not None and 'enhanced_objects' in locals():
-                direction_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'direction_light']
-                if direction_objects:
-                    # 🚦 방향등 실시간 감지 시도
-                    detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
-                    
-                    # 🎯 방향 업데이트 (깜빡임 감지 시 항상 업데이트)
-                    if detected_direction != -1:
-                        if (detected_direction != self.last_elevator_direction or self.last_blink_detected):
-                            # 방향 변경되었거나 깜빡임이 감지된 경우 업데이트
-                            self.last_elevator_direction = detected_direction
-                            self.last_direction_detection_time = self.get_clock().now()
-                            blink_info = " (깜빡임 감지)" if self.last_blink_detected else ""
-                            self.get_logger().info(f"🎯 방향등 기반 방향 업데이트: {len(direction_objects)}개 → {'상행' if detected_direction == 0 else '하행'}{blink_info}")
-                            
-                            # 🔄 깜빡임 처리 완료 후 플래그 초기화 (다음 깜빡임 감지를 위해)
-                            if self.last_blink_detected:
-                                self.last_blink_detected = False
-                                self.get_logger().info("🔄 깜빡임 감지 플래그 초기화 완료")
-                        else:
-                            # 방향 변화 없음 (깜빡임도 없음)
-                            detected_direction = self.last_elevator_direction
+            # direction_light 객체로 방향 감지 - 엘리베이터 외부에서만 수행
+            if self.current_front_mode_id != 4:  # 엘리베이터 내부가 아닌 경우에만
+                if current_color is not None and 'enhanced_objects' in locals():
+                    direction_objects = [obj for obj in enhanced_objects if obj.get('class_name') == 'direction_light']
+                    if direction_objects:
+                        # 🚦 방향등 실시간 감지 시도
+                        detected_direction = self._detect_direction_by_lights(current_color, direction_objects)
+                        
+                        # 🎯 방향 업데이트 (깜빡임 감지 시 항상 업데이트)
+                        if detected_direction != -1:
+                            if (detected_direction != self.last_elevator_direction or self.last_blink_detected):
+                                # 방향 변경되었거나 깜빡임이 감지된 경우 업데이트
+                                self.last_elevator_direction = detected_direction
+                                self.last_direction_detection_time = self.get_clock().now()
+                                blink_info = " (깜빡임 감지)" if self.last_blink_detected else ""
+                                self.get_logger().info(f"🎯 방향등 기반 방향 업데이트: {len(direction_objects)}개 → {'상행' if detected_direction == 0 else '하행'}{blink_info}")
+                                
+                                # 🔄 깜빡임 처리 완료 후 플래그 초기화 (다음 깜빡임 감지를 위해)
+                                if self.last_blink_detected:
+                                    self.last_blink_detected = False
+                                    self.get_logger().info("🔄 깜빡임 감지 플래그 초기화 완료")
+                            else:
+                                # 방향 변화 없음 (깜빡임도 없음)
+                                detected_direction = self.last_elevator_direction
+                    else:
+                        # 방향등이 감지되지 않으면 캐시된 방향 사용
+                        detected_direction = self.last_elevator_direction
+                        self.get_logger().debug(f"방향등 미감지 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
                 else:
-                    # 방향등이 감지되지 않으면 캐시된 방향 사용
+                    # 이미지나 객체가 없으면 캐시된 방향 사용
                     detected_direction = self.last_elevator_direction
-                    self.get_logger().debug(f"방향등 미감지 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+                    self.get_logger().debug(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
             else:
-                # 이미지나 객체가 없으면 캐시된 방향 사용
+                # 엘리베이터 내부 모드에서는 방향등이 없으므로 캐시된 방향 사용
                 detected_direction = self.last_elevator_direction
-                self.get_logger().debug(f"이미지/객체 없음 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
+                self.get_logger().debug(f"엘리베이터 내부 모드 → 캐시된 방향 사용: {'상행' if detected_direction == 0 else '하행'}")
             
             # 응답 설정
             response.robot_id = request.robot_id
@@ -3005,31 +3010,62 @@ class VSNode(Node):
                     # 매핑된 버튼 ID 표시
                     button_id = obj.get('button_id', 'unknown')
                     floor_type = obj.get('floor_type', 'unknown')
-                    group_info = obj.get('group_info', '')
+                    recognition_method = obj.get('recognition_method', 'unknown')
                     
-                    if button_id == 102:
-                        label = "OPEN"
-                    elif button_id == 103:
-                        label = "CLOSE"
-                    elif button_id == 101:
-                        label = "UP"
-                    elif button_id == 100:
-                        label = "DOWN"
-                    elif floor_type == 'basement':
-                        if button_id == 13:
+                    # 엘리베이터 내부 모드에서는 CNN 결과만 표시
+                    if self.get_active_mode_id() == 4:  # 엘리베이터 내부 모드
+                        if button_id == 102:
+                            label = "OPEN"
+                        elif button_id == 103:
+                            label = "CLOSE"
+                        elif button_id == 101:
+                            label = "UP"
+                        elif button_id == 100:
+                            label = "DOWN"
+                        elif button_id == 13:
                             label = "B1"
                         elif button_id == 14:
                             label = "B2"
+                        elif isinstance(button_id, int) and button_id > 0:
+                            label = f"{button_id}F"
                         else:
-                            label = f"B{button_id}"
-                    elif floor_type == 'floor' and isinstance(button_id, int):
-                        label = f"{button_id}F"
+                            label = f"{button_id}"
+                        
+                        # CNN 신뢰도 표시
+                        cnn_confidence = obj.get('confidence', 0.0)
+                        if recognition_method == 'cnn_primary':
+                            label += f" ({cnn_confidence:.2f})"
+                        elif recognition_method == 'cnn_failed':
+                            label += " (FAIL)"
+                        elif recognition_method == 'cnn_unavailable':
+                            label += " (NO_CNN)"
                     else:
-                        label = f"{button_id}"
-                    
-                    # 그룹 정보가 있으면 추가로 표시
-                    if group_info:
-                        label += f" ({group_info})"
+                        # 엘리베이터 외부 모드에서는 기존 방식 유지
+                        group_info = obj.get('group_info', '')
+                        
+                        if button_id == 102:
+                            label = "OPEN"
+                        elif button_id == 103:
+                            label = "CLOSE"
+                        elif button_id == 101:
+                            label = "UP"
+                        elif button_id == 100:
+                            label = "DOWN"
+                        elif floor_type == 'basement':
+                            if button_id == 13:
+                                label = "B1"
+                            elif button_id == 14:
+                                label = "B2"
+                            else:
+                                label = f"B{button_id}"
+                        elif floor_type == 'floor' and isinstance(button_id, int):
+                            label = f"{button_id}F"
+                        else:
+                            label = f"{button_id}"
+                        
+                        # 그룹 정보가 있으면 추가로 표시
+                        if group_info:
+                            label += f" ({group_info})"
                 elif class_name == 'display':
                     # OCR 결과 가져오기
                     floor_number = obj.get('floor_number', None)
@@ -3104,10 +3140,32 @@ class VSNode(Node):
                     
                     # 버튼 ID 표시 (이미 있는 label 아래에 추가 정보)
                     button_id = obj.get('button_id', 'unknown')
-                    if button_id != 'unknown':
-                        id_text = f"ID:{button_id}"
-                        cv2.putText(image, id_text, (center[0]-20, center[1]+30), 
-                                   cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255), 1)
+                    recognition_method = obj.get('recognition_method', 'unknown')
+                    
+                    # 엘리베이터 내부 모드에서는 CNN 관련 정보만 표시
+                    if self.get_active_mode_id() == 4:  # 엘리베이터 내부 모드
+                        if recognition_method == 'cnn_primary':
+                            # CNN 성공 시 신뢰도 표시
+                            cnn_confidence = obj.get('confidence', 0.0)
+                            id_text = f"CNN:{cnn_confidence:.2f}"
+                            cv2.putText(image, id_text, (center[0]-25, center[1]+30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1)  # 초록색
+                        elif recognition_method == 'cnn_failed':
+                            # CNN 실패 시 표시
+                            id_text = "CNN:FAIL"
+                            cv2.putText(image, id_text, (center[0]-25, center[1]+30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 0, 255), 1)  # 빨간색
+                        elif recognition_method == 'cnn_unavailable':
+                            # CNN 사용 불가 시 표시
+                            id_text = "CNN:UNAVAIL"
+                            cv2.putText(image, id_text, (center[0]-30, center[1]+30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.3, (128, 128, 128), 1)  # 회색
+                    else:
+                        # 엘리베이터 외부 모드에서는 기존 방식 유지
+                        if button_id != 'unknown':
+                            id_text = f"ID:{button_id}"
+                            cv2.putText(image, id_text, (center[0]-20, center[1]+30), 
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255), 1)
                 
                 # 모델 이름 표시 제거됨 (오버레이 정리)
                 
@@ -3269,10 +3327,11 @@ class VSNode(Node):
                 cv2.putText(image, "Blink Detection: Collecting History...", 
                            (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         
-        # 엘리베이터 방향 정보 표시
-        direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
-        cv2.putText(image, f"Elevator Direction: {direction_text}", (10, 170), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
+        # 엘리베이터 방향 정보 표시 (내부 모드에서는 제외)
+        if self.current_front_mode_id != 4:  # 엘리베이터 내부가 아닌 경우에만
+            direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
+            cv2.putText(image, f"Elevator Direction: {direction_text}", (10, 170), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 255), 1)
         
         # 탐지된 객체 분류 표시
         if objects:
@@ -3334,35 +3393,36 @@ class VSNode(Node):
             cv2.putText(image, current_floor, (text_x, text_y), 
                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 255), 2)
             
-            # 🚦 엘리베이터 방향 표시 (층수 아래에 크게)
-            direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
-            direction_color = (0, 255, 0) if self.last_elevator_direction == 0 else (0, 0, 255)  # UP: 초록, DOWN: 빨강
-            
-            # 🔥 깜빡임 감지 표시 추가
-            if self.last_blink_detected:
-                direction_text += " ✦"  # 깜빡임 감지 시 별표 추가
-                direction_color = (0, 255, 255)  # 노란색으로 변경
-            
-            # 방향 텍스트 크기 계산
-            dir_text_size = cv2.getTextSize(direction_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
-            dir_text_x = image.shape[1] - dir_text_size[0] - 15  # 오른쪽 정렬
-            dir_text_y = text_y + 45  # 층수 아래
-            
-            # 방향 배경 박스 (깜빡임 감지 시 더 두껍게)
-            box_thickness = 4 if self.last_blink_detected else 2
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
-            cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, box_thickness)
-            
-            # 방향 텍스트
-            cv2.putText(image, direction_text, (dir_text_x, dir_text_y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 1.0, direction_color, 2)
-            
-            # 마지막 감지 시간 표시 (작게)
-            if self.last_direction_detection_time:
-                time_diff = (self.get_clock().now() - self.last_direction_detection_time).nanoseconds / 1e9
-                time_text = f"({time_diff:.1f}초 전)"
-                cv2.putText(image, time_text, (dir_text_x, dir_text_y + 20), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
+            # 🚦 엘리베이터 방향 표시 (층수 아래에 크게) - 내부 모드에서는 제외
+            if self.current_front_mode_id != 4:  # 엘리베이터 내부가 아닌 경우에만
+                direction_text = "UP" if self.last_elevator_direction == 0 else "DOWN"
+                direction_color = (0, 255, 0) if self.last_elevator_direction == 0 else (0, 0, 255)  # UP: 초록, DOWN: 빨강
+                
+                # 🔥 깜빡임 감지 표시 추가
+                if self.last_blink_detected:
+                    direction_text += " ✦"  # 깜빡임 감지 시 별표 추가
+                    direction_color = (0, 255, 255)  # 노란색으로 변경
+                
+                # 방향 텍스트 크기 계산
+                dir_text_size = cv2.getTextSize(direction_text, cv2.FONT_HERSHEY_SIMPLEX, 1.0, 2)[0]
+                dir_text_x = image.shape[1] - dir_text_size[0] - 15  # 오른쪽 정렬
+                dir_text_y = text_y + 45  # 층수 아래
+                
+                # 방향 배경 박스 (깜빡임 감지 시 더 두껍게)
+                box_thickness = 4 if self.last_blink_detected else 2
+                cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), (0, 0, 0), -1)
+                cv2.rectangle(image, (dir_text_x-8, dir_text_y-20), (dir_text_x+dir_text_size[0]+8, dir_text_y+8), direction_color, box_thickness)
+                
+                # 방향 텍스트
+                cv2.putText(image, direction_text, (dir_text_x, dir_text_y), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.0, direction_color, 2)
+                
+                # 마지막 감지 시간 표시 (작게)
+                if self.last_direction_detection_time:
+                    time_diff = (self.get_clock().now() - self.last_direction_detection_time).nanoseconds / 1e9
+                    time_text = f"({time_diff:.1f}초 전)"
+                    cv2.putText(image, time_text, (dir_text_x, dir_text_y + 20), 
+                               cv2.FONT_HERSHEY_SIMPLEX, 0.4, (200, 200, 200), 1)
         
         # 종료 안내
         cv2.putText(image, "ESC:Exit, B:Info, M:Status, F:Flip, C:Conf, A:ArUco, D:Reset, L:Remember (Blink Detection ON)", (10, image.shape[0]-10), 
@@ -4095,128 +4155,73 @@ class VSNode(Node):
             
         return updated_objects
     
-    def _apply_button_recog_2(self, objects: List[dict]) -> List[dict]:
-        """button_recog_2: 엘리베이터 내부 - 상대적 위치 기반 매핑"""
-        button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
-        
-        if len(button_objects) == 0:
-            return objects
-            
-        # X 좌표를 기준으로 정렬
-        button_objects.sort(key=lambda obj: obj['center'][0])
-        
-        # 왼쪽부터 2-3-3-3-... 패턴으로 그룹 할당
-        group_pattern = [2, 3, 3, 3, 3, 3]  # 필요시 확장 가능
-        button_groups = []
-        start_idx = 0
-        
-        for group_size in group_pattern:
-            if start_idx >= len(button_objects):
-                break
-            end_idx = min(start_idx + group_size, len(button_objects))
-            group = button_objects[start_idx:end_idx]
-            if group:  # 빈 그룹이 아닌 경우만
-                # Y 좌표로 각 그룹 내에서 정렬
-                group.sort(key=lambda obj: obj['center'][1])
-                button_groups.append(group)
-            start_idx = end_idx
-            
-        # 각 그룹별 버튼 ID 매핑
-        group_mappings = [
-            # 그룹 0: 특수 버튼 (열기/닫기)
-            [102, 103],  # [열기, 닫기]
-            # 그룹 1: 1층, B1, B2
-            [1, 13, 14],  # [1층, B1, B2]
-            # 그룹 2: 4, 3, 2층
-            [4, 3, 2],
-            # 그룹 3: 7, 6, 5층  
-            [7, 6, 5],
-            # 그룹 4: 10, 9, 8층
-            [10, 9, 8],
-            # 그룹 5: 12, 11층 등
-            [12, 11, 15]  # 확장 가능
-        ]
-        
-        updated_objects = []
-        
-        for obj in objects:
-            if obj.get('class_name') == 'button':
-                # 어느 그룹에 속하는지 찾기
-                found = False
-                for group_idx, group in enumerate(button_groups):
-                    for button_idx, button_obj in enumerate(group):
-                        if button_obj is obj:  # 같은 객체인지 확인
-                            if group_idx < len(group_mappings) and button_idx < len(group_mappings[group_idx]):
-                                button_id = group_mappings[group_idx][button_idx]
-                                obj['button_id'] = button_id
-                                
-                                # 버튼 종류 분류
-                                if button_id in [102, 103]:
-                                    obj['floor_type'] = 'control'
-                                elif button_id in [13, 14]:
-                                    obj['floor_type'] = 'basement'
-                                else:
-                                    obj['floor_type'] = 'floor'
-                                    
-                                obj['recognition_method'] = 'button_recog_2'
-                                obj['group_info'] = f"G{group_idx}B{button_idx}"
-                                found = True
-                                break
-                    if found:
-                        break
-                        
-                if not found:
-                    obj['button_id'] = 'unmapped'
-                    obj['floor_type'] = 'unknown'
-                    obj['recognition_method'] = 'button_recog_2'
-                
-            updated_objects.append(obj)
-            
-        return updated_objects
+
     
     def _apply_enhanced_button_recognition(self, objects: List[dict], color_image: np.ndarray, mode_id: int = 0) -> List[dict]:
-        """1순위: 배열 기반 + 2순위: CNN 폴백 통합 인식"""
+        """엘리베이터 내부: CNN 전용, 외부: 배열 우선 + CNN 폴백"""
         button_objects = [obj for obj in objects if obj.get('class_name') == 'button']
         
         if not button_objects:
             return objects
         
-        # 1순위: 기존 배열 기반 인식
-        processed_objects = objects  # 기본값은 원본
-        
-        if mode_id == 3:  # 엘리베이터 외부
-            processed_objects = self._apply_button_recog_1(objects)
-        elif mode_id == 4:  # 엘리베이터 내부
-            processed_objects = self._apply_button_recog_2(objects)
-        
-        # 배열 인식 성공/실패 분류 - processed_objects에서 직접 작업
-        successful_buttons = []
-        failed_buttons = []
-        
-        for obj in processed_objects:
-            if obj.get('class_name') == 'button':
-                if (obj.get('button_id') not in ['unmapped', None] and 
-                    obj.get('recognition_method') in ['button_recog_1', 'button_recog_2']):
-                    successful_buttons.append(obj)
-                else:
-                    failed_buttons.append(obj)  # 이제 이 객체들이 processed_objects의 직접 참조
-        
-        # 2순위: 실패한 버튼들에 CNN 적용 (failed_buttons는 processed_objects의 직접 참조)
-        cnn_success_count = 0
-        if failed_buttons and self.cnn_classifier.model is not None:
-            for obj in failed_buttons:
-                if 'bbox' in obj:
+        # 엘리베이터 내부(mode_id=4)일 때 CNN 우선, 외부(mode_id=3)일 때 배열 우선
+        if mode_id == 4:  # 엘리베이터 내부 - CNN 우선 (배열 폴백 제거)
+            # CNN 모델 인식만 사용
+            for obj in button_objects:
+                if 'bbox' in obj and self.cnn_classifier.model is not None:
                     cnn_result = self.cnn_classifier.classify_button(color_image, obj['bbox'])
-                    if cnn_result and cnn_result['confidence'] > 0.7:  # 신뢰도 임계값
-                        # obj는 이미 processed_objects의 직접 참조이므로 바로 업데이트 가능
-                        # class_name은 유지하고 나머지만 업데이트
+                    if cnn_result and cnn_result['confidence'] > 0.6:  # 신뢰도 임계값
+                        # CNN 결과로 업데이트
                         original_class_name = obj.get('class_name')
                         obj.update(cnn_result)
-                        obj['class_name'] = original_class_name  # 원본 class_name 복원
+                        obj['class_name'] = original_class_name
+                        obj['recognition_method'] = 'cnn_primary'
+                    else:
+                        # CNN 실패 시 unmapped로 설정 (배열 폴백 없음)
+                        obj['button_id'] = 'unmapped'
+                        obj['recognition_method'] = 'cnn_failed'
+                else:
+                    # CNN 모델이 없거나 bbox가 없는 경우
+                    obj['button_id'] = 'unmapped'
+                    obj['recognition_method'] = 'cnn_unavailable'
+            
+            return objects
+            
+        else:  # 엘리베이터 외부(mode_id=3) 또는 기타 모드 - 기존 배열 우선 방식 유지
+            
+            # 1순위: 기존 배열 기반 인식
+            processed_objects = objects
+            
+            if mode_id == 3:  # 엘리베이터 외부
+                processed_objects = self._apply_button_recog_1(objects)
+            
+            # 2순위: 배열 인식 실패한 버튼들에 CNN 적용
+            successful_buttons = []
+            failed_buttons = []
+            
+            for obj in processed_objects:
+                if obj.get('class_name') == 'button':
+                    if (obj.get('button_id') not in ['unmapped', None] and 
+                        obj.get('recognition_method') == 'button_recog_1'):
                         successful_buttons.append(obj)
-                        cnn_success_count += 1
-        
-        return processed_objects
+                    else:
+                        failed_buttons.append(obj)
+            
+            # CNN 폴백 적용
+            cnn_success_count = 0
+            if failed_buttons and self.cnn_classifier.model is not None:
+                for obj in failed_buttons:
+                    if 'bbox' in obj:
+                        cnn_result = self.cnn_classifier.classify_button(color_image, obj['bbox'])
+                        if cnn_result and cnn_result['confidence'] > 0.6:
+                            original_class_name = obj.get('class_name')
+                            obj.update(cnn_result)
+                            obj['class_name'] = original_class_name
+                            obj['recognition_method'] = 'cnn_fallback'
+                            successful_buttons.append(obj)
+                            cnn_success_count += 1
+            
+            return processed_objects
 
 
 def main(args=None):
