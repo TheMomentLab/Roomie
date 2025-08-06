@@ -8,7 +8,7 @@ class ObstacleDetector:
     
     def __init__(self, logger):
         self.logger = logger
-        self.robot_id = 1
+        self.robot_id = 0
         
         # 장애물 감지 설정
         self.min_distance_m = 0.5  # 최소 감지 거리 (0.5m)
@@ -21,18 +21,20 @@ class ObstacleDetector:
         
         for obj in objects:
             if obj['class_name'] in ['person', 'chair']:
+                self.logger.info(f"🔍 장애물 후보 감지: class={obj['class_name']}, depth_mm={obj.get('depth_mm', 'None')}")
                 # 뎁스 정보 확인
                 if 'depth_mm' in obj and obj['depth_mm'] > 0:
                     distance_m = obj['depth_mm'] / 1000.0  # mm to meters
+                    self.logger.info(f"🔍 Distance: {distance_m:.2f}m (범위: {self.min_distance_m}-{self.max_distance_m}m)")
                     
                     # 거리 필터링
                     if self.min_distance_m <= distance_m <= self.max_distance_m:
                         # 2D 픽셀 좌표를 3D 월드 좌표로 변환
                         center_x, center_y = obj['center']
                         
-                        # 뎁스 카메라의 pixel_to_3d 함수 사용
+                        # 뎁스 카메라의 pixel_to_3d 함수 사용 (좌우반전 고려)
                         world_x, world_y, world_z = depth_camera.pixel_to_3d(
-                            center_x, center_y, obj['depth_mm']
+                            center_x, center_y, obj['depth_mm'], is_flipped=True
                         )
                         
                         # 장애물 타입 결정

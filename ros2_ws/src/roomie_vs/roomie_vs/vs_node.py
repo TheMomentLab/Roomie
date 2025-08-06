@@ -141,9 +141,9 @@ class OpenNI2Camera:
         self.rgb_stream = None
         self.depth_stream = None
         
-        # 카메라 내부 파라미터 (Astra 기본값)
-        self.depth_fx = 570.3
-        self.depth_fy = 570.3
+        # 카메라 내부 파라미터 (Astra 실제값 추정)
+        self.depth_fx = 1140.6  # 2배 증가 (스케일 보정)
+        self.depth_fy = 1140.6  # 2배 증가 (스케일 보정)
         self.depth_cx = 320.0
         self.depth_cy = 240.0
         
@@ -254,14 +254,23 @@ class OpenNI2Camera:
             self.logger.error(f"프레임 획득 실패: {e}")
             raise RuntimeError(f"카메라 프레임 획득 실패: {e}")
     
-    def pixel_to_3d(self, u: int, v: int, depth_mm: int) -> Tuple[float, float, float]:
-        """2D 픽셀 좌표를 3D 월드 좌표로 변환"""
+    def pixel_to_3d(self, u: int, v: int, depth_mm: int, is_flipped: bool = False) -> Tuple[float, float, float]:
+        """2D 픽셀 좌표를 3D 월드 좌표로 변환 (XZ 좌표계 기반)"""
         if depth_mm <= 0:
             return 0.0, 0.0, 0.0
+        
+        # 좌우반전된 경우 원본 좌표로 변환
+        if is_flipped:
+            u = int(self.depth_cx * 2) - u  # 640 - u (해상도가 640x480인 경우)
             
-        z = depth_mm / 1000.0  # mm to meters
-        x = (u - self.depth_cx) * z / self.depth_fx
-        y = (v - self.depth_cy) * z / self.depth_fy
+        z = depth_mm / 1000.0  # mm to meters (정면 거리)
+        
+        # X축 계산: 픽셀 오프셋을 실제 거리로 변환
+        pixel_offset_x = u - self.depth_cx  # 중심에서 픽셀 차이
+        # 간단한 비례 관계: depth에 비례해서 좌우 거리 계산
+        x = pixel_offset_x * z * 0.001  # 스케일 팩터 (실험적으로 조정 필요)
+        
+        y = 0.0  # 높이는 무시
         
         return x, y, z
     
@@ -1601,7 +1610,7 @@ class VSNode(Node):
         self.current_camera_name = "None"
         
         # 이미지 처리 옵션
-        self.flip_horizontal = False  # 객체 인식을 위해 좌우반전 끄기 (실제 위치 그대로)
+        self.flip_horizontal = False  # 기본 좌우반전 끄기
         self.confidence_threshold = 0.7
         
         # 헤드리스 모드 설정 (GUI 없이 동작)
@@ -2360,35 +2369,33 @@ class VSNode(Node):
             for class_name in self.obstacle_detection_history:
                 self.obstacle_detection_history[class_name][1] += 1
             
-            # 1초마다 종합 평가 및 발행
-            if (self.last_obstacle_publish_time is None or 
-                (current_time - self.last_obstacle_publish_time).nanoseconds / 1e9 >= self.obstacle_publish_interval):
+            # 즉시 평가 및 발행 (민감한 감지, 보수적 소멸)
+            if True:  # 항상 즉시 처리
                 
-                # 종합 평가: 임계값 이상 감지된 장애물만 발행
                 confirmed_obstacles = []
                 
+                # 1. 현재 프레임에서 새로 감지된 장애물 즉시 추가 (민감한 감지)
+                for obstacle_info in current_obstacles:
+                    confirmed_obstacles.append(obstacle_info)
+                
+                # 2. 이전에 감지되었지만 현재 미감지된 장애물의 보수적 처리
                 for class_name, (detection_count, total_frames) in self.obstacle_detection_history.items():
-                    if total_frames > 0:
-                        detection_ratio = detection_count / total_frames
-                        
-                        if detection_ratio >= self.obstacle_detection_threshold:
-                            # 임계값 이상 감지된 경우, 가장 최근 감지 정보 사용
-                            for obstacle_info in current_obstacles:
-                                if obstacle_info['class_name'] == class_name:
-                                    confirmed_obstacles.append(obstacle_info)
+                    if class_name not in detected_classes and total_frames > 0:
+                        # 최근 5프레임 중 3프레임 이상 감지되었다면 계속 유지
+                        recent_detection_ratio = detection_count / min(total_frames, 5)
+                        if recent_detection_ratio >= 0.6:  # 60% 이상 감지율
+                            # 마지막으로 감지된 위치 정보로 계속 발행
+                            last_obstacle = None
+                            for prev_obstacle in getattr(self, 'previous_obstacles', []):
+                                if prev_obstacle['class_name'] == class_name:
+                                    last_obstacle = prev_obstacle
                                     break
+                            if last_obstacle:
+                                confirmed_obstacles.append(last_obstacle)
                             
-                            self.get_logger().info(
-                                f"🚧 장애물 종합 평가: {class_name} "
-                                f"감지율 {detection_ratio:.1%} ({detection_count}/{total_frames}) "
-                                f"→ 발행 확정"
-                            )
+                            self.get_logger().debug(f"장애물 발행: {class_name}")
                         else:
-                            self.get_logger().debug(
-                                f"🚧 장애물 종합 평가: {class_name} "
-                                f"감지율 {detection_ratio:.1%} ({detection_count}/{total_frames}) "
-                                f"→ 노이즈로 판단, 발행 안함"
-                            )
+                            self.get_logger().debug(f"장애물 무시: {class_name} (낮은 감지율)")
                 
                 # 확정된 장애물들 발행
                 for obstacle_info in confirmed_obstacles:
@@ -2403,19 +2410,30 @@ class VSNode(Node):
                     # 로그 출력
                     obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
                     self.get_logger().info(
-                        f"🚧 장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
+                        f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
                         f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m) "
                         f"거리: {obstacle_info['distance']:.2f}m"
                     )
                 
-                # 히스토리 초기화 및 발행 시간 업데이트
-                self.obstacle_detection_history.clear()
+                # 이전 장애물 정보 저장 (보수적 소멸을 위해)
+                self.previous_obstacles = current_obstacles.copy()
+                
+                # 히스토리 부분 초기화 (완전 삭제하지 않고 카운트만 리셋)
+                for class_name in list(self.obstacle_detection_history.keys()):
+                    detection_count, total_frames = self.obstacle_detection_history[class_name]
+                    if class_name not in detected_classes and total_frames > 10:
+                        # 10프레임 이상 미감지시 완전 제거
+                        del self.obstacle_detection_history[class_name]
+                    else:
+                        # 감지 카운트만 리셋 (히스토리 유지)
+                        self.obstacle_detection_history[class_name] = [0, 0]
+                
                 self.last_obstacle_publish_time = current_time
                 
         except Exception as e:
             self.get_logger().error(f"❌ 장애물 감지 및 발행 실패: {e}")
     
-    def simulate_tracking_sequence(self, robot_id: int = 1, task_id: int = 1):
+    def simulate_tracking_sequence(self, robot_id: int = 0, task_id: int = 1):
         """추적 시뮬레이션 시퀀스"""
         import threading
         import time
@@ -2985,7 +3003,7 @@ class VSNode(Node):
             if self.last_glass_door_opened != current_opened:
                 # 유리 문 상태 메시지 생성 및 발행
                 glass_door_msg = GlassDoorStatus()
-                glass_door_msg.robot_id = 1
+                glass_door_msg.robot_id = 0
                 glass_door_msg.opened = current_opened
                 
                 self.glass_door_pub.publish(glass_door_msg)
@@ -3264,10 +3282,7 @@ class VSNode(Node):
                     cv2.putText(image, coord_text, (x1, y2+15), 
                                cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1)
                     
-                    # 장애물 아이콘 표시 (객체 위쪽)
-                    icon_text = "🚧" if obstacle_type == 'dynamic' else "🪑"
-                    cv2.putText(image, icon_text, (x1, y1-30), 
-                               cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
+                    # 장애물 아이콘 표시 제거 (이모지로 인한 ??? 문제 해결)
                 else:
                     # 기존 객체 라벨
                     cv2.putText(image, label, (x1, y1-10), 
@@ -3422,15 +3437,15 @@ class VSNode(Node):
         cv2.putText(image, f"Objects Detected: {len(objects)}", (10, 70), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 0), 1)
         
-        # 🚧 장애물 정보 추가
+        # 장애물 정보 추가 (이모지 제거, 위치 조정)
         obstacle_objects = [obj for obj in objects if obj.get('is_obstacle', False)]
         if obstacle_objects:
             dynamic_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'dynamic'])
             static_count = len([obj for obj in obstacle_objects if obj.get('obstacle_type') == 'static'])
             
-            # 장애물 요약 정보
-            cv2.putText(image, f"🚧 OBSTACLES: Dynamic={dynamic_count} | Static={static_count}", 
-                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+            # 장애물 요약 정보 (겹치지 않는 위치로 조정)
+            cv2.putText(image, f"OBSTACLES: Dynamic={dynamic_count} | Static={static_count}", 
+                       (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
             
             # 가장 가까운 장애물 정보
             closest_obstacle = min(obstacle_objects, key=lambda x: x.get('distance_m', float('inf')))
@@ -3440,11 +3455,11 @@ class VSNode(Node):
                 world_x = closest_obstacle.get('world_x', 0.0)
                 world_y = closest_obstacle.get('world_y', 0.0)
                 
-                cv2.putText(image, f"⚠️ CLOSEST: {obstacle_type.upper()} at {distance:.1f}m ({world_x:.2f}, {world_y:.2f})", 
-                           (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
+                cv2.putText(image, f"CLOSEST: {obstacle_type.upper()} at {distance:.1f}m ({world_x:.2f}, {world_y:.2f})", 
+                           (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
         else:
-            cv2.putText(image, "✅ NO OBSTACLES DETECTED", 
-                       (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
+            cv2.putText(image, "NO OBSTACLES DETECTED", 
+                       (10, 130), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 255, 0), 1)
         
         # 🔥 방향등 기억된 위치 정보 표시
         if (self.remembered_direction_positions['upper'] and self.remembered_direction_positions['lower']):
@@ -4443,8 +4458,8 @@ def main(args=None):
                                 node.get_logger().warning(f"❌ {camera_name}: color_image가 None입니다")
                             continue
                         
-                        # 이미지 좌우반전
-                        if node.flip_horizontal:
+                        # 이미지 좌우반전 (뎁스 카메라만)
+                        if camera_type == 'front_depth':
                             if color_image is not None:
                                 color_image = cv2.flip(color_image, 1)
                             if depth_image is not None:
@@ -4581,7 +4596,7 @@ def main(args=None):
                             break
                         elif key == ord('r') or key == ord('R'):  # R키: 추적 시뮬레이션
                             node.get_logger().info("'R' 키 눌림 - 추적 시뮬레이션 시작")
-                            node.simulate_tracking_sequence(robot_id=1, task_id=1)
+                            node.simulate_tracking_sequence(robot_id=0, task_id=1)
                         elif key == ord('t') or key == ord('T'):  # T키: 단일 추적 이벤트 (기능 삭제됨)
                             node.get_logger().info("'T' 키 눌림 - 추적 이벤트 발행 기능이 삭제되었습니다")
                         elif key == ord('g') or key == ord('G'):  # G키: 등록 완료 이벤트 (기능 삭제됨)

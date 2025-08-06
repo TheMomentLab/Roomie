@@ -77,7 +77,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = SetVSMode.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         request.mode_id = mode_id
         
         self.get_logger().info(f"📞 VS 모드 설정 호출: mode_id={mode_id}")
@@ -101,7 +101,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = ButtonStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         request.button_id = button_id  # 단일 버튼 ID
         
         button_names = {
@@ -166,7 +166,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = ElevatorStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 엘리베이터 상태 호출")
         future = client.call_async(request)
@@ -190,7 +190,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = DoorStatus.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 문 상태 호출")
         future = client.call_async(request)
@@ -216,7 +216,7 @@ class VSInterfaceTestClient(Node):
             return
             
         request = Location.Request()
-        request.robot_id = 1
+        request.robot_id = 0
         
         self.get_logger().info("📞 위치 감지 호출")
         future = client.call_async(request)

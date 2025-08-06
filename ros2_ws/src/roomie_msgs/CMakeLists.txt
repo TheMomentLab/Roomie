@@ -31,6 +31,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/robot_status/BatteryStatus.msg"
   "msg/robot_status/RoomiePose.msg"
   "msg/robot_status/Obstacle.msg"
+  "msg/robot_status/GlassDoorStatus.msg"
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
