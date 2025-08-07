@@ -1,6 +1,10 @@
 # screen_manager.py
 
 from PyQt6.QtWidgets import QStackedWidget
+from PyQt6.QtCore import Qt, QUrl, QTimer
+from PyQt6.QtGui import QKeyEvent
+from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
+import os
 from .ui_loader import load_ui
 
 # 컨트롤러 import
@@ -16,15 +20,57 @@ class ScreenManager(QStackedWidget):
         # 창 크기 설정 (UI 파일들이 1920x1080으로 설계됨)
         self.setFixedSize(1920, 1080)
         
+        # 전체화면 설정
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        
         # 스타일 설정
         self.setStyleSheet("""
             QStackedWidget {
-                background-color: #3a4a5c;
+                background-color: #171E26;
             }
             QWidget {
-                background-color: #3a4a5c;
+                background-color: #171E26;
             }
         """)
+
+        # 음성 재생 관련 설정
+        self.audio_output = QAudioOutput()
+        self.media_player = QMediaPlayer()
+        self.media_player.setAudioOutput(self.audio_output)
+        self.audio_enabled = True
+        self.audio_volume = 0.7
+        self.audio_output.setVolume(self.audio_volume)
+        
+        # 음성 설정 로그
+        self.node.get_logger().info(f"🔊 음성 시스템 초기화: enabled={self.audio_enabled}, volume={self.audio_volume}")
+        
+        # 화면별 음성 파일 매핑
+        self.screen_audio_map = {
+            # 공통 화면
+            "TOUCH_SCREEN": None,  # 터치 화면은 음성 없음
+            "CHARGING": None,      # 충전 화면은 음성 없음
+            
+            # 배송 관련
+            "PICKUP_MOVING": "ui/voice/audio_8_픽업_장소로_이동을_시작합니다_.mp3",
+            "PICKUP_ARRIVED": "ui/voice/audio_0_픽업_로봇이_도착하였습니다__주문_정보를_확인해주세요_.mp3",
+            "CHECKING_ORDER": None,  # 주문 확인 화면은 음성 없음
+            "PICKUP_DRAWER_CONTROL": "ui/voice/audio_1_서랍_열기_버튼을_클릭하여_음식을_넣어주세요.mp3",
+            "COUNTDOWN": "ui/voice/audio_3_잠시_후_로봇이_출발합니다__주의해주세요_.mp3",
+            "DELIVERY_MOVING": "ui/voice/audio_4_배송_장소로_이동을_시작합니다_.mp3",
+            "DELIVERY_ARRIVED": "ui/voice/audio_5_배송_로봇이_도착하였습니다__주문_정보를_확인해주세요_.mp3",
+            "DELIVERY_DRAWER_CONTROL": "ui/voice/audio_12_서랍_열기_버튼을_클릭하여_음식을_수령해주세요_.mp3",
+            "THANK_YOU": "ui/voice/audio_6_주문해주셔서_감사합니다__맛있게_드세요_.mp3",
+            
+            # 엘리베이터 관련
+            "ELEVATOR_MANIPULATING": "ui/voice/audio_9_엘리베이터_버튼_조작을_시작합니다__주의해주세요_.mp3",
+            "ELEVATOR_CALLING": None,  # 엘리베이터 호출 화면은 음성 없음
+            "ELEVATOR_BOARDING": "ui/voice/audio_10_엘리베이터_탑승을_시작합니다__주의해주세요_.mp3",
+            "ELEVATOR_MOVING_TO_TARGET": None,  # 엘리베이터 이동 화면은 음성 없음
+            "ELEVATOR_EXITING": "ui/voice/audio_11_엘리베이터_하차를_시작합니다__주의해주세요_.mp3",
+            
+            # 기타
+            "RETURN_TO_BASE": "ui/voice/audio_7_복귀_장소로_이동을_시작합니다_.mp3",
+        }
 
         # 현재 화면 정보
         self.current_screen_name = None
@@ -90,49 +136,54 @@ class ScreenManager(QStackedWidget):
         self.show_screen("TOUCH_SCREEN")
         self.show()
         
-        # 개발용: 전체화면으로 하려면 아래 주석 해제
-        # self.showFullScreen()
+        # 전체화면으로 실행
+        self.showFullScreen()
+        
+        # 키 이벤트 포커스 설정
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocus()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        """키보드 이벤트 처리"""
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        elif event.key() == Qt.Key.Key_F11:
+            if self.isFullScreen():
+                self.showNormal()
+            else:
+                self.showFullScreen()
+        super().keyPressEvent(event)
 
     def preload_all_screens(self):
-        """모든 화면을 미리 로드하고 스택에 추가"""
-        self.node.get_logger().info("모든 화면을 미리 로드 중...")
+        """모든 화면을 미리 로드"""
+        self.node.get_logger().info("🔄 모든 화면 로딩 시작...")
         
         for screen_name, ui_path in self.ui_paths.items():
-            widget = self.create_screen_widget(screen_name, ui_path)
-            if widget:
+            try:
+                # 빈 위젯 생성
+                from PyQt6.QtWidgets import QWidget
+                widget = QWidget()
+                
+                # UI 파일 로드
+                load_ui(widget, ui_path)
+                
+                # 화면을 스택에 추가
                 index = self.addWidget(widget)
                 self.screen_widgets[screen_name] = widget
                 self.screen_indices[screen_name] = index
+                
+                # 컨트롤러 생성
+                controller_class = self.controller_map.get(screen_name, BaseController)
+                controller = controller_class(widget, self, self.node, ui_path)
+                self.screen_controllers[screen_name] = controller
+                
+                self.node.get_logger().info(f"컨트롤러 생성: {controller_class.__name__} for {screen_name}")
                 self.node.get_logger().info(f"{screen_name} 로드 완료 (index: {index})")
+                
+            except Exception as e:
+                self.node.get_logger().error(f"❌ {screen_name} 로드 실패: {e}")
         
         self.node.get_logger().info(f"총 {len(self.screen_widgets)}개 화면 로드 완료!")
-
-    def create_screen_widget(self, screen_name, ui_path):
-        """개별 화면 위젯 생성"""
-        try:
-            from PyQt6.QtWidgets import QWidget
-            widget = QWidget()
-            
-            # UI 로드
-            load_ui(widget, ui_path)
-            
-            # 컨트롤러 생성
-            controller_class = self.controller_map.get(screen_name)
-            if controller_class:
-                controller = controller_class(
-                    widget=widget,
-                    screen_manager=self,
-                    node=self.node,
-                    ui_filename=ui_path
-                )
-                self.screen_controllers[screen_name] = controller
-                self.node.get_logger().info(f"컨트롤러 생성: {controller_class.__name__} for {screen_name}")
-            
-            return widget
-            
-        except Exception as e:
-            self.node.get_logger().error(f"화면 생성 실패 {screen_name}: {e}")
-            return None
 
     def show_screen(self, screen_name):
         """지정된 화면으로 전환"""
@@ -145,6 +196,10 @@ class ScreenManager(QStackedWidget):
         self.current_screen_name = screen_name
         self.node.get_logger().info(f"📺 화면 전환: {screen_name} (index: {index})")
         
+        # 화면 전환 시 음성 재생
+        self.node.get_logger().info(f"🎵 {screen_name} 화면 음성 재생 호출")
+        self.play_screen_audio(screen_name)
+        
         # 화면 전환 시 해당 컨트롤러의 이벤트 활성화
         controller = self.screen_controllers.get(screen_name)
         if controller and hasattr(controller, 'on_screen_activated'):
@@ -152,6 +207,92 @@ class ScreenManager(QStackedWidget):
             self.node.get_logger().info(f"🎯 {screen_name} 컨트롤러 이벤트 활성화")
         
         return True
+    
+    def play_screen_audio(self, screen_name):
+        """화면 전환 시 음성 재생"""
+        self.node.get_logger().info(f"🔊 음성 재생 시도: {screen_name}")
+        
+        if not self.audio_enabled:
+            self.node.get_logger().warn(f"🔇 음성 재생이 비활성화됨: {screen_name}")
+            return
+            
+        if screen_name in self.screen_audio_map:
+            audio_file = self.screen_audio_map[screen_name]
+            self.node.get_logger().info(f"🎵 {screen_name} 음성 파일: {audio_file}")
+            
+            if audio_file is not None:  # None이 아닌 경우에만 재생
+                # 즉시 실행 (QTimer.singleShot 대신)
+                self.node.get_logger().info(f"🎵 즉시 음성 재생 호출: {audio_file}")
+                self._play_audio_file_internal(audio_file, f"화면 음성")
+                self.node.get_logger().info(f"▶️ {screen_name} 음성 재생 시작")
+            else:
+                self.node.get_logger().info(f"🔇 {screen_name} 화면은 음성이 설정되지 않음")
+        else:
+            self.node.get_logger().warn(f"⚠️ {screen_name} 화면의 음성 매핑이 없음")
+    
+    def play_audio_file(self, audio_filename):
+        """특정 음성 파일을 직접 재생"""
+        if not self.audio_enabled:
+            return
+            
+        audio_file = f"ui/voice/{audio_filename}"
+        # 즉시 실행 (QTimer.singleShot 대신)
+        self._play_audio_file_internal(audio_file, f"개별 음성")
+    
+    def _play_audio_file_internal(self, audio_file, log_type):
+        """내부 음성 재생 메서드 (메인 스레드에서만 호출)"""
+        self.node.get_logger().info(f"🎵 _play_audio_file_internal 진입: {audio_file}")
+        
+        audio_path = os.path.join(
+            "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui",
+            audio_file
+        )
+        
+        self.node.get_logger().info(f"🔍 음성 파일 경로 확인: {audio_path}")
+        
+        if os.path.exists(audio_path):
+            try:
+                # 기존 재생 중인 음성 정지
+                if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+                    self.media_player.stop()
+                    self.node.get_logger().info("⏹️ 기존 음성 정지")
+                
+                # 새 음성 파일 설정 및 재생
+                self.media_player.setSource(QUrl.fromLocalFile(audio_path))
+                self.media_player.play()
+                
+                filename = os.path.basename(audio_file)
+                self.node.get_logger().info(f"🔊 {log_type} 재생 시작: {filename}")
+                
+                # 재생 상태 확인 (약간의 지연 후)
+                QTimer.singleShot(100, lambda: self._check_playback_state(filename))
+                    
+            except Exception as e:
+                self.node.get_logger().error(f"❌ 음성 재생 중 오류: {e}")
+        else:
+            self.node.get_logger().warn(f"음성 파일을 찾을 수 없음: {audio_path}")
+    
+    def _check_playback_state(self, filename):
+        """재생 상태 확인"""
+        if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
+            self.node.get_logger().info(f"✅ 음성 재생 성공: {filename}")
+        else:
+            self.node.get_logger().warn(f"⚠️ 음성 재생 실패: {filename}")
+            # 오류 정보 출력
+            error = self.media_player.error()
+            if error != QMediaPlayer.Error.NoError:
+                self.node.get_logger().error(f"❌ 미디어 플레이어 오류: {error}")
+    
+    def set_audio_enabled(self, enabled):
+        """음성 재생 켜기/끄기"""
+        self.audio_enabled = enabled
+        self.node.get_logger().info(f"🔊 음성 재생: {'켜짐' if enabled else '꺼짐'}")
+    
+    def set_audio_volume(self, volume):
+        """음성 볼륨 설정 (0.0 ~ 1.0)"""
+        self.audio_volume = max(0.0, min(1.0, volume))
+        self.audio_output.setVolume(self.audio_volume)
+        self.node.get_logger().info(f"🔊 음성 볼륨: {self.audio_volume}")
 
     def get_current_screen_name(self):
         """현재 표시 중인 화면 이름 반환"""

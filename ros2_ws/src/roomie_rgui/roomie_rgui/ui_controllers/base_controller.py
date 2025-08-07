@@ -109,7 +109,7 @@ class BaseController:
     # 📡 ROS2 이벤트 발행
     def publish_event(self, event_id, detail=""):
         """ROS2 GUI 이벤트 발행"""
-        self.node.publish_event(event_id, robot_id=98, detail=detail)
+        self.node.publish_event(event_id, robot_id=0, detail=detail)
         self.log_info(f"이벤트 발행: ID={event_id}, detail={detail}")
     
 
