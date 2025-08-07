@@ -24,7 +24,7 @@ class RCNode(Node):
         super().__init__('rc_node')
         
         # 로봇 정보
-        self.robot_id = 1  # TODO: 파라미터로 받기
+        self.robot_id = 0  # TODO: 파라미터로 받기
         self.current_task = None
         self.robot_state = 1  # 1: 작업 가능
         self.current_floor_id = 0  # 현재 로봇이 있는 층 (0: 1층)
