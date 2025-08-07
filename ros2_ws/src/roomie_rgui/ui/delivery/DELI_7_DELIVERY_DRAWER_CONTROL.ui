@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>CustomerArrival</class>
- <widget class="QWidget" name="CustomerArrival">
+ <class>DrawerOpen</class>
+ <widget class="QWidget" name="DrawerOpen">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -11,253 +11,113 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>Customer Arrival</string>
+   <string>Drawer Open</string>
   </property>
   <property name="styleSheet">
    <string>QWidget {
-    background-color: #3a4a5c;
+    background-color: #171E26;
 }
 
 QLabel {
     color: white;
-    font-family: "Malgun Gothic", "Arial", sans-serif;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
     background-color: transparent;
     border: none;
 }
 
 QPushButton {
+    background-color: #3498db;
     color: white;
     border: none;
     border-radius: 8px;
-    font-family: "Malgun Gothic", sans-serif;
+    font-family: &quot;Malgun Gothic&quot;, sans-serif;
     font-weight: bold;
     font-size: 18px;
 }
 
-.back-button {
-    background-color: #3498db;
-}
-
-.back-button:hover {
+QPushButton:hover {
     background-color: #2980b9;
-}
-
-.drawer-button {
-    background-color: #3498db;
-}
-
-.drawer-button:hover {
-    background-color: #2980b9;
-}
-
-.complete-button {
-    background-color: #e74c3c;
-}
-
-.complete-button:hover {
-    background-color: #c0392b;
-}
-
-.info-frame {
-    background-color: #4a5a6c;
-    border-radius: 12px;
 }</string>
   </property>
-  
-  <!-- 뒤로가기 버튼 -->
-  <widget class="QPushButton" name="backButton">
+  <widget class="QLabel" name="instructionText">
    <property name="geometry">
     <rect>
-     <x>50</x>
-     <y>950</y>
-     <width>60</width>
-     <height>60</height>
+     <x>470</x>
+     <y>80</y>
+     <width>1000</width>
+     <height>211</height>
     </rect>
    </property>
-   <property name="text">
-    <string>←</string>
-   </property>
    <property name="styleSheet">
-    <string>background-color: #3498db; font-size: 24px; border-radius: 30px;</string>
-   </property>
-  </widget>
-  
-  <!-- 메인 메시지 -->
-  <widget class="QLabel" name="mainMessage">
-   <property name="geometry">
-    <rect>
-     <x>100</x>
-     <y>200</y>
-     <width>600</width>
-     <height>150</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>주문하신 음식이
-도착하였습니다.</string>
-   </property>
-   <property name="styleSheet">
-    <string>font-size: 32px; 
+    <string notr="true">font-size: 60px; 
 font-weight: bold; 
 color: white; 
 line-height: 1.3;</string>
    </property>
+   <property name="text">
+    <string>서랍열기 버튼을 클릭하여
+음식을 수령하세요</string>
+   </property>
    <property name="alignment">
-    <set>Qt::AlignLeft|Qt::AlignTop</set>
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
-  
-  <!-- 서랍 시각화 프레임 -->
-  <widget class="QFrame" name="drawerVisualFrame">
+  <widget class="QLabel" name="receiveImage">
    <property name="geometry">
     <rect>
-     <x>100</x>
-     <y>400</y>
-     <width>300</width>
-     <height>400</height>
+     <x>690</x>
+     <y>330</y>
+     <width>541</width>
+     <height>531</height>
     </rect>
    </property>
    <property name="styleSheet">
     <string>background-color: transparent;</string>
    </property>
-   
-   <!-- 서랍 상단 (청록색) -->
-   <widget class="QLabel" name="drawerTop">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>300</width>
-      <height>150</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string>background-color: #1abc9c; border-radius: 8px;</string>
-    </property>
-    <property name="text">
-     <string></string>
-    </property>
-   </widget>
-   
-   <!-- 서랍 중간 (회색) -->
-   <widget class="QLabel" name="drawerMiddle">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>170</y>
-      <width>300</width>
-      <height>230</height>
-     </rect>
-    </property>
-    <property name="styleSheet">
-     <string>background-color: #bdc3c7; border-radius: 8px;</string>
-    </property>
-    <property name="text">
-     <string></string>
-    </property>
-   </widget>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
   </widget>
-  
-  <!-- 안내 정보 프레임 -->
-  <widget class="QFrame" name="infoFrame">
+  <widget class="QPushButton" name="openDrawerButton">
    <property name="geometry">
     <rect>
-     <x>500</x>
-     <y>200</y>
-     <width>800</width>
-     <height>600</height>
+     <x>719</x>
+     <y>930</y>
+     <width>241</width>
+     <height>60</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string>background-color: #4a5a6c; border-radius: 12px;</string>
+    <string>font-size: 18px; font-weight: bold;</string>
    </property>
-   
-   <!-- 안내 제목 -->
-   <widget class="QLabel" name="infoTitle">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>50</y>
-      <width>700</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>서랍열기 버튼을누르고,
-1번 칸에서 물건을 수령하세요.</string>
-    </property>
-    <property name="styleSheet">
-     <string>font-size: 24px; 
-color: white; 
-line-height: 1.3;</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignLeft|Qt::AlignTop</set>
-    </property>
-   </widget>
-   
-   <!-- 추가 안내 -->
-   <widget class="QLabel" name="infoSubtitle">
-    <property name="geometry">
-     <rect>
-      <x>50</x>
-      <y>180</y>
-      <width>700</width>
-      <height>80</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>서랍을 잠김때까지 꼭닫고,
-수령완료 버튼을 눌러주세요.</string>
-    </property>
-    <property name="styleSheet">
-     <string>font-size: 24px; 
-color: white; 
-line-height: 1.3;</string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignLeft|Qt::AlignTop</set>
-    </property>
-   </widget>
-   
-   <!-- 서랍열기 버튼 -->
-   <widget class="QPushButton" name="openDrawerButton">
-    <property name="geometry">
-     <rect>
-      <x>450</x>
-      <y>450</y>
-      <width>150</width>
-      <height>60</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>서랍열기</string>
-    </property>
-    <property name="styleSheet">
-     <string>background-color: #3498db; font-size: 18px; font-weight: bold;</string>
-    </property>
-   </widget>
-   
-   <!-- 수령완료 버튼 -->
-   <widget class="QPushButton" name="pickupCompleteButton">
-    <property name="geometry">
-     <rect>
-      <x>620</x>
-      <y>450</y>
-      <width>150</width>
-      <height>60</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>수령완료</string>
-    </property>
-    <property name="styleSheet">
-     <string>background-color: #7f8c8d; font-size: 18px; font-weight: bold;</string>
-    </property>
-    <property name="enabled">
-     <bool>false</bool>
-    </property>
-   </widget>
+   <property name="text">
+    <string>서랍열기</string>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="pickupCompleteButton">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="geometry">
+    <rect>
+     <x>980</x>
+     <y>930</y>
+     <width>241</width>
+     <height>60</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: #7f8c8d; font-size: 18px; font-weight: bold;</string>
+   </property>
+   <property name="text">
+    <string>수령완료</string>
+   </property>
   </widget>
  </widget>
  <resources/>

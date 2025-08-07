@@ -28,7 +28,7 @@
   <joint name="joint_1" type="revolute">
     <parent link="base_link"/>
     <child link="link_1"/>
-    <origin xyz="0 0 0.083" rpy="0 0 0.175"/>
+    <origin xyz="0 0 0.083" rpy="0 0 0"/>
     <axis xyz="0 0 1"/>
     <limit lower="-1.54" upper="1.54" effort="1.08" velocity="7.48"/>
   </joint>
@@ -92,7 +92,7 @@
   <joint name="joint_tool" type="fixed">
     <parent link="link_4"/>
     <child link="tool_tip"/>
-    <origin xyz="0.015 0 0.95" rpy="0 0 0"/>
+    <origin xyz="0.015 0 0.095" rpy="0 0 0"/>
   </joint>
 
 </robot>

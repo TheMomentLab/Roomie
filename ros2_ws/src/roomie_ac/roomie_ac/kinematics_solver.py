@@ -33,7 +33,7 @@ class KinematicsSolver:
             q_solution_all = self.chain.inverse_kinematics(
                 target_position=target_pos,
                 target_orientation=target_orientation_matrix,
-                orientation_mode='z', # <--- 'Z'에서 None으로 변경하여 방향 제약을 해제합니다.
+                orientation_mode=None, # <--- 'Z'에서 None으로 변경하여 방향 제약을 해제합니다.
                 initial_position=q_full_seed,
                 max_iter=config.IK_MAX_ITERATIONS
             )

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1372</width>
-    <height>892</height>
+    <width>1920</width>
+    <height>1080</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,7 @@
   </property>
   <property name="styleSheet">
    <string>QWidget {
-    background-color: #3a4a5c;
+    background-color: #171E26;
 }
 
 QLabel {
@@ -25,52 +25,39 @@ QLabel {
     border: none;
 }</string>
   </property>
-  <widget class="QLabel" name="statusIndicator1">
+  <widget class="QLabel" name="robotEyes">
    <property name="geometry">
     <rect>
-     <x>810</x>
-     <y>120</y>
-     <width>80</width>
-     <height>80</height>
+     <x>580</x>
+     <y>290</y>
+     <width>750</width>
+     <height>300</height>
     </rect>
-   </property>
-   <property name="styleSheet">
-    <string>background-color: #00CED1; border-radius: 40px;</string>
    </property>
    <property name="text">
     <string/>
    </property>
-  </widget>
-  <widget class="QLabel" name="statusIndicator2">
-   <property name="geometry">
-    <rect>
-     <x>930</x>
-     <y>120</y>
-     <width>80</width>
-     <height>80</height>
-    </rect>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_roomie_eyes.png</pixmap>
    </property>
-   <property name="styleSheet">
-    <string>background-color: #00CED1; border-radius: 40px;</string>
-   </property>
-   <property name="text">
-    <string/>
+   <property name="scaledContents">
+    <bool>true</bool>
    </property>
   </widget>
   <widget class="QLabel" name="mainMessage">
    <property name="geometry">
     <rect>
-     <x>460</x>
-     <y>450</y>
-     <width>1000</width>
-     <height>120</height>
+     <x>0</x>
+     <y>760</y>
+     <width>1921</width>
+     <height>100</height>
     </rect>
    </property>
    <property name="styleSheet">
-    <string>font-size: 64px; 
+    <string>font-size: 90px; 
 font-weight: bold; 
 color: white; 
-letter-spacing: 1px;</string>
+letter-spacing: 2px;</string>
    </property>
    <property name="text">
     <string>픽업 장소로 이동중입니다.</string>
@@ -80,6 +67,8 @@ letter-spacing: 1px;</string>
    </property>
   </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

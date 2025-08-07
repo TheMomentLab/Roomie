@@ -38,6 +38,7 @@ class ROSInterfaces:
     # Services
     GET_LOCATIONS_SERVICE = "/roomie/command/get_locations"
     CREATE_TASK_SERVICE = "/roomie/command/create_task"
+    LOCATION_SERVICE = "/roomie/command/location"
     # Actions
     PERFORM_TASK_ACTION = "/roomie/action/perform_task"
     PERFORM_RETURN_ACTION = "/roomie/action/perform_return"

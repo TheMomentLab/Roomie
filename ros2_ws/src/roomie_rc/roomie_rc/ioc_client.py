@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 
 # ROS2 메시지 import
-from roomie_msgs.srv import ControlLock, ReadCardInfo
+from roomie_msgs.srv import ControlLock
 from roomie_msgs.srv import CheckDoorState, CheckItemLoaded
 
 
@@ -29,12 +29,6 @@ class IOCClient:
             '/ioc/control_lock'
         )
         
-        # 카드 정보 읽기 Service Client (RC → IOC)
-        self.read_card_client = self.node.create_client(
-            ReadCardInfo,
-            '/ioc/read_card_info'
-        )
-        
         # 서랍문 상태 확인 Service Client (RC → IOC)
         self.check_door_client = self.node.create_client(
             CheckDoorState,
@@ -49,8 +43,49 @@ class IOCClient:
         
         self.node.get_logger().info('IOC Service Clients 초기화 완료')
     
+    def control_lock(self, robot_id: int, locked: bool, callback):
+        """
+        서랍 잠금 제어 (콜백 방식)
+        Args:
+            robot_id (int): 로봇 ID
+            locked (bool): 잠금 여부
+            callback (callable): 결과 처리 콜백 함수 (success: bool, message: str)
+        """
+        if not self.control_lock_client.wait_for_service(timeout_sec=2.0):
+            self.node.get_logger().warn('IOC ControlLock 서비스를 찾을 수 없습니다')
+            callback(False, "서비스 연결 실패")
+            return
+        
+        request = ControlLock.Request()
+        request.robot_id = robot_id
+        request.locked = locked
+        
+        action = "잠금" if locked else "잠금 해제"
+        self.node.get_logger().info(f'IOC 서랍 {action} 요청')
+        
+        try:
+            future = self.control_lock_client.call_async(request)
+            future.add_done_callback(
+                lambda f: self._handle_control_lock_response(f, callback)
+            )
+            self.node.get_logger().info(f'IOC 서랍 {action} 요청 전송 완료')
+                
+        except Exception as e:
+            self.node.get_logger().error(f'IOC 서랍 제어 요청 실패: {e}')
+            callback(False, str(e))
+    
+    def _handle_control_lock_response(self, future, callback):
+        """서랍 잠금 제어 응답 처리"""
+        try:
+            response = future.result()
+            self.node.get_logger().info(f'IOC 서랍 제어 응답: success={response.success}')
+            callback(response.success, "성공" if response.success else "실패")
+        except Exception as e:
+            self.node.get_logger().error(f'IOC 서랍 제어 응답 처리 중 오류: {e}')
+            callback(False, str(e))
+    
     def control_drawer_lock(self, locked: bool):
-        """서랍 잠금 제어 (IOC)"""
+        """서랍 잠금 제어 (동기 방식 - 이전 버전과의 호환성 유지)"""
         if not self.control_lock_client.wait_for_service(timeout_sec=2.0):
             self.node.get_logger().warn('IOC ControlLock 서비스를 찾을 수 없습니다')
             return True  # 시뮬레이션에서는 성공으로 처리
@@ -59,11 +94,10 @@ class IOCClient:
         request.robot_id = self.node.robot_id
         request.locked = locked
         
-        action = "잠금" if locked else "열림"
+        action = "잠금" if locked else "잠금 해제"
         self.node.get_logger().info(f'IOC 서랍 {action} 요청')
         
         try:
-            # 비동기 호출만 (데드락 방지)
             future = self.control_lock_client.call_async(request)
             self.node.get_logger().info(f'IOC 서랍 {action} 요청 전송 완료')
             return True
@@ -72,74 +106,82 @@ class IOCClient:
             self.node.get_logger().error(f'IOC 서랍 제어 요청 실패: {e}')
             return False
     
-    def read_card_info(self):
-        """카드 정보 읽기 요청"""
-        if not self.read_card_client.service_is_ready():
-            self.node.get_logger().warn('IOC ReadCardInfo 서비스를 찾을 수 없습니다')
-            return False, 0
-        
-        request = ReadCardInfo.Request()
-        request.robot_id = self.node.robot_id
-        
-        self.node.get_logger().info('IOC 카드 정보 읽기 요청')
-        
-        try:
-            # 비동기 호출만 (데드락 방지)
-            future = self.read_card_client.call_async(request)
-            self.node.get_logger().info('IOC 카드 읽기 요청 전송 완료')
-            return True, 101  # 시뮬레이션용 기본값 (success=True, location_id=101)
-                
-        except Exception as e:
-            self.node.get_logger().error(f'IOC 카드 읽기 요청 중 오류: {e}')
-            return False, 0
-    
-    def check_door_state(self):
-        """서랍문 상태 확인 (IOC)"""
-        if not self.check_door_client.service_is_ready():
+
+    def check_door_state(self, robot_id: int, callback):
+        """
+        서랍문 상태 확인 (콜백 방식)
+        Args:
+            robot_id (int): 로봇 ID
+            callback (callable): 결과 처리 콜백 함수 (is_opened: bool)
+        """
+        if not self.check_door_client.wait_for_service(timeout_sec=2.0):
             self.node.get_logger().warn('IOC CheckDoorState 서비스를 찾을 수 없습니다')
-            return False  # 시뮬레이션에서는 닫힌 상태로 처리
+            callback(False)
+            return
         
         request = CheckDoorState.Request()
-        request.robot_id = self.node.robot_id
+        request.robot_id = robot_id
         
         self.node.get_logger().info('IOC 서랍문 상태 확인')
         
         try:
-            # 비동기 호출만 (데드락 방지)
             future = self.check_door_client.call_async(request)
+            future.add_done_callback(
+                lambda f: self._handle_door_state_response(f, callback)
+            )
             self.node.get_logger().info('IOC 서랍문 상태 확인 요청 전송 완료')
-            
-            # 시뮬레이션: 기본적으로 닫힘 상태로 가정
-            self.node.get_logger().info('시뮬레이션: 서랍문 닫힘')
-            return False
                 
         except Exception as e:
             self.node.get_logger().error(f'IOC 서랍문 상태 확인 실패: {e}')
-            return False
+            callback(False)
     
-    def check_item_loaded(self):
-        """물품 적재 확인 (IOC)"""
-        if not self.check_item_client.service_is_ready():
+    def _handle_door_state_response(self, future, callback):
+        """서랍문 상태 확인 응답 처리"""
+        try:
+            response = future.result()
+            self.node.get_logger().info(f'IOC 서랍문 상태 응답: is_opened={response.is_opened}')
+            callback(response.is_opened)
+        except Exception as e:
+            self.node.get_logger().error(f'IOC 서랍문 상태 응답 처리 중 오류: {e}')
+            callback(False)
+    
+    def check_item_loaded(self, robot_id: int, callback):
+        """
+        물품 적재 확인 (콜백 방식)
+        Args:
+            robot_id (int): 로봇 ID
+            callback (callable): 결과 처리 콜백 함수 (item_loaded: bool)
+        """
+        if not self.check_item_client.wait_for_service(timeout_sec=2.0):
             self.node.get_logger().warn('IOC CheckItemLoaded 서비스를 찾을 수 없습니다')
-            return True  # 시뮬레이션에서는 물품 있음으로 처리
+            callback(False)
+            return
         
         request = CheckItemLoaded.Request()
-        request.robot_id = self.node.robot_id
+        request.robot_id = robot_id
         
         self.node.get_logger().info('IOC 물품 적재 확인')
         
         try:
-            # 비동기 호출만 (데드락 방지)
             future = self.check_item_client.call_async(request)
+            future.add_done_callback(
+                lambda f: self._handle_item_loaded_response(f, callback)
+            )
             self.node.get_logger().info('IOC 물품 적재 확인 요청 전송 완료')
-            
-            # 시뮬레이션: 기본적으로 물품 있음으로 가정
-            self.node.get_logger().info('시뮬레이션: 물품 적재됨')
-            return True
                 
         except Exception as e:
             self.node.get_logger().error(f'IOC 물품 적재 확인 실패: {e}')
-            return True
+            callback(False)
+    
+    def _handle_item_loaded_response(self, future, callback):
+        """물품 적재 확인 응답 처리"""
+        try:
+            response = future.result()
+            self.node.get_logger().info(f'IOC 물품 적재 응답: item_loaded={response.item_loaded}')
+            callback(response.item_loaded)
+        except Exception as e:
+            self.node.get_logger().error(f'IOC 물품 적재 응답 처리 중 오류: {e}')
+            callback(False)
     
     # 편의 메서드들
     

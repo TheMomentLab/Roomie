@@ -29,8 +29,46 @@ class VSClient:
         )
         self.node.get_logger().info('VS Location Service Client 초기화 완료')
     
+    def check_location(self, robot_id: int, callback):
+        """
+        현재 위치 감지 요청 (콜백 방식)
+        Args:
+            robot_id (int): 로봇 ID
+            callback (callable): 결과 처리 콜백 함수 (success: bool, location_id: int)
+        """
+        if not self.location_client.service_is_ready():
+            self.node.get_logger().warn('VS Location 서비스를 찾을 수 없습니다')
+            callback(False, 0)
+            return
+        
+        request = Location.Request()
+        request.robot_id = robot_id
+        
+        self.node.get_logger().info('VS에서 현재 위치 감지 요청')
+        
+        try:
+            future = self.location_client.call_async(request)
+            future.add_done_callback(
+                lambda f: self._handle_location_response(f, callback)
+            )
+            self.node.get_logger().info('VS 위치 감지 요청 전송 완료')
+                
+        except Exception as e:
+            self.node.get_logger().error(f'VS 위치 감지 요청 중 오류: {e}')
+            callback(False, 0)
+    
+    def _handle_location_response(self, future, callback):
+        """위치 감지 응답 처리"""
+        try:
+            response = future.result()
+            self.node.get_logger().info(f'VS 위치 감지 응답: success={response.success}, location_id={response.location_id}')
+            callback(response.success, response.location_id)
+        except Exception as e:
+            self.node.get_logger().error(f'VS 위치 감지 응답 처리 중 오류: {e}')
+            callback(False, 0)
+    
     def get_current_location(self):
-        """현재 위치 감지 요청"""
+        """현재 위치 감지 요청 (동기 방식 - 이전 버전과의 호환성 유지)"""
         if not self.location_client.service_is_ready():
             self.node.get_logger().warn('VS Location 서비스를 찾을 수 없습니다')
             return 0  # 기본값 반환
@@ -41,13 +79,8 @@ class VSClient:
         self.node.get_logger().info('VS에서 현재 위치 감지 요청')
         
         try:
-            # 비동기 호출만 (데드락 방지)
             future = self.location_client.call_async(request)
             self.node.get_logger().info('VS 위치 감지 요청 전송 완료')
-            
-            # TODO: 실제 서비스 응답 처리 (현재는 시뮬레이션)
-            # future.result()를 통해 Location.Response를 받아서
-            # response.success와 response.location_id를 확인해야 함
             return 0  # 시뮬레이션용 기본값
                 
         except Exception as e:

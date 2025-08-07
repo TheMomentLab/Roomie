@@ -27,7 +27,7 @@ class TestServiceClient(Node):
         self.get_logger().info("🧪 Robot GUI 테스트 클라이언트 시작")
         self.show_menu()
     
-    def publish_event(self, event_id: int, robot_id: int = 98, task_id: int = 1, detail: str = ""):
+    def publish_event(self, event_id: int, robot_id: int = 0, task_id: int = 1, detail: str = ""):
         """Robot GUI로 이벤트 발행"""
         from builtin_interfaces.msg import Time
         from rclpy.clock import Clock
@@ -52,7 +52,7 @@ class TestServiceClient(Node):
         task_name = task_types.get(task_type_id, "알 수 없음")
         
         goal = StartCountdown.Goal()
-        goal.robot_id = 98
+        goal.robot_id = 0
         goal.task_id = 1
         goal.task_type_id = task_type_id
         
@@ -75,7 +75,7 @@ class TestServiceClient(Node):
             return
         
         goal = ReturnCountdown.Goal()
-        goal.robot_id = 98
+        goal.robot_id = 0
         
         self.get_logger().info("📞 복귀 카운트다운 액션 호출 중...")
         

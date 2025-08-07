@@ -25,11 +25,11 @@ export async function loadFoodMenu() {
       localStorage.setItem("foodMenuData", JSON.stringify(result.payload.food_items));
       renderFoodMenu(result.payload.food_items);
     } else {
-      showToast("asset/error_toast.png", "error");
+      showToast( "error");
     }
   } catch (error) {
     console.error("음식 메뉴 불러오기 실패:", error);
-    showToast("asset/error_toast.png", "error");
+    showToast( "error");
   }
 }
 
@@ -162,11 +162,11 @@ export function renderCart(containerId, orderButtonId) {
           localStorage.removeItem("cartData");
           window.location.href = `index.html#status-history&task=${result.payload.task_name}`;
         } else {
-          showToast("asset/error_toast.png", "error");
+          showToast ("error");
         }
       } catch (err) {
         console.error("주문 요청 실패:", err);
-        showToast("asset/error_toast.png", "error");
+        showToast("error");
       }
     });
   }

@@ -1,0 +1,8 @@
+<RCC>
+    <qresource prefix="/roomie_rgui/assets">
+        <file>rgui_roomie_eyes.png</file>
+        <file>rgui_caution.png</file>
+        <file>rgui_elevator.png</file>
+        <file>rgui_charging.png</file>
+    </qresource>
+</RCC> 

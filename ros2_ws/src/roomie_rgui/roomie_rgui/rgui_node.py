@@ -468,7 +468,7 @@ class RobotGuiNode(Node):
             self.get_logger().info("🔓 서랍 열기 버튼 클릭됨 - 서랍 열림 이벤트 발행")
             # 서랍 열림을 알리는 이벤트 발행 (event_id=16)
             event_msg = RobotGuiEvent()
-            event_msg.robot_id = 98  # 기본 로봇 ID
+            event_msg.robot_id = 0  # 기본 로봇 ID
             event_msg.rgui_event_id = 16
             event_msg.detail = "drawer_opened"
             self.event_pub.publish(event_msg)

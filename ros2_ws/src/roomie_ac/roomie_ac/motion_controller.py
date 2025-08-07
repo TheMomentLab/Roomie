@@ -1,3 +1,4 @@
+
 # roomie_arm_control/motion_controller.py
 
 import numpy as np
@@ -27,9 +28,15 @@ class MotionController:
         [Public] 미리 정의된 서보 각도(0-180)로 직접 이동합니다. (set_pose 용)
         """
         self._log(f"서보 각도 [{target_angles_deg}]로 직접 이동합니다.")
-        sent_angles_deg = self.serial.send_command(target_angles_deg)
-        if sent_angles_deg is not None:
-            self.current_angles_rad = self._convert_servo_deg_to_rad(sent_angles_deg)
+        response = self.serial.send_command(target_angles_deg)
+        
+        # ======================= [디버깅 코드 추가] =======================
+        self._log(f"==> [DEBUG] SerialManager로부터 받은 응답: {response}")
+        # =================================================================
+        
+        if response is not None:
+            # 성공 시, 내부 현재 각도를 업데이트합니다.
+            self.current_angles_rad = self._convert_servo_deg_to_rad(response)
             self.joint_publisher.publish(config.JOINT_NAMES, self.current_angles_rad)
             return True
         else:

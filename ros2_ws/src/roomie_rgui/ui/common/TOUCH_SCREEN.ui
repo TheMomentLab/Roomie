@@ -10,17 +10,22 @@
     <height>1080</height>
    </rect>
   </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
    <string>Touch Screen</string>
   </property>
   <property name="styleSheet">
    <string>QWidget {
-    background-color: #3a4a5c;
+    background-color: #171E26;
 }
 
 QLabel {
     color: white;
-    font-family: "Malgun Gothic", "Arial", sans-serif;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
     background-color: transparent;
     border: none;
 }
@@ -41,91 +46,58 @@ QPushButton:pressed {
     border-radius: 150px;
 }</string>
   </property>
-  
-  <!-- 상단 상태 인디케이터 1 -->
-  <widget class="QLabel" name="statusIndicator1">
+  <widget class="QLabel" name="robotEyes">
    <property name="geometry">
     <rect>
-     <x>810</x>
-     <y>120</y>
-     <width>80</width>
-     <height>80</height>
+     <x>580</x>
+     <y>290</y>
+     <width>750</width>
+     <height>300</height>
     </rect>
    </property>
-   <property name="styleSheet">
-    <string>background-color: #00CED1; border-radius: 40px;</string>
-   </property>
    <property name="text">
-    <string></string>
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_roomie_eyes.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
    </property>
   </widget>
-  
-  <!-- 상단 상태 인디케이터 2 -->
-  <widget class="QLabel" name="statusIndicator2">
-   <property name="geometry">
-    <rect>
-     <x>930</x>
-     <y>120</y>
-     <width>80</width>
-     <height>80</height>
-    </rect>
-   </property>
-   <property name="styleSheet">
-    <string>background-color: #00CED1; border-radius: 40px;</string>
-   </property>
-   <property name="text">
-    <string></string>
-   </property>
-  </widget>
-  
-  <!-- Touch Screen 타이틀 -->
   <widget class="QLabel" name="titleLabel">
    <property name="geometry">
     <rect>
-     <x>760</x>
-     <y>300</y>
-     <width>400</width>
+     <x>0</x>
+     <y>760</y>
+     <width>1921</width>
      <height>100</height>
     </rect>
    </property>
-   <property name="text">
-    <string>Touch Screen</string>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
    </property>
    <property name="styleSheet">
-    <string>font-size: 72px; 
+    <string notr="true">font-size: 90px; 
 font-weight: bold; 
 color: white; 
 letter-spacing: 2px;</string>
+   </property>
+   <property name="text">
+    <string>화면을 터치하세요</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignCenter</set>
    </property>
   </widget>
-  
-  <!-- 터치 영역 (원형 버튼) -->
-  <widget class="QPushButton" name="touchButton">
-   <property name="geometry">
-    <rect>
-     <x>810</x>
-     <y>480</y>
-     <width>300</width>
-     <height>300</height>
-    </rect>
-   </property>
-   <property name="text">
-    <string>👆</string>
-   </property>
-   <property name="styleSheet">
-    <string>background-color: transparent; 
-border: 4px solid #00CED1; 
-border-radius: 150px; 
-font-size: 80px;</string>
-   </property>
-   <property name="cursor">
-    <cursorShape>PointingHandCursor</cursorShape>
-   </property>
-  </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>
