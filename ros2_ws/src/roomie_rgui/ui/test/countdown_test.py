@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Pickup Moving Screen UI 확인용 테스트 - 컨트롤러 기능 포함
+Countdown Screen UI 확인용 테스트 - 컨트롤러 기능 포함
 """
 
 import sys
@@ -12,7 +12,7 @@ from PyQt6.QtGui import QFont, QPixmap
 # roomie_rgui 패키지 경로 추가
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'roomie_rgui'))
 
-from roomie_rgui.ui_controllers.delivery_controller import DeliveryController
+from roomie_rgui.ui_controllers.common_controller import CommonController
 from roomie_rgui.ui_loader import load_ui
 
 class MockNode:
@@ -50,14 +50,14 @@ def main():
     font = QFont("Malgun Gothic", 12)
     app.setFont(font)
     
-    print("🚀 Pickup Moving Screen UI 확인 테스트")
+    print("🚀 Countdown Screen UI 확인 테스트")
     
     # UI 파일 경로
     ui_file = os.path.join(
         os.path.dirname(__file__), 
         '..', 
-        'delivery', 
-        'DELI_1_PICKUP_MOVING.ui'
+        'countdown', 
+        'COUNTDOWN.ui'
     )
     
     try:
@@ -70,16 +70,13 @@ def main():
         mock_node = MockNode()
         mock_screen_manager = MockScreenManager()
         
-        # DeliveryController 생성 (이미지 로드 기능 포함)
-        controller = DeliveryController(
+        # CommonController 생성
+        controller = CommonController(
             widget=window,
             screen_manager=mock_screen_manager,
             node=mock_node,
-            ui_filename="DELI_1_PICKUP_MOVING.ui"
+            ui_filename="COUNTDOWN.ui"
         )
-        
-        # 화면 활성화 (이미지 로드 실행)
-        controller.on_screen_activated()
         
         # 전체화면으로 표시
         window.showFullScreen()
@@ -93,4 +90,4 @@ def main():
         sys.exit(1)
 
 if __name__ == "__main__":
-    main()
+    main() 

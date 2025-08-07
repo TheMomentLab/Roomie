@@ -4,7 +4,9 @@ DeliveryController - 배송 관련 화면들 (DELI_1~8)을 처리하는 컨트�
 """
 
 from PyQt6.QtWidgets import QPushButton
+from PyQt6.QtGui import QPixmap
 from .base_controller import BaseController
+import os
 
 
 class DeliveryController(BaseController):
@@ -39,12 +41,19 @@ class DeliveryController(BaseController):
     def setup_pickup_moving_events(self):
         """픽업 장소로 이동중 화면"""
         self.log_info("픽업 이동중 화면 - 외부 시스템 대기")
+        
+        # 로봇 눈 이미지 로드
+        self.load_robot_eyes()
+        
         # 이 화면에서는 사용자 입력 없음, 외부 시스템에서 화면 전환
     
     # 📍 DELI_2: 픽업 도착
     def setup_pickup_arrival_events(self):
         """픽업 장소 도착 화면"""
         self.log_info("픽업 도착 화면 - 터치 대기")
+        
+        # 로봇 눈 이미지 로드
+        self.load_robot_eyes()
         
         # 전체 화면 터치 이벤트 연결
         self.setup_touch_event("fullScreenTouchArea", self.on_pickup_arrival_touch)
@@ -63,8 +72,6 @@ class DeliveryController(BaseController):
         
         # 확인 버튼 이벤트 연결
         self.setup_button_event("confirmButton", self.on_order_confirmed)
-        # 뒤로가기 버튼 이벤트 연결
-        self.setup_button_event("backButton", self.on_back_to_arrival)
     
     def on_order_confirmed(self):
         """확인 버튼 클릭 시"""
@@ -73,17 +80,15 @@ class DeliveryController(BaseController):
         # 픽업 서랍 조작 화면으로 전환
         self.screen_manager.show_screen("PICKUP_DRAWER_CONTROL")
     
-    def on_back_to_arrival(self):
-        """뒤로가기 버튼 클릭 시"""
-        self.log_info("⬅️ 픽업 도착 화면으로 되돌아가기")
-        
-        # 픽업 도착 화면으로 되돌아가기
-        self.screen_manager.show_screen("PICKUP_ARRIVED")
+
     
     # 🔧 DELI_4: 픽업 서랍 조작
     def setup_pickup_drawer_events(self):
         """픽업 서랍 조작 화면"""
         self.log_info("픽업 서랍 조작 화면 준비")
+        
+        # 픽업 이미지 로드
+        self.load_pickup_image()
         
         # [서랍 열기] 버튼
         self.setup_button_event("openDrawerButton", self.on_request_drawer_open)
@@ -97,6 +102,9 @@ class DeliveryController(BaseController):
         # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
         self.publish_event(event_id=104, detail="")
     
+        # 서랍 열기 후 추가 음성 재생
+        self.screen_manager.play_audio_file("audio_2_음식을_넣은_후_문을_닫고_적재_완료_버튼을_클릭하여_주세요.mp3")
+    
     def on_loading_complete(self):
         """[적재 완료] 버튼 클릭 시"""
         self.log_info("📦 [적재 완료] 버튼이 클릭되었습니다")
@@ -108,12 +116,19 @@ class DeliveryController(BaseController):
     def setup_delivery_moving_events(self):
         """배송지로 이동중 화면"""
         self.log_info("배송 이동중 화면 - 외부 시스템 대기")
+        
+        # 로봇 눈 이미지 로드
+        self.load_robot_eyes()
+        
         # 이 화면에서는 사용자 입력 없음, 외부 시스템에서 화면 전환
     
     # 🏠 DELI_6: 배송지 도착
     def setup_delivery_arrival_events(self):
         """배송지 도착 화면"""
         self.log_info("배송지 도착 화면 - 터치 대기")
+        
+        # 로봇 눈 이미지 로드
+        self.load_robot_eyes()
         
         # 전체 화면 터치 이벤트 연결
         self.setup_touch_event("fullScreenTouchArea", self.on_delivery_arrival_touch)
@@ -130,12 +145,13 @@ class DeliveryController(BaseController):
         """배송 서랍 조작 화면"""
         self.log_info("배송 서랍 조작 화면 준비")
         
+        # 수령 이미지 로드
+        self.load_receive_image()
+        
         # 서랍 열기 버튼 이벤트 연결
         self.setup_button_event("openDrawerButton", self.on_delivery_drawer_open)
         # 수령 완료 버튼 이벤트 연결 (초기에는 비활성화 상태)
         self.setup_button_event("pickupCompleteButton", self.on_pickup_complete)
-        # 뒤로가기 버튼 이벤트 연결
-        self.setup_button_event("backButton", self.on_back_to_delivery_arrival)
     
     def on_delivery_drawer_open(self):
         """서랍 열기 버튼 클릭 시"""
@@ -143,13 +159,11 @@ class DeliveryController(BaseController):
         
         # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
         self.publish_event(event_id=104, detail="")
-    
-    def on_back_to_delivery_arrival(self):
-        """뒤로가기 버튼 클릭 시"""
-        self.log_info("⬅️ 배송 도착 화면으로 되돌아가기")
         
-        # 배송 도착 화면으로 되돌아가기
-        self.screen_manager.show_screen("DELIVERY_ARRIVED")
+        # 서랍 열기 후 추가 음성 재생
+        self.screen_manager.play_audio_file("audio_13_음식을_받으신_후_수령_완료_버튼을_눌러주세요_.mp3")
+    
+
     
     def on_pickup_complete(self):
         """[수령 완료] 버튼 클릭 시"""
@@ -229,4 +243,80 @@ class DeliveryController(BaseController):
     def setup_thank_you_events(self):
         """감사 인사 화면"""
         self.log_info("감사 인사 화면 - 외부 복귀 카운트다운 서비스 요청 대기")
-        # 이 화면에서는 사용자 입력 없음, 외부에서 복귀 카운트다운 서비스 요청시 카운트다운 시작 
+        
+        # 로봇 눈 이미지 로드
+        self.load_robot_eyes()
+        
+        # 이 화면에서는 사용자 입력 없음, 외부에서 복귀 카운트다운 서비스 요청시 카운트다운 시작
+    
+    def load_robot_eyes(self):
+        """로봇 눈 이미지 로드"""
+        try:
+            # 이미지 파일 경로 (소스 폴더 기준)
+            image_path = os.path.join(
+                "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets",
+                "rgui_roomie_eyes.png"
+            )
+            
+            # 이미지 라벨 찾기
+            robot_eyes_label = self.find_widget("robotEyes")
+            if robot_eyes_label:
+                # 이미지 로드
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    robot_eyes_label.setPixmap(pixmap)
+                    robot_eyes_label.setScaledContents(True)
+                    self.log_info(f"✅ 로봇 눈 이미지 로드 성공: {image_path}")
+                else:
+                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+            else:
+                self.log_error("❌ robotEyes 라벨을 찾을 수 없음")
+                
+        except Exception as e:
+            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+    
+    def load_pickup_image(self):
+        """픽업 이미지 로드"""
+        try:
+            # 이미지 파일 경로 (절대 경로 사용)
+            image_path = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/test/rgui_pickup.png"
+            
+            # 이미지 라벨 찾기
+            pickup_image_label = self.find_widget("pickupImage")
+            if pickup_image_label:
+                # 이미지 로드
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    pickup_image_label.setPixmap(pixmap)
+                    pickup_image_label.setScaledContents(True)
+                    self.log_info(f"✅ 픽업 이미지 로드 성공: {image_path}")
+                else:
+                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+            else:
+                self.log_error("❌ pickupImage 라벨을 찾을 수 없음")
+                
+        except Exception as e:
+            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+    
+    def load_receive_image(self):
+        """수령 이미지 로드"""
+        try:
+            # 이미지 파일 경로 (절대 경로 사용)
+            image_path = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/test/rgui_receive.png"
+            
+            # 이미지 라벨 찾기
+            receive_image_label = self.find_widget("receiveImage")
+            if receive_image_label:
+                # 이미지 로드
+                pixmap = QPixmap(image_path)
+                if not pixmap.isNull():
+                    receive_image_label.setPixmap(pixmap)
+                    receive_image_label.setScaledContents(True)
+                    self.log_info(f"✅ 수령 이미지 로드 성공: {image_path}")
+                else:
+                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+            else:
+                self.log_error("❌ receiveImage 라벨을 찾을 수 없음")
+                
+        except Exception as e:
+            self.log_error(f"❌ 이미지 로드 중 오류: {e}") 

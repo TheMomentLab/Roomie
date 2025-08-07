@@ -1,72 +1,92 @@
 #!/usr/bin/env python3
 """
-Touch Screen 단독 실행 파일
+Touch Screen UI 확인용 테스트 - 컨트롤러 기능 포함
 """
 
 import sys
 import os
 from PyQt6 import uic
 from PyQt6.QtWidgets import QApplication, QWidget
-from PyQt6.QtCore import QTimer, QPropertyAnimation, QRect, pyqtSignal
-from PyQt6.QtGui import QFont
+from PyQt6.QtGui import QFont, QPixmap
 
-class TouchScreen(QWidget):
-    touch_activated = pyqtSignal()
-    
+# roomie_rgui 패키지 경로 추가
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..', 'roomie_rgui'))
+
+from roomie_rgui.ui_controllers.common_controller import CommonController
+from roomie_rgui.ui_loader import load_ui
+
+class MockNode:
+    """테스트용 Mock Node"""
     def __init__(self):
-        super().__init__()
-        self.load_ui()
-        self.setup_animations()
-        self.connect_signals()
-        
-    def load_ui(self):
-        ui_file = os.path.join(os.path.dirname(__file__), 'touch_screen.ui')
-        try:
-            uic.loadUi(ui_file, self)
-            print(f"✅ UI 파일 로드 성공: {ui_file}")
-        except FileNotFoundError:
-            print(f"❌ UI 파일을 찾을 수 없습니다: {ui_file}")
-            sys.exit(1)
-        except Exception as e:
-            print(f"❌ UI 파일 로드 중 오류: {e}")
-            sys.exit(1)
+        self.logger = MockLogger()
     
-    def setup_animations(self):
-        self.pulse_timer = QTimer()
-        self.pulse_timer.timeout.connect(self.pulse_animation)
-        self.pulse_timer.start(2000)
-        
-    def connect_signals(self):
-        if hasattr(self, 'touchButton'):
-            self.touchButton.clicked.connect(self.on_touch)
-            print("✅ 터치 버튼 시그널 연결됨")
-        self.touch_activated.connect(self.handle_touch_event)
+    def get_logger(self):
+        return self.logger
     
-    def pulse_animation(self):
-        print("🔵 펄스 애니메이션 실행")
+    def publish_event(self, event_id, robot_id, task_id=0, detail=""):
+        print(f"📡 이벤트 발행: ID={event_id}, robot_id={robot_id}, detail='{detail}'")
+
+class MockLogger:
+    """테스트용 Mock Logger"""
+    def info(self, message):
+        print(f"[INFO] {message}")
     
-    def on_touch(self):
-        print("🖱️ 터치 버튼이 클릭되었습니다!")
-        self.touch_activated.emit()
+    def warn(self, message):
+        print(f"[WARN] {message}")
     
-    def handle_touch_event(self):
-        print("✨ 터치 이벤트가 처리되었습니다!")
-        print("💡 다음 화면: 픽업 장소로 이동중")
+    def error(self, message):
+        print(f"[ERROR] {message}")
+
+class MockScreenManager:
+    """테스트용 Mock Screen Manager"""
+    def __init__(self):
+        pass
+    
+    def show_screen(self, screen_name):
+        print(f"📺 화면 전환: {screen_name}")
 
 def main():
     app = QApplication(sys.argv)
     font = QFont("Malgun Gothic", 12)
     app.setFont(font)
     
-    print("🚀 Touch Screen 애플리케이션 시작")
+    print("🚀 Touch Screen UI 확인 테스트")
+    
+    # UI 파일 경로
+    ui_file = os.path.join(
+        os.path.dirname(__file__), 
+        '..', 
+        'common', 
+        'TOUCH_SCREEN.ui'
+    )
     
     try:
-        screen = TouchScreen()
-        screen.show()
-        print("✅ 화면이 표시되었습니다. 터치 버튼을 클릭해보세요!")
+        # UI 파일 로드
+        window = QWidget()
+        load_ui(window, ui_file)
+        print(f"✅ UI 파일 로드 성공: {ui_file}")
+        
+        # Mock 객체들 생성
+        mock_node = MockNode()
+        mock_screen_manager = MockScreenManager()
+        
+        # CommonController 생성 (이미지 로드 기능 포함)
+        controller = CommonController(
+            widget=window,
+            screen_manager=mock_screen_manager,
+            node=mock_node,
+            ui_filename="TOUCH_SCREEN.ui"
+        )
+        
+        # 전체화면으로 표시
+        window.showFullScreen()
+        print("✅ 화면이 전체화면으로 표시되었습니다.")
+        print("💡 ESC 키로 종료할 수 있습니다.")
+        
         sys.exit(app.exec())
+        
     except Exception as e:
-        print(f"❌ 애플리케이션 실행 중 오류: {e}")
+        print(f"❌ 오류: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
