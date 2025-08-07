@@ -132,7 +132,7 @@ export async function renderHistoryDetail(containerId) {
     }
 
     // UI를 업데이트하는 함수
-    function updateUI(p, isCall) {
+      function updateUI(p, isCall) {
         if (!p) return;
 
         const taskTypeNameEl = container.querySelector('#task_type_name');
@@ -143,46 +143,57 @@ export async function renderHistoryDetail(containerId) {
         if (taskTypeNameEl) taskTypeNameEl.textContent = isCall ? "로봇 호출" : p.task_type_name;
         if (locationNameEl) locationNameEl.textContent = `목적지 ${p.request_location || p.location_name}`;
         
-        // 타임라인 데이터 정의
-        const timelineData = isCall ? [
-            { id: 'status_creation', time: p.task_creation_time, text: '호출 접수됨' },
-            { id: 'status_arrival', time: null, text: '로봇 도착' },
-        ] : [
-            { id: 'status_creation', time: p.task_creation_time, text: '주문 접수됨' },
-            { id: 'status_assignment', time: p.robot_assignment_time, text: '로봇 배정됨' },
-            { id: 'status_pickup', time: p.pickup_completion_time, text: '픽업 완료됨' },
-            { id: 'status_arrival', time: p.delivery_arrival_time, text: '배달 완료됨' }
-        ];
-        
-        // 도착 예정 시간 표시
-        const lastCompleted = [...timelineData].reverse().find(s => s.time);
-        if (lastCompleted && lastCompleted.id !== 'status_arrival' && p.estimated_time) {
-            const arrivalTime = new Date(new Date(lastCompleted.time).getTime() + p.estimated_time * 1000);
-            if (estimatedTimeEl) estimatedTimeEl.textContent = `${formatTime(arrivalTime.toISOString())} 도착 예정`;
-        } else {
-            if (estimatedTimeEl) estimatedTimeEl.textContent = '완료';
-        }
+        // ✅ [수정] '호출' 타입과 '주문' 타입을 분기하여 처리합니다.
+        if (isCall) {
+            // --- 호출(Call) 타입 처리 ---
+            // API가 제공하는 예상 시간을 직접 표시합니다.
+            if (estimatedTimeEl) estimatedTimeEl.textContent = `약 ${p.estimated_time}분 후 도착 예정`;
 
-        // 타임라인 HTML 생성
-        if (timelineContainerEl) {
-            timelineContainerEl.innerHTML = ''; // 기존 타임라인 비우기
-            
-            timelineData.forEach(status => {
-                const item = document.createElement('div');
-                item.className = `timeline-item ${!status.time ? 'inactive' : ''}`;
-                
-                // ✅ Bug Fix 2: CSS와 일치하도록 HTML 구조와 클래스 이름 수정
-                item.innerHTML = `
-                    <div class="timeline-point">
-                        <div class="point"></div>
-                        <div class="line"></div>
+            // '호출 접수' 타임라인 아이템을 표시하되, 시간 정보는 API에 없으므로 공백으로 둡니다.
+            if (timelineContainerEl) {
+                timelineContainerEl.innerHTML = `
+                    <div class="timeline-item">
+                        <div class="timeline-point"><div class="point"></div><div class="line"></div></div>
+                        <div class="details"><span class="label">호출 접수됨</span><span class="time"></span></div>
                     </div>
-                    <div class="details">
-                        <span class="label">${status.text}</span>
-                        <span class="time">${formatTime(status.time)}</span>
-                    </div>`;
-                timelineContainerEl.appendChild(item);
-            });
+                    <div class="timeline-item inactive">
+                        <div class="timeline-point"><div class="point"></div><div class="line"></div></div>
+                        <div class="details"><span class="label">로봇 도착</span><span class="time"></span></div>
+                    </div>
+                `;
+            }
+
+        } else {
+            // --- 주문(Order) 타입 처리 (기존 로직 유지) ---
+            const timelineData = [
+                { id: 'status_creation', time: p.task_creation_time, text: '주문 접수됨' },
+                { id: 'status_assignment', time: p.robot_assignment_time, text: '로봇 배정됨' },
+                { id: 'status_pickup', time: p.pickup_completion_time, text: '픽업 완료됨' },
+                { id: 'status_arrival', time: p.delivery_arrival_time, text: '배달 완료됨' }
+            ];
+            
+            const lastCompleted = [...timelineData].reverse().find(s => s.time);
+            if (lastCompleted && lastCompleted.id !== 'status_arrival' && p.estimated_time) {
+                const arrivalTime = new Date(new Date(lastCompleted.time).getTime() + p.estimated_time * 1000);
+                if (estimatedTimeEl) estimatedTimeEl.textContent = `${formatTime(arrivalTime.toISOString())} 도착 예정`;
+            } else {
+                if (estimatedTimeEl) estimatedTimeEl.textContent = '완료';
+            }
+
+            if (timelineContainerEl) {
+                timelineContainerEl.innerHTML = ''; 
+                timelineData.forEach(status => {
+                    const item = document.createElement('div');
+                    item.className = `timeline-item ${!status.time ? 'inactive' : ''}`;
+                    item.innerHTML = `
+                        <div class="timeline-point"><div class="point"></div><div class="line"></div></div>
+                        <div class="details">
+                            <span class="label">${status.text}</span>
+                            <span class="time">${formatTime(status.time)}</span>
+                        </div>`;
+                    timelineContainerEl.appendChild(item);
+                });
+            }
         }
     }
 

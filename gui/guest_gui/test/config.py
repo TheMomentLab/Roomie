@@ -1,7 +1,7 @@
 
 # 서버 및 애플리케이션 기본 설정
 SERVER_HOST = "0.0.0.0"
-SERVER_PORT = 8072
+SERVER_PORT = 8888
 TIMEZONE = "Asia/Seoul"
 
 # --- 메뉴 데이터 ---

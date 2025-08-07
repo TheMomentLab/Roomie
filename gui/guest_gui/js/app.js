@@ -7,21 +7,21 @@ import { initWebSocket } from "./common.js";
 
 // --- 전역 설정 ---
 function getConfigFromRoomParam() {
-  const roomParam = new URLSearchParams(window.location.search).get("room") || "ROOM_101";
+  const roomParam = new URLSearchParams(window.location.search).get("room") || "ROOM_102";
   const configMap = {
     ROOM_201: { ROOM_ID: "ROOM_201", ENABLED_FEATURES: { food: true, supply: true, robot: true, history: true } },
-    ROOM_101: { ROOM_ID: "ROOM_101", ENABLED_FEATURES: { food: true, supply: false, robot: true, history: true } },
-    ROOM_102: { ROOM_ID: "ROOM_102", ENABLED_FEATURES: { food: true, supply: false, robot: true, history: true } },
+    ROOM_101: { ROOM_ID: "ROOM_101", ENABLED_FEATURES: { food: true, supply: true, robot: true, history: true } },
+    ROOM_102: { ROOM_ID: "ROOM_102", ENABLED_FEATURES: { food: true, supply: true, robot: true, history: true } },
     LOB_CALL: { ROOM_ID: "LOB_CALL", ENABLED_FEATURES: { food: false, supply: false, robot: true, history: true } },
-    RES_CALL: { ROOM_ID: "RES_CALL", ENABLED_FEATURES: { food: true, supply: false, robot: true, history: false } }
+    RES_CALL: { ROOM_ID: "RES_CALL", ENABLED_FEATURES: { food: false, supply: false, robot: true, history: true } }
   };
-  return configMap[roomParam] || configMap["ROOM_101"];
+  return configMap[roomParam] || configMap["ROOM_102"];
 }
 
 
 // index.html폴더에서 실행
 // python3 -m http.server 8000        
-
+//http://127.0.0.1:8000/
 // 자기 ip로 수정
 // http://192.168.0.8:8000/?room=ROOM_102 
 const CONFIG = getConfigFromRoomParam();
@@ -29,7 +29,8 @@ const ROOM_ID = CONFIG.ROOM_ID;
 const ENABLED_FEATURES = CONFIG.ENABLED_FEATURES;
 window.ROOM_ID = ROOM_ID;
 const IS_DEV = true;
-const BASE_URL = IS_DEV ? "http://0.0.0.0:8072" : "https://roomie.com";
+const BASE_URL = IS_DEV ? "http://127.0.0.1:8888" : "https://roomie.com";
+//const BASE_URL = IS_DEV ? "http://0.0.0.0:8888" : "https://roomie.com";
 window.API_URL = `${BASE_URL}/api/gui`;
 window.WS_URL = `${BASE_URL.replace("http", "ws")}/ws/guest/${ROOM_ID}`;
 
@@ -106,18 +107,18 @@ function renderPageTemplate(route) {
         container.className = 'main-content main-content-home';
         if(mainHeader) mainHeader.style.display = 'block';
 
+        // ✅ [수정] ENABLED_FEATURES 설정에 따라 버튼을 조건부로 렌더링합니다.
         template = `
             <h1>ROOMIE</h1>
             <p class="subtitle">호텔 안내 & 주문 배송 서비스</p>
             <p class="welcome-message">ROOMIE에 오신 걸 환영합니다.</p>
             <div class="button-grid">
-                <button id="btn-call-robot" class="grid-button">로봇호출</button>
-                <button id="btn-order-history" class="grid-button">요청조회</button>
-                <button id="btn-order-food" class="grid-button">음식주문</button>
-                <button id="btn-order-supply" class="grid-button">비품주문</button>
+                ${ENABLED_FEATURES.robot ? `<button id="btn-call-robot" class="grid-button">로봇호출</button>` : ''}
+                ${ENABLED_FEATURES.history ? `<button id="btn-order-history" class="grid-button">요청조회</button>` : ''}
+                ${ENABLED_FEATURES.food ? `<button id="btn-order-food" class="grid-button">음식주문</button>` : ''}
+                ${ENABLED_FEATURES.supply ? `<button id="btn-order-supply" class="grid-button">비품주문</button>` : ''}
             </div>
         `;
-
     } else {
         // --- 흰색 박스가 있는 서브 페이지 템플릿 ---
         container.className = 'main-content main-content-sub';
@@ -143,14 +144,19 @@ function renderPageTemplate(route) {
                 `;
                 break;
 
-            case "robot-accepted":
+            case "robot-accepted": { // ⬅️ 여는 중괄호 추가
                 const taskName = params.get('task');
                 const waitTime = params.get('wait');
+
+                const historyDetailButton = (taskName)
+                    ? `<button class="header-btn btn-header-action" onclick="location.hash = 'history-detail&task=${taskName}&type=로봇호출'">주문 내역</button>`
+                    : placeholder;
+
                 pageContent = `
                     <div class="box-header">
                         ${placeholder}
                         <h2 class="page-title"></h2>
-                        <button class="header-btn btn-header-action" onclick="location.hash='history'">주문 내역</button>
+                        ${historyDetailButton}
                     </div>
                     <div class="status-section vertical-center">
                         <h1 class="status-text" style="font-size: 28px; font-weight: 600;">호출 요청이<br>접수되었습니다.</h1>
@@ -160,14 +166,13 @@ function renderPageTemplate(route) {
                     <button class="btn-bottom-close" onclick="location.hash='/'">닫기</button>
                 `;
                 break;
+            } // ⬅️ 닫는 중괄호 추가
             
-            case "order-success":
+            case "order-success": { // ⬅️ 여는 중괄호 추가
                 const orderTaskName = params.get('task');
                 const taskType = params.get('type'); 
+                
                 const historyDetailButton = (orderTaskName && taskType)
-                    // =================================================================
-                    // ✅ 2. 주문 내역 버튼에 새 클래스 적용
-                    // =================================================================
                     ? `<button class="header-btn btn-header-action" onclick="location.hash = 'history-detail&task=${orderTaskName}&type=${taskType}'">주문 내역</button>`
                     : placeholder;
                 
@@ -186,6 +191,7 @@ function renderPageTemplate(route) {
                     <button class="btn-bottom-close" onclick="location.hash='/'">닫기</button>
                 `;
                 break;
+            } // ⬅️ 닫는 중괄호 추가
 
             case "menu":
                 pageContent = `
