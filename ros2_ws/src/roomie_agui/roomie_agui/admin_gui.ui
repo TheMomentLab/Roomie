@@ -88,13 +88,13 @@
        </property>
       </widget>
      </widget>
-     <widget class="QGraphicsView" name="map">
+     <widget class="MapView" name="dashboard_map">
       <property name="geometry">
        <rect>
         <x>40</x>
-        <y>283</y>
+        <y>350</y>
         <width>611</width>
-        <height>351</height>
+        <height>241</height>
        </rect>
       </property>
      </widget>
@@ -245,15 +245,44 @@
      <widget class="QLabel" name="label_robotlocation">
       <property name="geometry">
        <rect>
-        <x>38</x>
-        <y>260</y>
+        <x>40</x>
+        <y>280</y>
         <width>291</width>
         <height>21</height>
        </rect>
       </property>
       <property name="text">
-       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;로봇 현재 위치&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:704;&quot;&gt;Hotel - 2D Map&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
       </property>
+     </widget>
+     <widget class="QWidget" name="horizontalLayoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>40</x>
+        <y>310</y>
+        <width>184</width>
+        <height>33</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <property name="spacing">
+        <number>0</number>
+       </property>
+       <item>
+        <widget class="QPushButton" name="btn_floor1">
+         <property name="text">
+          <string>1층</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QPushButton" name="btn_floor2">
+         <property name="text">
+          <string>2층</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </widget>
     </widget>
     <widget class="QWidget" name="page_rm">
@@ -815,6 +844,13 @@
    </widget>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>MapView</class>
+   <extends>QGraphicsView</extends>
+   <header>roomie_agui</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections/>
 </ui>

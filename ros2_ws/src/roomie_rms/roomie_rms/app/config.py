@@ -38,6 +38,7 @@ class ROSInterfaces:
     # Services
     GET_LOCATIONS_SERVICE = "/roomie/command/get_locations"
     CREATE_TASK_SERVICE = "/roomie/command/create_task"
+    LOCATION_SERVICE = "/roomie/command/location"
     # Actions
     PERFORM_TASK_ACTION = "/roomie/action/perform_task"
     PERFORM_RETURN_ACTION = "/roomie/action/perform_return"
@@ -170,12 +171,12 @@ class Settings(BaseSettings):
     PROJECT_ROOT: Path = Path(__file__).resolve().parent.parent
 
     # DB 경로 설정
-    DB_SCHEMA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_tables.sql"
-    DB_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_data.sql"
-    DB_DUMMY_DATA_PATH: Path = PROJECT_ROOT / "resources/sql/roomie_db_dummy.sql"
+    DB_SCHEMA_PATH: Path = PROJECT_ROOT / "assets/sql/roomie_db_tables.sql"
+    DB_DATA_PATH: Path = PROJECT_ROOT / "assets/sql/roomie_db_data.sql"
+    DB_DUMMY_DATA_PATH: Path = PROJECT_ROOT / "assets/sql/roomie_db_dummy.sql"
 
     # 정적 파일 경로
-    STATIC_DIR: Path = PROJECT_ROOT / "resources"
+    STATIC_DIR: Path = PROJECT_ROOT / "assets"
     
     # 클래스로 분리된 설정들을 포함
     api: ApiEndpoints = ApiEndpoints()

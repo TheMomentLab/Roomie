@@ -13,9 +13,10 @@ setup(
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
         ('share/' + package_name + '/scripts', glob('scripts/*')),
+        (os.path.join('share', package_name, 'launch'), glob(os.path.join('launch', '*launch.[pxy][yma]*'))),
     ],
     install_requires=['setuptools'],
-    zip_safe=True,
+    zip_safe=False,
     maintainer='Roomie Team',
     maintainer_email='admin@roomie.com',
     description='Robot Controller for Roomie service robot system',
@@ -23,8 +24,7 @@ setup(
     entry_points={
         'console_scripts': [
             'rc_node = roomie_rc.rc_node:main',
-            'test_gui_node = roomie_rc.test_gui_node:main',
-            'test_ioc_node = roomie_rc.test_ioc_node:main',
+            'rc_node_v2 = roomie_rc.rc_node_v2:main',
         ],
     },
 )

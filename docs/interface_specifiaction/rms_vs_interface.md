@@ -187,41 +187,7 @@ int32 location_id
 
 ## 2. Topic Interfaces
 
-### 2.1 추적 이벤트
-- **From**: VS → RC
-- **Protocol**: ROS2 Topic
-- **Topic**: `/vs/tracking_event`
-
-```msg
-# TrackingEvent.msg
-int32 robot_id
-int32 tracking_event_id
-int32 task_id
-builtin_interfaces/Time timestamp
-```
-
-**tracking_event_id 값:**
-- `0`: slow_down
-- `1`: maintain
-- `2`: lost
-- `3`: resume
-
----
-
-### 2.2 추적 대상 등록됨
-- **From**: VS → RC
-- **Protocol**: ROS2 Topic
-- **Topic**: `/vs/registered`
-
-```msg
-# Registered.msg
-int32 robot_id
-builtin_interfaces/Time timestamp
-```
-
----
-
-### 2.3 장애물 감지 결과
+### 2.1 장애물 감지 결과
 - **From**: VS → RC
 - **Protocol**: ROS2 Topic
 - **Topic**: `/vs/obstacle`
@@ -272,8 +238,6 @@ Vision Service는 3개의 카메라를 사용합니다:
 
 - **ArUco 마커 감지**: 모드 5에서만 활성화
 - **YOLO 객체 감지**: 모드 3, 4, 5에서만 활성화
-- **추적 이벤트 발행**: 모드 2에서만 가능
-- **등록 이벤트 발행**: 모드 1에서만 가능
 
 ---
 
@@ -289,6 +253,7 @@ Vision Service는 3개의 카메라를 사용합니다:
   - `sensor/ButtonStatus.srv`
 - **Messages**: `roomie_msgs/msg/`
   - `robot_status/Obstacle.msg`
+  - `robot_status/GlassDoorStatus.msg`
 - **Actions**: `roomie_msgs/action/`
  
 

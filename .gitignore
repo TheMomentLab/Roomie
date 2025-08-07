@@ -240,3 +240,5 @@ build/
 # Temporary files
 *.tmp
 *.temp
+ros2_ws/log/latest_build
+ros2_ws/log/latest_build

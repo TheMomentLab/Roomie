@@ -7,10 +7,9 @@ from app.config import settings
 from app.services import db_manager
 
 from roomie_msgs.msg import (
-    RobotState, TaskState, Arrival, BatteryStatus, RoomiePose, 
-    PickupCompleted, DeliveryCompleted
+    RobotState, BatteryStatus, RoomiePose
 )
-from roomie_msgs.srv import GetLocations, CreateTask
+from roomie_msgs.srv import GetLocations
 from roomie_msgs.action import PerformTask, PerformReturn
 
 logger = get_logger(__name__)
@@ -26,11 +25,11 @@ class RmsBaseNode(Node):
         websocket_manager: WebSocket 연결 관리 매니저
         task_state_pub: 작업 상태 퍼블리셔
         robot_state_sub: 로봇 상태 서브스크라이버
-        arrival_sub: 도착 이벤트 서브스크라이버
         battery_status_sub: 배터리 상태 서브스크라이버
         roomie_pose_sub: 로봇 위치 서브스크라이버
-        pickup_completed_sub: 픽업 완료 서브스크라이버
-        delivery_completed_sub: 배송 완료 서브스크라이버
+        # arrival_sub: 도착 이벤트 서브스크라이버 (주석처리됨)
+        # pickup_completed_sub: 픽업 완료 서브스크라이버 (주석처리됨)
+        # delivery_completed_sub: 배송 완료 서브스크라이버 (주석처리됨)
         get_locations_service: 위치 조회 서비스 서버
         create_task_service: 작업 생성 서비스 서버
         perform_task_client: 작업 수행 액션 클라이언트
@@ -75,17 +74,17 @@ class RmsBaseNode(Node):
         """
         
         # --- Publishers (RMS -> RC) ---
-        self.task_state_pub = self.create_publisher(TaskState, settings.ros.TASK_STATE_TOPIC, 10)
+        # self.task_state_pub = self.create_publisher(TaskState, settings.ros.TASK_STATE_TOPIC, 10)
 
         # --- Subscribers (RC -> RMS) ---
         # 실제 콜백 함수는 TopicHandler에서 구현됩니다.
         self.create_subscription(RobotState, settings.ros.ROBOT_STATE_TOPIC, self.robot_state_callback, 10)
-        self.create_subscription(TaskState, settings.ros.TASK_STATE_TOPIC, self.task_state_callback, 10)
-        self.create_subscription(Arrival, settings.ros.ARRIVAL_TOPIC, self.arrival_callback, 10)
+        # self.create_subscription(TaskState, settings.ros.TASK_STATE_TOPIC, self.task_state_callback, 10)
+        # self.create_subscription(Arrival, settings.ros.ARRIVAL_TOPIC, self.arrival_callback, 10)  # 활성화됨
         self.create_subscription(BatteryStatus, settings.ros.BATTERY_STATUS_TOPIC, self.battery_status_callback, 10)
         self.create_subscription(RoomiePose, settings.ros.ROOMIE_POSE_TOPIC, self.roomie_pose_callback, 10)
-        self.create_subscription(PickupCompleted, settings.ros.PICKUP_COMPLETED_TOPIC, self.pickup_completed_callback, 10)
-        self.create_subscription(DeliveryCompleted, settings.ros.DELIVERY_COMPLETED_TOPIC, self.delivery_completed_callback, 10)
+        # self.create_subscription(PickupCompleted, settings.ros.PICKUP_COMPLETED_TOPIC, self.pickup_completed_callback, 10)  # 주석처리됨
+        # self.create_subscription(DeliveryCompleted, settings.ros.DELIVERY_COMPLETED_TOPIC, self.delivery_completed_callback, 10)  # 주석처리됨
         
         # --- Service Servers ---
         # 실제 콜백 함수는 ServiceHandler에서 구현됩니다.
@@ -96,7 +95,7 @@ class RmsBaseNode(Node):
         )
 
         # --- Service Clients ---
-        self.create_task_cli = self.create_client(CreateTask, settings.ros.CREATE_TASK_SERVICE)
+        # self.create_task_cli = self.create_client(CreateTask, settings.ros.CREATE_TASK_SERVICE)
 
         # --- Action Clients ---
         self._perform_task_ac = ActionClient(self, PerformTask, settings.ros.PERFORM_TASK_ACTION)
@@ -113,20 +112,20 @@ class RmsBaseNode(Node):
     def task_state_callback(self, msg):
         raise NotImplementedError("task_state_callback must be implemented in a handler class")
     
-    def arrival_callback(self, msg):
-        raise NotImplementedError("arrival_callback must be implemented in a handler class")
-
     def battery_status_callback(self, msg):
         raise NotImplementedError("battery_status_callback must be implemented in a handler class")
 
     def roomie_pose_callback(self, msg):
         raise NotImplementedError("roomie_pose_callback must be implemented in a handler class")
 
-    def pickup_completed_callback(self, msg):
-        raise NotImplementedError("pickup_completed_callback must be implemented in a handler class")
+    def arrival_callback(self, msg):  # 활성화됨
+        raise NotImplementedError("arrival_callback must be implemented in a handler class")
 
-    def delivery_completed_callback(self, msg):
-        raise NotImplementedError("delivery_completed_callback must be implemented in a handler class")
+    # def pickup_completed_callback(self, msg):  # 주석처리됨
+    #     raise NotImplementedError("pickup_completed_callback must be implemented in a handler class")
+
+    # def delivery_completed_callback(self, msg):  # 주석처리됨
+    #     raise NotImplementedError("delivery_completed_callback must be implemented in a handler class")
         
     def get_locations_callback(self, request, response):
         raise NotImplementedError("get_locations_callback must be implemented in a handler class") 

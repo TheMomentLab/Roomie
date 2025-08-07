@@ -27,11 +27,6 @@ body {
     background-color: #333; /* 이미지 로딩 전 배경 */
 }
 
-/* ==============================================
-  2. 전역 레이아웃 및 컴포넌트 (Global Layouts & Components)
-==============================================
-*/
-
 #app-container {
     width: 100%;
     height: 100vh;
@@ -42,19 +37,18 @@ body {
 
 .app-layout {
     width: 100%;
-    max-width: 486px;
+    /* max-width: 486px; <-- 너비 고정의 원인이었던 이 줄을 삭제 또는 주석 처리합니다. */
     height: 100%;
-    max-height: 801px;
+    max-height: 100vh;
     display: flex;
     flex-direction: column;
     color: var(--light-text-color);
     background-size: cover;
     background-position: center;
-    /* [수정] 모든 뷰의 배경 이미지 통일 및 가독성을 위한 오버레이 추가 */
     background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png');
     padding: 30px;
-    position: relative;
-    overflow: hidden;
+    position: relative;   
+    overflow-y: auto;
 }
 
 /* [추가] 모든 뒤로가기 버튼 스타일 통합 */
@@ -83,6 +77,10 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: rgba(0, 0, 0, 0.7);
+    padding: 12px 20px;
+    color: white;
+    font-size: 16px;
 }
 .global-toast.hidden {
     display: none; 
@@ -95,10 +93,20 @@ body {
 */
 
 /* --- 뷰: 메인 홈 (view-home) --- */
-.view-home {
-    justify-content: space-between;
-    text-align: center;
+/* header와 main-content가 너비를 100% 사용하도록 명시적 규칙 추가 */
+.app-layout .header,
+.app-layout .main-content {
+    width: 100%;
 }
+
+.app-layout .main-content {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
 .view-home .header {
     width: 100%; text-align: right; font-size: 28px; font-weight: 700;
 }
@@ -192,7 +200,7 @@ body {
 
 /* --- 뷰: 주문/호출 성공 (view-order-success, view-robot-success) --- */
 .view-order-success .order-history-button, .view-robot-success .order-history-button {
-    position: absolute; top: 25px; right: 25px; background-color: var(--primary-text-color);
+    position: relative; top: 25px; right: 25px; background-color: var(--primary-text-color);
     color: var(--light-text-color); border-radius: 7px; padding: 12px 20px;
 }
 .view-order-success .status-section, .view-robot-success .status-section {
@@ -226,4 +234,89 @@ body {
 }
 .view-history-detail .timeline-item:last-child .line {
     background-color: transparent;
+}
+/* --- 뷰: 로봇 호출 중 (view-call-robot) --- */
+.view-call-robot .loading-message {
+  margin-top: 100px;
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--light-text-color);
+  text-align: center;
+  white-space: pre-line;
+}
+
+/* --- 뷰: 호출 완료 대기 상태 (view-call-ready) --- */
+.view-call-ready .status-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  margin-top: 80px;
+}
+
+.view-call-ready .timeline {
+  margin-top: 30px;
+  width: 100%;
+  padding-left: 30px;
+  border-left: 3px solid var(--accent-color);
+}
+.view-call-ready .timeline-step {
+  position: relative;
+  margin-bottom: 24px;
+  font-size: 18px;
+}
+.view-call-ready .timeline-step::before {
+  content: '';
+  position: absolute;
+  left: -11px;
+  top: 3px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--accent-color);
+  border-radius: 50%;
+}
+.view-call-ready .timeline-step.inactive::before {
+  background-color: var(--border-color);
+}
+
+/* --- 뷰: 요청 이력 목록 (view-task-list) --- */
+.view-task-list {
+  padding: 20px;
+}
+.view-task-list .task-card {
+  background-color: white;
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.view-task-list .task-title {
+  font-size: 20px;
+  font-weight: 600;
+}
+.view-task-list .task-time {
+  font-size: 14px;
+  color: #888;
+}
+
+/* --- 뷰: 요청 이력 상세 (get_call_history_page) 보완 --- */
+.view-history-detail .history-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 20px;
+  
+}
+.view-history-detail .close-button {
+  margin-top: 30px;
+  background-color: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  cursor: pointer;
 }

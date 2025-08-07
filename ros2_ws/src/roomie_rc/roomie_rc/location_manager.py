@@ -1,151 +1,94 @@
 #!/usr/bin/env python3
 
-"""
-위치 관리 모듈
-현재는 하드코딩된 데이터, 나중에 RMS 서버에서 받아올 예정
-"""
+from enum import IntEnum
+from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion
+import tf_transformations
+
+class LocationID(IntEnum):
+    """위치 ID 정의"""
+    # 대기/호출 위치
+    LOB_WAITING = 0  # 로비 대기
+    LOB_CALL = 1    # 로비 호출
+    
+    # 픽업 위치
+    RES_PICKUP = 2  # 레스토랑 픽업
+    RES_CALL = 3    # 레스토랑 호출
+    SUP_PICKUP = 4  # 편의점 픽업
+    
+    # 엘리베이터
+    ELE_1 = 5  # 1층 엘리베이터
+    ELE_2 = 6  # 2층 엘리베이터
+    
+    # 객실
+    ROOM_101 = 101
+    ROOM_102 = 102
+    ROOM_201 = 201
+    ROOM_202 = 202
+
+
+# 위치 데이터베이스 (테스트용)
+# LOCATIONS = {
+#     LocationID.LOB_WAITING: {"x": 0.0, "y": 0.5, "floor": 0},
+#     LocationID.LOB_CALL: {"x": 0.0, "y": 1.5, "floor": 0},
+#     LocationID.RES_PICKUP: {"x": -0.3, "y": 1.5, "floor": 0},
+#     LocationID.RES_CALL: {"x": -0.3, "y": 3.5, "floor": 0},
+#     LocationID.SUP_PICKUP: {"x": 0.0, "y": 2.0, "floor": 0},
+#     LocationID.ELE_1: {"x": 2.0, "y": 2.5, "floor": 0},
+#     LocationID.ELE_2: {"x": 2.0, "y": 2.5, "floor": 1},
+#     LocationID.ROOM_101: {"x": 1.0, "y": 0.0, "floor": 0},
+#     LocationID.ROOM_102: {"x": 1.5, "y": 0.0, "floor": 0},
+#     LocationID.ROOM_201: {"x": 2.5, "y": 0.5, "floor": 1},
+#     LocationID.ROOM_202: {"x": 2.5, "y": 1.5, "floor": 1},
+# }
+
+# 위치 데이터베이스
+LOCATIONS = {
+    LocationID.LOB_WAITING: {"x": 0.0, "y": 0.5, "floor": 0},
+    LocationID.LOB_CALL: {"x": 0.0, "y": 1.5, "floor": 0},
+    LocationID.RES_PICKUP: {"x": -5.4, "y": 5.9, "floor": 0},
+    LocationID.RES_CALL: {"x": -0.3, "y": 3.5, "floor": 0},
+    LocationID.SUP_PICKUP: {"x": 0.0, "y": 2.0, "floor": 0},
+    LocationID.ELE_1: {"x": 9.25, "y": 1.7, "floor": 0},
+    LocationID.ELE_2: {"x": 9.25, "y": 1.7, "floor": 1},
+    LocationID.ROOM_101: {"x": 5.9, "y": 3.4, "floor": 0},
+    LocationID.ROOM_102: {"x": 7.3, "y": 3.4, "floor": 0},
+    LocationID.ROOM_201: {"x": 5.9, "y": 3.4, "floor": 1},
+    LocationID.ROOM_202: {"x": 7.3, "y": 3.4, "floor": 1},
+}
+
 
 class LocationManager:
-    """
-    위치 정보를 관리하는 클래스
-    """
+    """위치 정보 관리"""
     
-    def __init__(self):
-        # 하드코딩된 위치 데이터베이스
-        self.location_database = {
-            0: {
-                "name": "LOB_WAITING",
-                "x": -0.2,
-                "y": 0.5,
-                "floor_id": 0  # 1층
-            },
-            2: {
-                "name": "RES_PICKUP", 
-                "x": -0.3,
-                "y": 2.5,
-                "floor_id": 0  # 1층
-            },
-            4: {
-                "name": "SUP_PICKUP",
-                "x": -0.3, 
-                "y": 4.5,
-                "floor_id": 0  # 1층
-            },
-            5: {
-                "name": "ELE_1",
-                "x": 9.25,
-                "y": 1.7,
-                "floor_id": 0  # 1층 (엘리베이터)
-            },
-            101: {
-                "name": "ROOM_101",
-                "x": 5.3,
-                "y": 3.5,
-                "floor_id": 0  # 1층
-            },
-            102: {
-                "name": "ROOM_102", 
-                "x": 7.4,
-                "y": 3.5,
-                "floor_id": 0  # 1층
-            }
-            # TODO: 나중에 더 많은 위치 추가 (201, 202 등)
-        }
-    
-    def get_location_info(self, location_id):
-        """
-        location_id로 위치 정보 조회
-        
-        Args:
-            location_id (int): 위치 ID
+    def get_pose(self, location_id: int, yaw: float = 0.0) -> PoseStamped:
+        """위치 ID에 해당하는 PoseStamped 메시지 반환"""
+        if location_id not in LOCATIONS:
+            return None
             
-        Returns:
-            dict: 위치 정보 (name, x, y, floor_id) 또는 None
-        """
-        return self.location_database.get(location_id)
-    
-    def get_coordinates(self, location_id):
-        """
-        location_id로 좌표 조회
+        loc = LOCATIONS[location_id]
         
-        Args:
-            location_id (int): 위치 ID
-            
-        Returns:
-            tuple: (x, y, floor_id) 또는 None
-        """
-        location = self.get_location_info(location_id)
-        if location:
-            return (location["x"], location["y"], location["floor_id"])
-        return None
-    
-    def get_floor_id(self, location_id):
-        """
-        location_id로 층 정보 조회
+        # PoseStamped 메시지 생성
+        pose_stamped = PoseStamped()
+        pose_stamped.header.frame_id = "map"
         
-        Args:
-            location_id (int): 위치 ID
-            
-        Returns:
-            int: floor_id 또는 None
-        """
-        location = self.get_location_info(location_id)
-        return location["floor_id"] if location else None
-    
-    def need_elevator(self, current_floor_id, target_location_id):
-        """
-        엘리베이터가 필요한지 확인
+        # 위치 설정
+        pose_stamped.pose.position = Point(x=loc["x"], y=loc["y"], z=0.0)
         
-        Args:
-            current_floor_id (int): 현재 층
-            target_location_id (int): 목적지 위치 ID
-            
-        Returns:
-            bool: 엘리베이터 필요 여부
-        """
-        target_floor = self.get_floor_id(target_location_id)
+        # 방향 설정 (yaw 값 사용)
+        q = tf_transformations.quaternion_from_euler(0, 0, yaw)
+        pose_stamped.pose.orientation = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+        
+        return pose_stamped
+    
+    def get_floor(self, location_id: int) -> int:
+        """위치 ID에 해당하는 층 반환"""
+        if location_id not in LOCATIONS:
+            return None
+        return LOCATIONS[location_id]["floor"]
+    
+    def need_elevator(self, current_floor: int, target_id: int) -> bool:
+        """엘리베이터 필요 여부 확인"""
+        target_floor = self.get_floor(target_id)
         if target_floor is None:
             return False
-        return current_floor_id != target_floor
-    
-    def plan_route(self, current_floor_id, target_location_id):
-        """
-        경로 계획
-        
-        Args:
-            current_floor_id (int): 현재 층
-            target_location_id (int): 목적지 위치 ID
-            
-        Returns:
-            list: 경유지 포함한 경로 [location_id, ...]
-        """
-        if self.need_elevator(current_floor_id, target_location_id):
-            # 층이 다르면 엘리베이터 경유
-            return [5, target_location_id]  # ELE_1 → 목적지
-        else:
-            # 같은 층이면 직접 이동
-            return [target_location_id]
-    
-    def get_all_locations(self):
-        """
-        모든 위치 정보 반환 (디버깅용)
-        
-        Returns:
-            dict: 전체 위치 데이터베이스
-        """
-        return self.location_database
-    
-    def load_from_server(self, robot_id):
-        """
-        나중에 RMS 서버에서 위치 데이터 로드
-        TODO: /roomie/command/get_locations 서비스 호출
-        
-        Args:
-            robot_id (int): 로봇 ID
-            
-        Returns:
-            bool: 로드 성공 여부
-        """
-        # TODO: 서버에서 데이터 받아오기 구현
-        print(f"TODO: 서버에서 위치 데이터 로드 (robot_id: {robot_id})")
-        return True 
+        return current_floor != target_floor

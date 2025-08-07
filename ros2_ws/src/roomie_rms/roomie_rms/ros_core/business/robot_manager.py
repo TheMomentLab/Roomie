@@ -14,8 +14,8 @@ class RobotManager:
     def get_available_robot(self):
         """사용 가능한 로봇을 찾아 반환합니다."""
         # TODO: 실제 로봇 선택 로직 구현
-        # 현재는 항상 1번 로봇을 반환하도록 시뮬레이션
-        return 1
+        # 현재는 robot_id=0을 반환하도록 설정
+        return 0
 
     @handle_database_errors
     def add_robot_log(self, cursor, robot_id: int, status_id: int, task_id: int = None, battery_level: int = None, is_charging: bool = None, floor_id: int = None, error_id: int = None):
@@ -24,7 +24,7 @@ class RobotManager:
         """
         query = """
             INSERT INTO robot_log 
-            (robot_id, robot_status_id, task_id, battery_level, is_charging, floor_id, error_id, last_updated_time)
+            (robot_id, robot_status_id, task_id, battery_level, is_charging, floor_id, error_id, record_time)
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """
         current_time = datetime.now()

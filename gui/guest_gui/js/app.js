@@ -57,6 +57,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
 window.addEventListener("hashchange", handleRouting);
 
+const routes = {
+  "/": () => renderHomeView(),
+  "/food": () => renderFoodMenuView(),
+  "/supply": () => renderSupplyMenuView(),
+  "/call_waiting": () => renderRobotWaitingView(),
+  "/call_ready": () => renderCallReadyView(),
+  "/task_list": () => renderTaskListView(),
+  "/history_detail": () => renderHistoryDetailView(),
+};
+
+
 // 초기 페이지 설정
 function initPage() {
   const roomNameEl = document.getElementById("room-name");
@@ -89,6 +100,10 @@ function bindEvents() {
 
 function handleRouting() {
   const hash = location.hash.replace("#", "").split("&")[0];
+  
+  if (!hash) {
+    return;
+  }
 
   // 1. main-content를 비우고 새로운 템플릿을 렌더링합니다.
   renderPageTemplate(hash); 
@@ -115,6 +130,9 @@ function handleRouting() {
       break;
     case "history-detail":
       history.renderHistoryDetail("history-detail-container"); // 요청 이력 상세 로드
+      break;
+    case "call-robot":
+      robot.renderRobotCalling(); // 로봇 호출 중 뷰
       break;
     default:
       // 해시가 없거나 일치하는 것이 없으면 메인 화면으로 돌아갑니다.

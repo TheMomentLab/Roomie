@@ -46,7 +46,7 @@ URDF_FILE = os.path.join(get_package_share_directory('roomie_ac'), 'urdf', 'room
 CAMERA_PARAMS_FILE = os.path.join(DATA_DIR, 'camera_params.npz')  
 HAND_EYE_MATRIX_FILE = os.path.join(DATA_DIR, 'hand_eye_matrix.npy')
 # 시리얼 통신 설정
-SERIAL_PORT = "/dev/ttyUSB2"
+SERIAL_PORT = "/dev/ttyUSB1"
 SERIAL_BAUD_RATE = 115200
 SERIAL_TIMEOUT = 5.0 # 시리얼 연결 및 응답 대기 타임아웃
 
@@ -60,7 +60,7 @@ JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱�
 # IK (Inverse Kinematics) 설정
 ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
 IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
-IK_TOLERANCE_M = 2e-3 # IK 오차 허용 범위 (m)
+IK_TOLERANCE_M = 1e-2 # IK 오차 허용 범위 (m)
 
 # 워크스페이스 (작업 공간) 설정
 WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
@@ -74,7 +74,7 @@ COMEBACK_DELAY_SEC = 20.0 # 홈 포지션으로 복귀 대기 시간 (초)
 # 제어 전략 설정
 # ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
 # ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
-CONTROL_STRATEGY = ControlMode.PBVS
+CONTROL_STRATEGY = ControlMode.MODEL_ONLY
 
 # 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
 POSE_ANGLES_DEG = {
@@ -98,7 +98,7 @@ MAX_CLICK_ATTEMPTS = 3
 
 
 # --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 8  # 사용자의 카메라 장치 번호
+CAMERA_DEVICE_ID = 7  # 사용자의 카메라 장치 번호
 YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 
 
@@ -141,8 +141,8 @@ PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_STANDBY_DISTANCE_M = 0.09 # 버튼으로부터 5cm 대기 거리
-PRESS_FORWARD_DISTANCE_M = 0.09 # 3cm 누르기 거리
+SERVOING_STANDBY_DISTANCE_M = 0.07 # 버튼으로부터 5cm 대기 거리
+PRESS_FORWARD_DISTANCE_M = 0.07 # 3cm 누르기 거리
 SERVOING_MAX_MOVE_M = 0.014# 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
 
 # 서보잉 시 한 스텝에 이동할 거리의 비율 (0.0 ~ 1.0)
