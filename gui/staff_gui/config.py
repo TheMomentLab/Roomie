@@ -1,11 +1,11 @@
 # RMS 서버 설정
-RMS_HOST = "192.168.0.47"
-RMS_PORT = 8000
+RMS_HOST = "0.0.0.0"
+RMS_PORT = 8888
 RMS_WS_URL = f"ws://{RMS_HOST}:{RMS_PORT}/api/gui/ws/staff/staff_01"
 RMS_HTTP_URL = f"http://{RMS_HOST}:{RMS_PORT}/api/gui"
 
 # # config.py
-# RMS_HOST = "localhost"
+RMS_HOST = "localhost"
 # RMS_PORT = 8000
 # RMS_WS_URL = f"ws://{RMS_HOST}:{RMS_PORT}/ws"
 # RMS_HTTP_URL = f"http://{RMS_HOST}:{RMS_PORT}"
