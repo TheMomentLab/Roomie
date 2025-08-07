@@ -62,14 +62,14 @@
          <property name="font">
           <font>
            <family>Noto Sans KR</family>
-           <pointsize>-1</pointsize>
+           <pointsize>10</pointsize>
            <weight>75</weight>
            <bold>true</bold>
           </font>
          </property>
          <property name="styleSheet">
           <string notr="true">color: white;
-font-size: 50px;</string>
+font-size: 40px;</string>
          </property>
          <property name="text">
           <string>ROOMIE</string>
@@ -94,7 +94,7 @@ font-size: 50px;</string>
          <property name="font">
           <font>
            <family>Noto Sans KR</family>
-           <pointsize>-1</pointsize>
+           <pointsize>10</pointsize>
            <weight>75</weight>
            <bold>true</bold>
           </font>
@@ -206,7 +206,7 @@ QTabBar::tab:!selected {
                 <property name="font">
                  <font>
                   <family>Noto Sans KR</family>
-                  <pointsize>-1</pointsize>
+                  <pointsize>10</pointsize>
                   <weight>75</weight>
                   <bold>true</bold>
                  </font>
@@ -227,7 +227,6 @@ QTabBar::tab:!selected {
     border: none;
 }
 QListWidget::item {
-    background-color: transparent;
     border: none;
     margin-bottom: 10px;
 }</string>

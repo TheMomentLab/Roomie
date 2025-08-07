@@ -1,3 +1,5 @@
+# roomie_arm_control/config.py
+
 from pathlib import Path
 import numpy as np
 from enum import IntEnum
@@ -29,115 +31,79 @@ class ButtonActionStatus:
 class ControlMode(IntEnum):
     """제어 전략 모드"""
     MODEL_ONLY = 0
-    PBVS = 1 
-    IBVS = 2
+    PBVS = 1
+    IBVS = 2 # IBVS 모드 추가 (사실상 새로운 PBVS가 이 역할을 수행)
 
-HAND_EYE_UNIT = 'mm'  # 또는 'm'
-
-# 기본 설정 (DEBUG 등)
+# 기본 설정
 DEBUG = True
+CONTROL_STRATEGY = ControlMode.PBVS # 시각 서보잉을 기본 전략으로 사용
+
+# --- [신규] IBVS (Image-Based Visual Servoing) 제어 파라미터 ---
+IBVS_MAX_ITERATIONS = 50              # 시각 서보잉 최대 반복 횟수
+IBVS_POSITION_TOLERANCE_M = 0.005   # 5mm 이내로 근접 시 성공으로 간주
+IBVS_IK_RETRY_COUNT = 3             # IK 실패 시 재시도 횟수
+IBVS_ADAPTIVE_GAIN_MIN = 0.1        # 이동 게인 최소값 (오차가 작을 때)
+IBVS_ADAPTIVE_GAIN_MAX = 0.4        # 이동 게인 최대값 (오차가 클 때)
+IBVS_LOOP_DELAY_SEC = 0.05          # 각 제어 루프 사이의 최소 지연 시간
 
 # 파일 경로 설정
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = os.path.join(get_package_share_directory('roomie_ac'), 'data')
 URDF_FILE = os.path.join(get_package_share_directory('roomie_ac'), 'urdf', 'roomie2.urdf')
-CAMERA_PARAMS_FILE = os.path.join(DATA_DIR, 'camera_params.npz')  
+CAMERA_PARAMS_FILE = os.path.join(DATA_DIR, 'camera_params.npz')
 HAND_EYE_MATRIX_FILE = os.path.join(DATA_DIR, 'hand_eye_matrix.npy')
+
 # 시리얼 통신 설정
 SERIAL_PORT = "/dev/ttyUSB1"
 SERIAL_BAUD_RATE = 115200
-SERIAL_TIMEOUT = 10.0 # 시리얼 연결 및 응답 대기 타임아웃
+SERIAL_TIMEOUT = 10.0
 
 # 서보 모터 및 관절 설정
 SERVO_ZERO_OFFSET_DEG = np.array([90, 90, 90, 90])
 SERVO_DIRECTION_MULTIPLIER = np.array([1, -1, -1, -1])
 JOINT_LIMIT_DEG = np.array([[-90, 90], [-90, 90], [-90, 90], [-90, 90]])
-JOINT_LIMIT_RAD = np.deg2rad(JOINT_LIMIT_DEG) # 라디안 변환
-JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱을 위한 관절 이름
+JOINT_LIMIT_RAD = np.deg2rad(JOINT_LIMIT_DEG)
+JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4']
 
 # IK (Inverse Kinematics) 설정
-ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
-IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
-IK_TOLERANCE_M = 6e-3 # IK 오차 허용 범위 (m)
+ACTIVE_LINKS_MASK = [False, True, True, True, True, False]
+IK_MAX_ITERATIONS = 10000 # 반복 횟수를 약간 줄여도 무방
+IK_TOLERANCE_M = 6e-3
 
-# 워크스페이스 (작업 공간) 설정
-WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
-WORKSPACE_R_MAX_M = 0.45
-WORKSPACE_Z_MIN_M = -0.40 # 로봇팔 끝점의 최소/최대 높이 (m)
-WORKSPACE_Z_MAX_M = 0.402
-
-# 동작 및 지연 시간 설정
-COMEBACK_DELAY_SEC = 20.0 # 홈 포지션으로 복귀 대기 시간 (초)
-
-# 제어 전략 설정
-# ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
-# ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
-CONTROL_STRATEGY = ControlMode.MODEL_ONLY
-
-# 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
+# 자세 설정
 POSE_ANGLES_DEG = {
     Pose.INIT: np.array([0, 40, 170, 30]),
     Pose.OBSERVE: np.array([90, 140, 168, 30]),
     Pose.LEFT: np.array([170, 120, 150, 30]),
     Pose.RIGHT: np.array([0, 130, 170, 30]),
-    Pose.FORWARD: np.array([90, 140, 170, 30]),
-    Pose.UP: np.array([90, 120, 137, 30]),
-    Pose.UPUP: np.array([85, 130, 137, 30]),
-
 }
-# 기존 홈 포지션 변수도 이 딕셔너리를 활용할 수 있습니다.
 HOME_POSITION_SERVO_DEG = POSE_ANGLES_DEG[Pose.INIT]
-
-
-# --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 8  # 사용자의 카메라 장치 번호
-YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
-
-
 
 # --- 로봇 및 버튼 ---
 ROBOT_ID = 0
-# 사전 정의된 버튼 위치 (미터 단위, MODEL_ONLY 모드용)
 PREDEFINED_BUTTON_POSES_M = {
-    0: np.array([0.235, 0.0, 0.305]),  # 예시 좌표 (button_id: 2)
-    1: np.array([0.235, 0.0, 0.235]),  
-    2: np.array([0.235, 0.0, 0.235]), 
-    3: np.array([0.235, 0.0, 0.235]),  
-    4: np.array([0.235, 0.0, 0.235]),  
-    5: np.array([0.235, 0.0, 0.235]), 
-    6: np.array([0.235, 0.0, 0.19]),  
-    101: np.array([0.235, 0.0, 0.30]), 
-    102: np.array([0.235, 0.0,0.095]),  
-    # 다른 버튼 ID와 좌표를 여기에 추가할 수 있습니다.
-    # 3: np.array([0.25, -0.1, 0.15]),
+    0: np.array([0.235, 0.0, 0.305]),
+    # ... 다른 버튼 좌표
 }
-REAL_BUTTON_DIAMETER_M = 0.035 # 3.5cm
+REAL_BUTTON_DIAMETER_M = 0.035
+
 # --- 비전 ---
 IMAGE_WIDTH_PX = 800
 IMAGE_HEIGHT_PX = 600
-# 중요: 실제 보정 파일 경로로 수정하세요
 CAMERA_PARAMS_FILE = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/camera_params.npz'
 HAND_EYE_MATRIX_FILE = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/hand_eye_matrix.npy'
-HAND_EYE_UNIT = 'mm' # 핸드-아이 보정 시 사용한 단위, 'mm' 또는 'm'
+HAND_EYE_UNIT = 'm' # Hand-Eye Matrix가 미터 단위라고 가정
 
-# PnP를 위한 원형 버튼의 3D 모델 포인트 (대칭성 보장)
+# PnP를 위한 3D 모델 포인트
 OBJECT_POINTS_3D = np.array([
-    [ REAL_BUTTON_DIAMETER_M / 2,  0.0, 0.0], # 버튼 오른쪽
-    [-REAL_BUTTON_DIAMETER_M / 2,  0.0, 0.0], # 버튼 왼쪽
-    [ 0.0,  REAL_BUTTON_DIAMETER_M / 2, 0.0], # 버튼 위쪽
-    [ 0.0, -REAL_BUTTON_DIAMETER_M / 2, 0.0], # 버튼 아래쪽
+    [ REAL_BUTTON_DIAMETER_M / 2,  0.0, 0.0],
+    [-REAL_BUTTON_DIAMETER_M / 2,  0.0, 0.0],
+    [ 0.0,  REAL_BUTTON_DIAMETER_M / 2, 0.0],
+    [ 0.0, -REAL_BUTTON_DIAMETER_M / 2, 0.0],
 ], dtype=np.float32)
-
-# PnP RANSAC 파라미터
 PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_STANDBY_DISTANCE_M = 0.08 # 버튼으로부터 5cm 대기 거리
-PRESS_FORWARD_DISTANCE_M = 0.08 # 3cm 누르기 거리
-SERVOING_MAX_MOVE_M = 0.5 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
-
-# 서보잉 시 한 스텝에 이동할 거리의 비율 (0.0 ~ 1.0)
-# 0.4는 목표까지 남은 거리의 40%만큼만 이동하라는 의미입니다.
-# 이 값을 조절하여 로봇의 접근 속도와 안정성을 튜닝할 수 있습니다.
-SERVOING_MOVE_GAIN = 0.30
+SERVOING_STANDBY_DISTANCE_M = 0.08
+PRESS_FORWARD_DISTANCE_M = 0.04 # 누르기 거리를 약간 줄여 안정성 확보

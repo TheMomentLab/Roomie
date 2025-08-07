@@ -28,120 +28,70 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # --- 통신 및 알림 클래스 ---
+class CustomNotification(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        
+        self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setStyleSheet("background-color: rgba(30, 30, 30, 0.85); padding: 2px;")
+
+        self.layout = QHBoxLayout(self)
+        self.image_label = QLabel(self)
+        self.image_label.setFixedSize(350, 230)
+        self.image_label.setScaledContents(True)
+        
+        self.layout.addWidget(self.image_label)
+        
+        # [핵심 수정] 위젯이 생성될 때부터 크기를 명확히 고정합니다.
+        # 이미지(350) + 좌우패딩(2+2) = 354
+        # 이미지(230) + 상하패딩(2+2) = 234
+        self.setFixedSize(360, 240)
+        
+        self.hide_timer = QtCore.QTimer(self)
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self.hide)
+
+    def show_notification(self, image_path):
+        # (show_notification 메서드는 수정할 필요 없이 그대로 두시면 됩니다)
+        parent_widget = self.parent()
+        if not parent_widget:
+            logger.error("알림 팝업의 부모 위젯이 설정되지 않았습니다.")
+            return
+
+        if image_path and os.path.exists(image_path):
+            from PyQt6.QtGui import QPixmap
+            pixmap = QPixmap(image_path)
+            self.image_label.setPixmap(pixmap)
+        else:
+            logger.warning(f"알림 이미지를 찾을 수 없습니다: {image_path}")
+            return
+            
+        parent_rect = parent_widget.geometry()
+        x = parent_rect.right() - self.width() - 20
+        y = parent_rect.bottom() - self.height() - 20
+        
+        self.move(x, y)
+        
+        self.show()
+        self.hide_timer.start(3000)
+        
+
+        
+        self.hide_timer = QtCore.QTimer(self)
+        self.hide_timer.setSingleShot(True)
+        self.hide_timer.timeout.connect(self.hide)
+
+
+
 class Communicate(QObject):
     message_received = pyqtSignal(dict)
     connection_status = pyqtSignal(str)
     new_order_received = pyqtSignal(dict)
     pickup_arrival_received = pyqtSignal(dict)
 
-class CustomNotification(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowFlag(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Tool | Qt.WindowType.WindowStaysOnTopHint)
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
-        self.setStyleSheet("background-color: rgba(30, 30, 30, 0.85); color: white; border-radius: 8px; padding: 15px;")
 
-        # ## [수정] 레이아웃을 먼저 생성합니다. ##
-        self.layout = QHBoxLayout(self)
-        self.setLayout(self.layout)
-
-        # ## [수정] 그 다음 위젯을 생성하고 레이아웃에 추가합니다. ##
-        self.image_label = QLabel(self)
-        self.image_label.setFixedSize(40, 40)
-        self.image_label.hide()
-
-        self.text_label = QLabel(self)
-        self.text_label.setWordWrap(True)
-        
-        self.layout.addWidget(self.image_label)
-        self.layout.addWidget(self.text_label)
-        
-        # --- 이하 애니메이션 설정은 동일 ---
-        self.opacity_effect = QGraphicsOpacityEffect(self)
-        self.setGraphicsEffect(self.opacity_effect)
-        self.animation = QPropertyAnimation(self.opacity_effect, b"opacity")
-        self.hide_timer = QtCore.QTimer(self)
-        self.hide_timer.setSingleShot(True)
-        self.hide_timer.timeout.connect(self._start_fade_out)
-
-    def show_notification(self, message, image_path=None, duration=4000):
-        self.text_label.setText(message)
-
-        if image_path and os.path.exists(image_path):
-            from PyQt6.QtGui import QPixmap
-            pixmap = QPixmap(image_path).scaled(40, 40, Qt.AspectRatioMode.KeepAspectRatio)
-            self.image_label.setPixmap(pixmap)
-            self.image_label.show()
-        else:
-            self.image_label.hide()
-
-        self.adjustSize()
-        
-        if QApplication.primaryScreen():
-            screen_geometry = QApplication.primaryScreen().availableGeometry()
-            x = screen_geometry.width() - self.width() - 20
-            y = screen_geometry.height() - self.height() - 20
-            self.move(x, y)
-
-        self.animation.stop()
-        self.animation.setDuration(500)
-        self.animation.setStartValue(0.0)
-        self.animation.setEndValue(1.0)
-        self.show()
-        self.animation.start()
-        self.hide_timer.start(duration)
-
-    def _start_fade_out(self):
-        self.animation.setDuration(1000)
-        self.animation.setStartValue(1.0)
-        self.animation.setEndValue(0.0)
-        self.animation.finished.connect(self.hide)
-        self.animation.start()
-
-class OrderListItemWidget(QWidget):
-    def __init__(self, task_id, location, items, timestamp, status=""):
-        super().__init__()
-        self.setStyleSheet("""
-            background-color: white;
-            border-radius: 8px;
-            padding: 10px;
-        """)
-        
-        grid_layout = QtWidgets.QGridLayout(self)
-        grid_layout.setContentsMargins(12, 8, 12, 8)
-        grid_layout.setSpacing(4)
-
-        order_label = QLabel(f"<b>주문 #{task_id}</b>")
-        order_label.setStyleSheet("font-size: 16px; background-color: transparent;")
-        
-        time_label = QLabel(timestamp.strftime("%H:%M"))
-        time_label.setStyleSheet("color: #333; font-size: 14px; background-color: transparent;")
-        
-        grid_layout.addWidget(order_label, 0, 0)
-        grid_layout.addWidget(time_label, 0, 1, Qt.AlignmentFlag.AlignRight)
-
-        location_text = location.replace("ROOM_", "") + "호"
-        menu_count = sum(item.get('quantity', 0) for item in items)
-        details_label = QLabel(f"{location_text} | 메뉴 {menu_count}개")
-        details_label.setStyleSheet("color: #555; background-color: transparent;")
-        
-        status_html = ""
-        if status == "준비중":
-            status_html = "<span style='background-color: #3498db; color: white; border-radius: 5px; padding: 2px 8px;'>준비중</span>"
-        elif status == "픽업 대기중":
-            status_html = "<span style='background-color: #95a5a6; color: white; border-radius: 5px; padding: 2px 8px;'>픽업 대기중</span>"
-        
-        status_label = QLabel(status_html)
-        status_label.setTextFormat(Qt.TextFormat.RichText)
-        status_label.setStyleSheet("background-color: transparent;")
-
-        grid_layout.addWidget(details_label, 1, 0)
-        if status:
-            grid_layout.addWidget(status_label, 1, 1, Qt.AlignmentFlag.AlignRight)
-        
-        grid_layout.setColumnStretch(0, 1)
-
-# --- 메인 GUI 클래스 (이하 동일) ---
+# --- 메인 GUI 클래스 ---
 class StaffGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -151,7 +101,10 @@ class StaffGUI(QMainWindow):
         self.orders_in_progress = {}
         self.orders_completed = {}
         self.selected_task_id = None
-        self.notification_popup = CustomNotification()
+        
+        # [수정] CustomNotification을 생성할 때 self를 부모로 전달합니다.
+        self.notification_popup = CustomNotification(self) 
+        
         self.order_sound_effect = QSoundEffect()
         self.pickup_sound_effect = QSoundEffect()
 
@@ -172,6 +125,24 @@ class StaffGUI(QMainWindow):
         self.update_ui_labels()
         self.readyButton.setVisible(False)
 
+
+    def reposition_notification(self):
+        """알림 팝업이 보일 때 위치를 다시 계산하는 함수"""
+        if self.notification_popup.isVisible():
+            parent_rect = self.geometry()
+            x = parent_rect.right() - self.notification_popup.width() - 3
+            y = parent_rect.bottom() - self.notification_popup.height() - 3
+            self.notification_popup.move(x, y)
+
+    def moveEvent(self, event):
+        """메인 창이 움직일 때마다 호출되는 이벤트 핸들러"""
+        super().moveEvent(event)
+        self.reposition_notification()
+
+    def resizeEvent(self, event):
+        """메인 창의 크기가 변경될 때마다 호출되는 이벤트 핸들러"""
+        super().resizeEvent(event)
+        self.reposition_notification()
     def set_order_sound(self, path):
         if os.path.exists(path):
             self.order_sound_effect.setSource(QtCore.QUrl.fromLocalFile(path))
@@ -188,25 +159,17 @@ class StaffGUI(QMainWindow):
 
     def show_new_order_notification(self, payload):
         self.add_new_order(payload)
-        task_id = payload.get('task_id')
-        location = payload.get('request_location', 'N/A')
-        message = f"<b>신규 주문 접수</b><br>주문번호: #{task_id}<br>요청위치: {location}"
-        
-        image_file = "./image/order_call.png" 
-        self.notification_popup.show_notification(message, image_path=image_file)
-        
+        # 텍스트 메시지는 더 이상 필요 없음
+        image_file = "./image/order_call.png"
+        self.notification_popup.show_notification(image_path=image_file)
         self.order_sound_effect.play()
 
     def handle_pickup_arrival(self, payload):
         task_id = payload.get('task_id')
-        robot_id = payload.get('robot_id')
         self.update_order_status(task_id, "배송중")
-        message = f"로봇 #{robot_id}이 주문 #{task_id} 픽업을 위해 도착했습니다."
-        
+        # 텍스트 메시지는 더 이상 필요 없음
         robot_image_file = "./image/robot_call.png"
-        self.notification_popup.show_notification(message, image_path=robot_image_file)
-        
-        # QMessageBox.information(self, "로봇 픽업 도착", message) # 커스텀 팝업으로 대체
+        self.notification_popup.show_notification(image_path=robot_image_file)
         self.pickup_sound_effect.play()
 
     def find_task_id_by_item(self, item):
@@ -241,16 +204,17 @@ class StaffGUI(QMainWindow):
         self.selected_task_id = None
         self.readyButton.setVisible(False)
 
+    # 2. add_new_order 함수를 아래 내용으로 교체
     def add_new_order(self, payload):
         task_id = payload.get('task_id')
         if task_id in self.orders_in_progress or task_id in self.orders_completed:
             return
 
-        location = payload.get('request_location', 'N/A')
-        items = payload.get('order_details', {}).get('items', [])
-        timestamp = datetime.now()
+        payload['timestamp'] = datetime.now()
+        payload['status'] = "준비중"
         
-        item_widget = OrderListItemWidget(task_id, location, items, timestamp, status="준비중")
+        # 통합된 생성 함수 사용
+        item_widget = self.create_order_item_widget(task_id, payload, "준비중")
 
         list_item = QListWidgetItem()
         list_item.setSizeHint(item_widget.sizeHint())
@@ -258,11 +222,10 @@ class StaffGUI(QMainWindow):
         self.listWidget_in_progress.insertItem(0, list_item)
         self.listWidget_in_progress.setItemWidget(list_item, item_widget)
         
-        payload['timestamp'] = timestamp
-        payload['status'] = "준비중"
         self.orders_in_progress[task_id] = {'payload': payload, 'list_item': list_item}
         self.update_ui_labels()
 
+    # 3. mark_as_food_ready 함수를 아래 내용으로 교체
     def mark_as_food_ready(self):
         if self.selected_task_id is None:
             QMessageBox.warning(self, "오류", "준비완료 처리할 주문을 선택하세요.")
@@ -270,10 +233,10 @@ class StaffGUI(QMainWindow):
 
         task_id = self.selected_task_id
         request_url = f"{RMS_HTTP_URL}/food_order_status_change"
-        payload = {"type": "request", "action": "food_order_status_change", "payload": {"task_id": task_id}}
+        payload_to_send = {"type": "request", "action": "food_order_status_change", "payload": {"task_id": task_id}}
 
         try:
-            response = requests.post(request_url, json=payload, timeout=5)
+            response = requests.post(request_url, json=payload_to_send, timeout=5)
             response.raise_for_status()
             if response.json().get('payload', {}).get('status_changed') == 'food_ready':
                 QMessageBox.information(self, "처리 완료", f"주문 #{task_id}이(가) '픽업 대기중' 상태로 변경되었습니다.")
@@ -282,14 +245,8 @@ class StaffGUI(QMainWindow):
                     order_data = self.orders_in_progress[task_id]
                     order_data['payload']['status'] = "픽업 대기중"
 
-                    payload = order_data['payload']
-                    new_widget = OrderListItemWidget(
-                        task_id,
-                        payload.get('request_location', 'N/A'),
-                        payload.get('order_details', {}).get('items', []),
-                        payload.get('timestamp'),
-                        status="픽업 대기중"
-                    )
+                    # 통합된 생성 함수 사용
+                    new_widget = self.create_order_item_widget(task_id, order_data['payload'], "픽업 대기중")
                     
                     list_item = order_data['list_item']
                     list_item.setSizeHint(new_widget.sizeHint())
@@ -362,6 +319,7 @@ class StaffGUI(QMainWindow):
         self.readyButton.setEnabled(self.selected_task_id in self.orders_in_progress)
 
     def update_order_status(self, task_id, new_status):
+        # '배송중' 상태로 변경 (진행 -> 완료 탭으로 이동)
         if new_status == "배송중" and task_id in self.orders_in_progress:
             data = self.orders_in_progress.pop(task_id)
             
@@ -369,7 +327,9 @@ class StaffGUI(QMainWindow):
             self.listWidget_in_progress.takeItem(row)
             
             list_item = QListWidgetItem()
-            item_widget = self.create_completed_item_widget(task_id, data['payload'], "배송중")
+            
+            # [수정] 삭제된 함수 대신 통합된 함수를 호출합니다.
+            item_widget = self.create_order_item_widget(task_id, data['payload'], "배송중")
             list_item.setSizeHint(item_widget.sizeHint())
             
             self.listWidget_completed.insertItem(0, list_item)
@@ -378,51 +338,72 @@ class StaffGUI(QMainWindow):
             data['list_item'] = list_item
             self.orders_completed[task_id] = data
 
+        # '완료' 상태로 변경 (완료 탭 내에서 업데이트)
         elif new_status == "완료" and task_id in self.orders_completed:
             data = self.orders_completed[task_id]
             
             row = self.listWidget_completed.row(data['list_item'])
-            item = self.listWidget_completed.takeItem(row)
+            item = self.listWidget_completed.item(row) # takeItem 대신 item을 사용해야 위젯이 삭제되지 않음
             
-            new_widget = self.create_completed_item_widget(task_id, data['payload'], "완료")
+            # [수정] 삭제된 함수 대신 통합된 함수를 호출합니다.
+            new_widget = self.create_order_item_widget(task_id, data['payload'], "완료")
             item.setSizeHint(new_widget.sizeHint())
             
-            self.listWidget_completed.addItem(item)
             self.listWidget_completed.setItemWidget(item, new_widget)
         
         self.update_ui_labels()
-        self.clear_order_details()
+        # 주문 상세 정보는 선택이 해제될 때만 초기화하도록 로직 변경 가능 (현재는 유지)
+        if self.selected_task_id == task_id:
+            self.clear_order_details()
 
-    def create_completed_item_widget(self, task_id, payload, status):
-        location = payload.get('request_location', 'N/A').replace("ROOM_", "") + "호"
-        timestamp = payload.get('timestamp')
-        time_text = timestamp.strftime('%H:%M') if timestamp else ""
-
-        if status == "배송중":
-            status_html = "<span style='background-color: #27ae60; color: white; border-radius: 5px; padding: 2px 8px;'>배송중</span>"
-        else:
-            status_html = "<span style='background-color: #95a5a6; color: white; border-radius: 5px; padding: 2px 8px;'>완료</span>"
-
+    def create_order_item_widget(self, task_id, payload, status):
+        """모든 주문 항목 위젯을 생성하는 통합 함수"""
         widget = QWidget()
-        widget.setStyleSheet("background-color: white; border-radius: 8px; padding: 10px;")
-        layout = QVBoxLayout(widget)
-        layout.setContentsMargins(12, 8, 12, 8)
+        widget.setStyleSheet("background-color: white; border-radius: 9px; padding: 10px;")
+
+        main_layout = QVBoxLayout(widget)
+        main_layout.setContentsMargins(12, 8, 12, 8)
+        main_layout.setSpacing(4)
+
+        timestamp = payload.get('timestamp', datetime.now())
+        time_text = timestamp.strftime('%H:%M')
+        location = payload.get('request_location', 'N/A').replace("ROOM_", "") + "호"
         
+        # 상태별로 다른 HTML과 상세 텍스트를 설정
+        status_html = ""
+        details_text = location
+        if status == "준비중":
+            status_html = "<span style='background-color: #3498db; color: white; border-radius: 5px; padding: 3px 8px;'>준비중</span>"
+            items = payload.get('order_details', {}).get('items', [])
+            menu_count = sum(item.get('quantity', 0) for item in items)
+            details_text = f"{location} | 메뉴 {menu_count}개"
+        elif status == "픽업 대기중":
+            status_html = "<span style='background-color: #95a5a6; color: white; border-radius: 5px; padding: 3px 8px;'>픽업 대기중</span>"
+            items = payload.get('order_details', {}).get('items', [])
+            menu_count = sum(item.get('quantity', 0) for item in items)
+            details_text = f"{location} | 메뉴 {menu_count}개"
+        elif status == "배송중":
+            status_html = "<span style='background-color: #27ae60; color: white; border-radius: 5px; padding: 3px 8px;'>배송중</span>"
+        else: # 완료
+            status_html = "<span style='background-color: #7f8c8d; color: white; border-radius: 5px; padding: 3px 8px;'>완료</span>"
+
+        # 첫 번째 줄
         top_layout = QHBoxLayout()
         top_layout.addWidget(QLabel(f"<b>주문 #{task_id}</b>"))
         top_layout.addStretch()
         top_layout.addWidget(QLabel(time_text))
-        
+
+        # 두 번째 줄
         bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(QLabel(location))
+        bottom_layout.addWidget(QLabel(details_text))
         bottom_layout.addStretch()
         
         status_label = QLabel(status_html)
         status_label.setTextFormat(Qt.TextFormat.RichText)
         bottom_layout.addWidget(status_label)
         
-        layout.addLayout(top_layout)
-        layout.addLayout(bottom_layout)
+        main_layout.addLayout(top_layout)
+        main_layout.addLayout(bottom_layout)
         
         return widget
 
