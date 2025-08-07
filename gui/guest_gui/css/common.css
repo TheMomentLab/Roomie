@@ -20,22 +20,6 @@ body { font-family: var(--main-font); background-color: #333; }
 /* 2. 공통 레이아웃 */
 #app-container { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }
 .app-layout { width: 100%; height: 100%; max-height: 100vh; display: flex; flex-direction: column; color: var(--light-text-color); background-size: cover; background-position: center; background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png'); padding: 30px; position: relative; overflow-y: auto; }
-<<<<<<< HEAD
-.back-button { position: absolute; top: 20px; left: 20px; width: 39px; height: 39px; background-image: url('../assets/images/back_button.png'); background-size: contain; background-repeat: no-repeat; cursor: pointer; border: none; background-color: transparent; z-index: 10; }
-.global-toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); border-radius: var(--border-radius); z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); padding: 12px 20px; color: white; font-size: 16px; }
-.global-toast.hidden { display: none; }
-.app-layout .main-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.main-content.sub-page-box { background-color: white; color: var(--primary-text-color); margin: 20px 0; border-radius: 19px; padding: 20px; padding-top: 100px; position: relative; justify-content: flex-start; width:100%; }
-.sub-header { display: flex; justify-content: space-between; align-items: center; color: white; font-size: 36px; position: absolute; top: 30px; left: 30px; right: 30px; height: 70px; pointer-events: none; }
-.sub-header .logo { font-weight: 300; }
-.sub-header .room-number { font-weight: 500; }
-
-/* 3. 뷰(View)별 스타일 */
-
-/* --- 메인 홈 --- */
-.header { text-align: right; font-size: 28px; font-weight: 700; width: 100%; }
-.main-content-home h1 { font-size: 75px; font-weight: 700; margin-bottom: 8px; }
-=======
 .global-toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); border-radius: var(--border-radius); z-index: 9999; display: flex; align-items: center; justify-content: center; background-color: rgba(0, 0, 0, 0.7); padding: 12px 20px; color: white; font-size: 16px; }
 .global-toast.hidden { display: none; }
 .app-layout .main-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -78,31 +62,20 @@ body { font-family: var(--main-font); background-color: #333; }
 /* --- 메인 홈 --- */
 .header { text-align: right; font-size: 27px; font-weight: 500; width: 100%; }
 .main-content-home h1 { font-size: 80px; font-weight: 600; margin-bottom:  100px; }
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
 .button-grid { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 40px auto 0; }
 .grid-button { background-color: var(--accent-color); color: var(--light-text-color); border: none; border-radius: 12px; padding: 25px 10px; font-family: var(--main-font); font-size: 24px; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
 .grid-button:hover { background-color: #4a758f; }
 
 /* --- 메뉴 (음식/비품 공통) --- */
-<<<<<<< HEAD
-.menu-list { flex-grow: 1; overflow-y: auto; width: 100%; }
-=======
 
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
 .menu-item { display: flex; align-items: center; margin-bottom: 25px; }
 .menu-image { width: 120px; height: 120px; background-color: var(--container-bg-color); border-radius: var(--border-radius); margin-right: 20px; flex-shrink: 0; background-size: cover; background-position: center; }
 .menu-details { flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
 .menu-info-top {
     display: flex;
-<<<<<<< HEAD
-    justify-content: space-between; /* 이름과 가격을 양쪽으로 정렬 */
-    align-items: baseline;
-    width: 100%; /* 부모 요소 너비에 맞춤 */
-=======
     justify-content: space-between;
     align-items: baseline;
     width: 100%;
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
 }
 .menu-name { font-size: 20px; font-weight: 500; }
 .menu-price { font-size: 18px; font-weight: 700; color: var(--primary-text-color); }
@@ -118,69 +91,14 @@ body { font-family: var(--main-font); background-color: #333; }
     font-size: 18px; 
     font-weight: 700;
     color: var(--primary-text-color);
-<<<<<<< HEAD
-    margin-left: 10px; /* 이름과 가격 사이 여백 */
-    flex-shrink: 0; /* 가격이 줄어들지 않도록 설정 */
-=======
     margin-left: 10px; 
     flex-shrink: 0; 
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
 }
 .quantity { font-size: 18px; font-weight: 500; color: var(--secondary-text-color); min-width: 25px; text-align: center; }
 .select-button { background-color: var(--accent-color); color: var(--light-text-color); border: none; padding: 8px 24px; border-radius: 5px; font-size: 16px; font-weight: 300; cursor: pointer; }
 .footer { width: calc(100% - 40px); position: absolute; bottom: 20px; left: 20px; right: 20px; height: 69px; background-color: var(--accent-color); border-radius: var(--border-radius); display: flex; align-items: center; justify-content: space-between; color: var(--light-text-color); padding: 0 25px; font-size: 20px; }
 .footer .divider { width: 1px; height: 40px; background-color: white; opacity: 0.7; }
 .footer .cart-button { font-weight: 400; cursor: pointer; background: none; border: none; color: white; font-family: var(--main-font); font-size: inherit; }
-<<<<<<< HEAD
-
-/* --- 장바구니 --- */
-.cart-header { display: flex; align-items: center; width: 100%; position: relative; justify-content: center; margin-bottom: 20px; }
-.cart-header .back-button { position: static; transform: none; }
-.cart-title { font-size: 24px; font-weight: 500; flex-grow: 1; text-align: center; margin-right: -39px; /* 뒤로가기 버튼 너비만큼 밀어 중앙 정렬 */ }
-.cart-items { flex-grow: 1; width: 100%; overflow-y: auto; }
-.item { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
-.item-image { width: 80px; height: 80px; background-color: var(--container-bg-color); border-radius: var(--border-radius); margin-right: 15px; background-size: cover; background-position: center; flex-shrink: 0; }
-.item-details { flex-grow: 1; }
-.item-price { font-weight: 500; margin-left: auto; }
-.delete-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; }
-.footer-cart { padding: 20px; background-color: white; border-top: 1px solid #eee; margin: 0 -20px -20px; border-radius: 0 0 19px 19px; margin-top: auto; }
-.total-price-container { display: flex; justify-content: space-between; font-size: 20px; margin-bottom: 15px; }
-.order-button { width: 100%; padding: 15px; font-size: 18px; background-color: var(--accent-color); color: white; border: none; border-radius: var(--border-radius); cursor: pointer; }
-.order-button:disabled { background-color: #ccc; }
-
-/* --- 요청 이력 --- */
-.task-card { background-color: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
-.task-title { font-size: 18px; font-weight: 600; }
-.task-time { font-size: 14px; color: #888; }
-.btn-detail { background-color: var(--accent-color); color: white; border: none; border-radius: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
-
-/* --- 상세 상태 및 타임라인 --- */
-.content { width: 100%; flex-grow: 1; display: flex; }
-.status-card { width: 100%; background-color: white; color: #474646; border-radius: 19px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
-.status-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
-.status-timeline { display: flex; flex-direction: column; gap: 1rem; }
-.timeline-item { display: flex; align-items: center; gap: 1.5rem; }
-.timeline-point { display: flex; flex-direction: column; align-items: center; }
-.point { width: 20px; height: 20px; border-radius: 50%; background-color: var(--accent-color); }
-.line { width: 4px; height: 40px; background-color: var(--accent-color); }
-.timeline-item.inactive .point, .timeline-item.inactive .line { background-color: var(--border-color); }
-.timeline-item:last-child .line { background-color: transparent; }
-.details { flex-grow: 1; display: flex; justify-content: space-between; }
-.label { font-weight: 500; }
-.time { color: #777; font-size: 14px; }
-
-/* --- 요청 완료 --- */
-.status-section { display: flex; flex-direction: column; align-items: center; gap: 20px; text-align: center; flex-grow: 1; justify-content: center; }
-.robot-icon { width: 150px; }
-.order-history-button { background-color: var(--accent-color); color: white; border: none; border-radius: var(--border-radius); padding: 16px; font-size: 18px; cursor: pointer; width: 100%; max-width: 300px; }
-
-/* --- 로봇 호출 페이지 --- */
-.main-content-full { padding-top: 100px; }
-.loading-message { font-size: 24px; font-weight: 500; color: var(--light-text-color); text-align: center; white-space: pre-line; flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 40px; }
-.loading-message::after { content: ''; display: block; width: 80px; height: 80px; border: 5px solid rgba(255, 255, 255, 0.3); border-top-color: var(--light-text-color); border-radius: 50%; animation: spin 1s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.cancel-button { background-color: transparent; border: 2px solid var(--light-text-color); color: var(--light-text-color); border-radius: var(--border-radius); padding: 16px; font-size: 18px; cursor: pointer; width: 100%; max-width: 300px; margin-top: auto; margin-bottom: 20px; }
-=======
 
 /* --- 장바구니 --- */
 .cart-header { display: flex; align-items: center; width: 100%; position: relative; justify-content: center; margin-bottom: 20px; }

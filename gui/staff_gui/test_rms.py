@@ -14,14 +14,6 @@ api_router = APIRouter(prefix="/api/gui")
 
 app = FastAPI(title="Test RMS Server for Staff GUI")
 
-<<<<<<< HEAD
-@app.websocket("/api/gui/ws/admin/{staff_id}")
-async def websocket_admin(websocket: WebSocket, staff_id: str):
-    await websocket.accept()
-    connected_clients.append(websocket)
-    print(f"Staff '{staff_id}' 연결됨. 총 연결 수: {len(connected_clients)}")
-
-=======
 # WebSocket 연결 관리 (staff_id 별로 관리)
 connected_clients: Dict[str, WebSocket] = {}
 
@@ -33,44 +25,19 @@ async def websocket_endpoint(websocket: WebSocket, staff_id: str = Path(...)):
     connected_clients[staff_id] = websocket
     print(f"✅ Staff GUI 연결됨 (ID: {staff_id}). 총 연결: {len(connected_clients)}")
     
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
     try:
         while True:
             await websocket.receive_text()
     except WebSocketDisconnect:
-<<<<<<< HEAD
-        connected_clients.remove(websocket)
-        print(f"Staff '{staff_id}' 연결 해제됨. 총 연결 수: {len(connected_clients)}")
-
-        
-@app.post("/api/gui/food_order_status_change")
-=======
         del connected_clients[staff_id]
         print(f"❌ Staff GUI 연결 해제됨 (ID: {staff_id}). 총 연결: {len(connected_clients)}")
 
 # --- HTTP API ---
 @api_router.post("/food_order_status_change")
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
 async def food_order_status_change(request_data: dict):
     """'준비완료' 상태 변경 요청을 처리합니다."""
     print(f"🔵 '준비완료' 요청 수신: {request_data}")
     
-<<<<<<< HEAD
-    # 요청 데이터 검증
-    if request_data.get("type") == "request" and request_data.get("action") == "food_order_status_change":
-        task_id = request_data.get("payload", {}).get("task_id")
-        
-        # task_id가 int인지 확인
-        if task_id and isinstance(task_id, int):
-            # 성공 응답 (인터페이스 명세에 맞춰 수정)
-            response = {
-                "type": "response",
-                "action": "food_order_status_change",
-                "payload": {
-                    "task_id": task_id,  # int 타입 유지
-                    "status_changed": "food_ready"
-                }
-=======
     payload = request_data.get("payload", {})
     task_id = payload.get("task_id")
     
@@ -81,7 +48,6 @@ async def food_order_status_change(request_data: dict):
             "payload": {
                 "task_id": task_id,
                 "status_changed": "food_ready"
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
             }
         }
         print(f"🟢 '준비완료' 처리 완료 (Task ID: {task_id})")
@@ -107,72 +73,14 @@ async def send_test_order():
         "type": "event",
         "action": "food_order_creation",
         "payload": {
-<<<<<<< HEAD
-            "task_id": int(time.time()),  # int 타입으로 수정
-            "request_location": "ROOM_307",
-            "order_details": {
-                "items": [
-                    {
-                        "name": "스파게티",
-                        "quantity": 2,
-                        "price": 15000
-                    },
-                    {
-                        "name": "피자",
-                        "quantity": 1,
-                        "price": 15000
-                    }
-                ]
-            }
-=======
             "task_id": task_id,
             "request_location": "ROOM_505",
             "order_details": {"items": [{"name": "수동 테스트 버거", "quantity": 1, "price": 9900}]}
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
         }
     }
     await send_to_all_clients(order_event)
     return {"message": f"수동 주문 생성됨 (Task ID: {task_id})", "event": order_event}
 
-<<<<<<< HEAD
-@app.get("/send_test_supply")
-async def send_test_supply():
-    """테스트용 비품 요청 이벤트 전송"""
-    supply_event = {
-        "type": "event",
-        "action": "supply_order_creation", 
-        "payload": {
-            "task_id": int(time.time()),  # int 타입
-            "request_location": "ROOM_305",
-            "request_details": {
-                "items": [
-                    {
-                        "name": "타월",
-                        "quantity": 3
-                    },
-                    {
-                        "name": "생수",
-                        "quantity": 2
-                    }
-                ]
-            }
-        }
-    }
-    
-    await send_to_all_clients(supply_event)
-    return {"message": "테스트 비품 요청 전송됨", "supply": supply_event}
-
-@app.get("/send_robot_arrival")
-async def send_robot_arrival():
-    """테스트용 로봇 도착 이벤트 전송"""
-    arrival_event = {
-        "type": "event", 
-        "action": "food_pickup_arrival",
-        "payload": {
-            "task_id": 1,  # int 타입으로 수정
-            "robot_id": 1  # int 타입으로 수정 (인터페이스 명세에 맞춰)
-        }
-=======
 @app.get("/test/pickup_arrival", tags=["Manual Testing"])
 async def send_pickup_arrival(task_id: int = Query(..., description="픽업 도착 알림을 보낼 주문의 Task ID")):
     """지정된 주문에 대한 '픽업 도착' 이벤트를 전송합니다."""
@@ -180,85 +88,10 @@ async def send_pickup_arrival(task_id: int = Query(..., description="픽업 도�
         "type": "event", 
         "action": "food_pickup_arrival",
         "payload": {"task_id": task_id, "robot_id": random.randint(1, 5)} # [수정] robot_id를 int로
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
     }
     await send_to_all_clients(arrival_event)
     return {"message": f"픽업 도착 알림 전송됨 (Task ID: {task_id})", "event": arrival_event}
 
-<<<<<<< HEAD
-@app.get("/send_supply_robot_arrival")
-async def send_supply_robot_arrival():
-    """테스트용 비품 로봇 도착 이벤트 전송"""
-    arrival_event = {
-        "type": "event", 
-        "action": "supply_pickup_arrival",
-        "payload": {
-            "task_id": 2,  # int 타입
-            "robot_id": 2  # int 타입
-        }
-    }
-    
-    await send_to_all_clients(arrival_event)
-    return {"message": "비품 로봇 도착 알림 전송됨", "event": arrival_event}
-
-def run_auto_orders():
-    """자동으로 주문 생성 (백그라운드)"""
-    import asyncio
-    
-    async def auto_order_loop():
-        counter = 1
-        while True:
-            await asyncio.sleep(15)  # 15초마다
-            
-            if connected_clients:  # 연결된 클라이언트가 있을 때만
-                # 음식 주문과 비품 요청을 번갈아 생성
-                if counter % 2 == 1:
-                    # 음식 주문
-                    order_event = {
-                        "type": "event",
-                        "action": "food_order_creation", 
-                        "payload": {
-                            "task_id": counter,  # int 타입으로 수정
-                            "request_location": f"ROOM_{300 + (counter % 20)}",
-                            "order_details": {
-                                "items": [
-                                    {
-                                        "name": ["스파게티", "피자", "스테이크", "버거"][counter % 4],
-                                        "quantity": (counter % 3) + 1,
-                                        "price": [15000, 18000, 25000, 12000][counter % 4]
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                    await send_to_all_clients(order_event)
-                    print(f"자동 음식 주문 전송: {counter}")
-                else:
-                    # 비품 요청
-                    supply_event = {
-                        "type": "event",
-                        "action": "supply_order_creation",
-                        "payload": {
-                            "task_id": counter,  # int 타입
-                            "request_location": f"ROOM_{300 + (counter % 20)}",
-                            "request_details": {
-                                "items": [
-                                    {
-                                        "name": ["칫솔", "타월", "생수", "수저"][counter % 4],
-                                        "quantity": (counter % 3) + 1
-                                    }
-                                ]
-                            }
-                        }
-                    }
-                    await send_to_all_clients(supply_event)
-                    print(f"자동 비품 요청 전송: {counter}")
-                    
-                counter += 1
-    
-    # 새 이벤트 루프에서 실행
-    def run_in_thread():
-=======
 @app.get("/test/delivery_arrival", tags=["Manual Testing"])
 async def send_delivery_arrival(task_id: int = Query(..., description="배달 완료 알림을 보낼 주문의 Task ID")):
     """[추가] 지정된 주문에 대한 '배달 완료' 이벤트를 전송합니다."""
@@ -314,7 +147,6 @@ def run_auto_scenario_in_thread():
             print(f"🎉 배달 완료 (Task ID: {task_id})")
 
     def run_loop():
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         loop.run_until_complete(auto_order_lifecycle())
@@ -326,21 +158,6 @@ def run_auto_scenario_in_thread():
 app.include_router(api_router)
 
 if __name__ == "__main__":
-<<<<<<< HEAD
-    print("🚀 Test RMS Server 시작...")
-    print("📱 Staff GUI 테스트 가능:")
-    print("   - http://localhost:8000/send_test_order (테스트 주문)")
-    print("   - http://localhost:8000/send_test_supply (테스트 비품)")
-    print("   - http://localhost:8000/send_robot_arrival (음식 로봇 도착)")
-    print("   - http://localhost:8000/send_supply_robot_arrival (비품 로봇 도착)")
-    print("   - 15초마다 자동 주문/비품 요청 생성")
-    
-    # 자동 주문 생성 시작
-    run_auto_orders()
-    
-    # 서버 실행
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-=======
     print("🚀 Test RMS Server (v2) 시작...")
     print("API 명세(message.md)에 따라 URL 및 이벤트 구조가 업데이트되었습니다.")
     print("이제 GUI와 연결하여 전체 주문 흐름을 자동으로 테스트할 수 있습니다.")
@@ -349,4 +166,3 @@ if __name__ == "__main__":
     
     run_auto_scenario_in_thread()
     uvicorn.run(app, host="0.0.0.0", port=8888)
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601

@@ -65,64 +65,11 @@ function renderHistoryList(containerId, list) {
       const taskName = historyItem.dataset.taskName;
       const taskType = historyItem.dataset.taskType;
       
-<<<<<<< HEAD
-      localStorage.setItem("selectedTask", taskName);
-      localStorage.setItem("selectedTaskType", taskType);
-      location.hash = `history-detail`; 
-=======
       location.hash = `history-detail&task=${taskName}&type=${taskType}`;
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
     }
   });
 }
 export async function renderHistoryDetail(containerId) {
-<<<<<<< HEAD
-    // 다른 페이지로 이동 시, 이전에 실행되던 주기적 업데이트를 중지
-    if (historyInterval) clearInterval(historyInterval);
-
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    
-    const taskName = localStorage.getItem("selectedTask");
-    const taskType = localStorage.getItem("selectedTaskType");
-    if (!taskName || !taskType) {
-        container.innerHTML = `<p>조회할 작업 정보가 없습니다.</p>`;
-        return;
-    }
-
-    // 실제 API 호출 및 UI 업데이트를 수행하는 함수
-    async function fetchAndUpdateStatus() {
-        try {
-            const isCall = taskType.includes("호출");
-            const url = isCall ? `${window.API_URL}/get_call_history` : `${window.API_URL}/get_order_history`;
-            const action = isCall ? "get_call_history" : "get_order_history";
-
-            let payload;
-            if (isCall) {
-                payload = { location_name: window.ROOM_ID, task_name: taskName };
-            } else {
-                payload = { request_location: window.ROOM_ID, task_name: taskName, task_type_name: taskType };
-            }
-            const request = { type: "request", action, payload };
-
-            const result = await sendApiRequest(url, request);
-            updateUI(result.payload, isCall);
-
-        } catch (err) {
-            console.error("상세 이력 업데이트 실패:", err);
-            // 에러 발생 시, 주기적 업데이트 중지
-            if (historyInterval) clearInterval(historyInterval);
-        }
-    }
-
-    // UI를 업데이트하는 함수
-    function updateUI(p, isCall) {
-        if (!p) return;
-
-        // 헤더 정보 업데이트
-        document.getElementById('task_type_name').textContent = isCall ? "로봇 호출" : p.task_type_name;
-        document.getElementById('request_location_name').textContent = `목적지 ${p.request_location || p.location_name}`;
-=======
     if (historyInterval) clearInterval(historyInterval);
 
     const container = document.getElementById(containerId);
@@ -195,7 +142,6 @@ export async function renderHistoryDetail(containerId) {
 
         if (taskTypeNameEl) taskTypeNameEl.textContent = isCall ? "로봇 호출" : p.task_type_name;
         if (locationNameEl) locationNameEl.textContent = `목적지 ${p.request_location || p.location_name}`;
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
         
         // 타임라인 데이터 정의
         const timelineData = isCall ? [
@@ -211,33 +157,6 @@ export async function renderHistoryDetail(containerId) {
         // 도착 예정 시간 표시
         const lastCompleted = [...timelineData].reverse().find(s => s.time);
         if (lastCompleted && lastCompleted.id !== 'status_arrival' && p.estimated_time) {
-<<<<<<< HEAD
-             const arrivalTime = new Date(new Date(lastCompleted.time).getTime() + p.estimated_time * 1000);
-             document.getElementById('estimated_time').textContent = `${formatTime(arrivalTime.toISOString())} 도착 예정`;
-        } else {
-             document.getElementById('estimated_time').textContent = '완료';
-        }
-
-
-        // 타임라인 HTML 생성
-        const timelineContainer = document.getElementById('status-timeline');
-        timelineContainer.innerHTML = ''; // 기존 타임라인 비우기
-        
-        timelineData.forEach(status => {
-            const item = document.createElement('div');
-            item.className = `timeline-item ${!status.time ? 'inactive' : ''}`;
-            item.innerHTML = `
-                <div class="timeline-point">
-                    <div class="point"></div>
-                    <div class="line"></div>
-                </div>
-                <div class="timeline-details">
-                    <span class="status-text">${status.text}</span>
-                    <span class="status-time">${formatTime(status.time)}</span>
-                </div>`;
-            timelineContainer.appendChild(item);
-        });
-=======
             const arrivalTime = new Date(new Date(lastCompleted.time).getTime() + p.estimated_time * 1000);
             if (estimatedTimeEl) estimatedTimeEl.textContent = `${formatTime(arrivalTime.toISOString())} 도착 예정`;
         } else {
@@ -265,7 +184,6 @@ export async function renderHistoryDetail(containerId) {
                 timelineContainerEl.appendChild(item);
             });
         }
->>>>>>> 95a4ef5ef8d1b6d8303c680f6c120e8fd1bb6601
     }
 
     // 최초 1회 즉시 실행 후, 15초마다 주기적으로 상태 업데이트
