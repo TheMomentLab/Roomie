@@ -4,7 +4,6 @@ bash
 편집
 guest_gui/
 ├── index.html                   # 메인 엔트리 포인트 (모든 기능 포함 SPA)
-├── config/
 ├── js/
 │   ├── app.js                   # 메인 앱 로직 (렌더링/이벤트 처리)
 │   ├── common.js                # 공용 유틸 및 API 통신 함수
@@ -26,9 +25,6 @@ guest_gui/
 ⚙️ index.html 구조 요약
 SPA(Single Page Application) 스타일로 구성하여, QR 진입 시 config를 기반으로 기능 필터링하여 동작합니다.
 
-html
-복사
-편집
 <!-- 필수 영역 -->
 <head>
   <link rel="stylesheet" href="css/common.css" />
@@ -86,9 +82,7 @@ const ENABLED_FEATURES = {
   history: true,
 };
 🔁 페이지 동작 방식 (app.js)
-js
-복사
-편집
+
 document.addEventListener("DOMContentLoaded", () => {
   initPage();     // header 및 기능 필터링 렌더링
   bindEvents();   // 각 버튼의 클릭 이벤트 등록

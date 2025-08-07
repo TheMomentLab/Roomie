@@ -1,54 +1,43 @@
-// history.js
-// 요청 이력 조회(get_task_list) 및 단건 상태 상세 확인(get_order_detail, get_order_history, get_call_history) 처리
+import { sendApiRequest, showToast } from './common.js'; // ⬅️ 1. showToast 임포트 추가
 
-import { sendApiRequest } from './common.js';
 
-/**
- * 요청 이력 조회 요청 타입
- * @typedef {Object} GetTaskListRequest
- * @property {string} type - "request"
- * @property {string} action - "get_task_list"
- * @property {Object} payload
- * @property {string} payload.request_location - 위치 이름(예: ROOM_201)
- */
+// --- 시간 포맷 함수 (공통 사용) ---
+function formatTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? '오후' : '오전';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    return `${ampm} ${hours}:${minutes}`;
+}
 
-/**
- * 요청 이력 조회 응답 타입
- * @typedef {Object} GetTaskListResponse
- * @property {string} type - "response"
- * @property {string} action - "get_task_list"
- * @property {Object} payload
- * @property {string} payload.location_name
- * @property {Object} payload.order_details
- * @property {Array<Object>} payload.order_details.tasks - 요청 이력 배열
- * @property {string} payload.order_details.tasks[].task_name - 작업 ID
- * @property {string} payload.order_details.tasks[].task_type_name - 작업 유형명
- * @property {string} payload.order_details.tasks[].created_at - 생성일시 (ISO8601)
- */
+let historyInterval; // 주기적 업데이트를 제어하기 위한 변수
 
-export async function loadHistoryList() {
+
+export async function loadHistoryList(containerId) { // ⬅️ containerId 인자 추가
   try {
-    /** @type {GetTaskListRequest} */
     const request = {
       type: "request",
       action: "get_task_list",
       payload: {
-        request_location: ROOM_ID
+        request_location: window.ROOM_ID
       }
     };
+    
+    // ⬅️ 3. API 전체 주소를 사용하도록 수정
+    const result = await sendApiRequest(`${window.API_URL}/get_task_list`, request);
 
-    /** @type {GetTaskListResponse['payload']} */
-    const result = await sendApiRequest("/api/gui/get_task_list", request);
-
-    if (result && result.order_details?.tasks) {
-      localStorage.setItem("orderHistory", JSON.stringify(result.order_details.tasks));
-      renderHistoryList("history-result", result.order_details.tasks);
+    if (result && result.payload && result.payload.order_details?.tasks) {
+      localStorage.setItem("orderHistory", JSON.stringify(result.payload.order_details.tasks));
+      renderHistoryList(containerId, result.payload.order_details.tasks);
     } else {
-      showToast("asset/error_toast.png", "error");
+      showToast("assets/error_toast.png", "error");
     }
   } catch (err) {
     console.error("이력 조회 실패:", err);
-    showToast("asset/error_toast.png", "error");
+    showToast("assets/error_toast.png", "error");
   }
 }
 
@@ -57,116 +46,147 @@ function renderHistoryList(containerId, list) {
   if (!container) return;
 
   if (list.length === 0) {
-    container.innerHTML = "<p style='color:#888;'>요청 이력이 없습니다.</p>";
+    container.innerHTML = "<p style='text-align:center; color:#888;'>요청 이력이 없습니다.</p>";
     return;
   }
-
+  
+  // ⬅️ 4. CSS와 일치하도록 클래스 이름 수정
   container.innerHTML = list.map(item => `
-    <div class="history-item" data-task="${item.task_name}">
-      <strong>${item.task_type_name}</strong>
-      <span>${formatTime(item.created_at)}</span>
+    <div class="task-card" data-task-name="${item.task_name}" data-task-type="${item.task_type_name}">
+      <strong class="task-title">${item.task_type_name}</strong>
+      <span class="task-time">${formatTime(item.created_at)}</span>
       <button class="btn-detail">상세보기</button>
     </div>
   `).join("");
 
-  container.querySelectorAll(".btn-detail").forEach((btn, i) => {
-    btn.addEventListener("click", () => {
-      const taskName = list[i].task_name;
-      const taskType = list[i].task_type_name;
-      localStorage.setItem("selectedTask", taskName);
-      localStorage.setItem("selectedTaskType", taskType);
-      window.location.hash = `status-history&task=${taskName}`;
-    });
+  container.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-detail')) {
+      const historyItem = e.target.closest('.task-card');
+      const taskName = historyItem.dataset.taskName;
+      const taskType = historyItem.dataset.taskType;
+      
+      location.hash = `history-detail&task=${taskName}&type=${taskType}`;
+    }
   });
 }
-
-function formatTime(isoStr) {
-  if (!isoStr) return "";
-  const d = new Date(isoStr);
-  const h = d.getHours();
-  const m = d.getMinutes().toString().padStart(2, '0');
-  const ampm = h >= 12 ? '오후' : '오전';
-  const hour = h % 12 || 12;
-  return `${ampm} ${hour}:${m}`;
-}
-
 export async function renderHistoryDetail(containerId) {
-  const container = document.getElementById(containerId);
-  const taskName = localStorage.getItem("selectedTask");
-  const taskType = localStorage.getItem("selectedTaskType");
-  if (!container || !taskName || !taskType) return;
+    if (historyInterval) clearInterval(historyInterval);
 
-  const isCall = taskType.includes("호출");
-  const url = isCall ? "/api/gui/get_call_history" : "/api/gui/get_order_history";
-  const action = isCall ? "get_call_history" : "get_order_history";
-
-  try {
-    const request = {
-      type: "request",
-      action,
-      payload: {
-        request_location: ROOM_ID,
-        task_name: taskName,
-        task_type_name: taskType
-      }
-    };
-
-    const result = await sendApiRequest(url, request);
-    if (!result || !result.payload) {
-      container.innerHTML = "<p style='color:#888;'>상세 정보를 불러올 수 없습니다.</p>";
-      return;
+    const container = document.getElementById(containerId);
+    if (!container) {
+        console.error(`[History] 컨테이너를 찾을 수 없습니다: #${containerId}`);
+        return;
     }
 
-    const p = result.payload;
-    const timeline = isCall ? [
-      { label: "호출 생성", key: "task_creation_time" },
-      { label: "로봇 출발", key: "robot_assignment_time" },
-      { label: "로봇 도착", key: "robot_arrival_time" }
-    ] : [
-      { label: "주문 접수", key: "task_creation_time" },
-      { label: "로봇 할당", key: "robot_assignment_time" },
-      { label: "픽업 완료", key: "pickup_completion_time" },
-      { label: "도착 완료", key: "delivery_arrival_time" }
-    ];
-
+    
+    // ✅ 상세 페이지 템플릿을 컨테이너 내부에 먼저 렌더링
     container.innerHTML = `
-      <h2>${taskType} 상세 상태</h2>
-      <p><strong>${taskName}</strong> - ${p.request_location}</p>
-      <div class="timeline">
-        ${timeline.map(t => `
-          <div class="timeline-item ${!p[t.key] ? 'inactive' : ''}">
-            <div class="point"></div>
-            <div class="details">
-              <span class="label">${t.label}</span>
-              <span class="time">${formatTime(p[t.key])}</span>
+        <div class="status-card">
+            <div class="status-header">
+                <h2 id="task_type_name"></h2>
+                <div class="status-summary">
+                    <p id="estimated_time"></p>
+                    <p id="request_location_name"></p>
+                </div>
             </div>
-          </div>
-        `).join("")}
-      </div>
+            <div id="status-timeline" class="status-timeline"></div>
+        </div>
     `;
-  } catch (err) {
-    console.error("상세 이력 불러오기 실패:", err);
-    container.innerHTML = "<p style='color:#888;'>오류가 발생했습니다.</p>";
-  }
+    
+      // URL에서 taskName과 taskType 추출
+    const route = location.hash.replace("#", "");
+    const mainRoute = route.split('&')[0]; // 'history-detail'
+    const queryString = route.includes('&') ? route.substring(route.indexOf('&') + 1) : '';
+    const params = new URLSearchParams(queryString);
+    const taskName = params.get('task');
+    const taskType = params.get('type');
+
+    if (!taskName || !taskType) {
+        container.innerHTML = `<p>조회할 작업 정보가 없습니다. URL을 확인해주세요.</p>`;
+        return;
+    }
+
+    // 실제 API 호출 및 UI 업데이트를 수행하는 함수
+    async function fetchAndUpdateStatus() {
+        try {
+            const isCall = taskType.includes("호출");
+            const url = isCall ? `${window.API_URL}/get_call_history` : `${window.API_URL}/get_order_history`;
+            const action = isCall ? "get_call_history" : "get_order_history";
+
+            let payload;
+            if (isCall) {
+                payload = { location_name: window.ROOM_ID, task_name: taskName };
+            } else {
+                payload = { request_location: window.ROOM_ID, task_name: taskName, task_type_name: taskType };
+            }
+            const request = { type: "request", action, payload };
+
+            const result = await sendApiRequest(url, request);
+            updateUI(result.payload, isCall);
+
+        } catch (err) {
+            console.error("상세 이력 업데이트 실패:", err);
+            // 에러 발생 시, 주기적 업데이트 중지
+            if (historyInterval) clearInterval(historyInterval);
+        }
+    }
+
+    // UI를 업데이트하는 함수
+    function updateUI(p, isCall) {
+        if (!p) return;
+
+        const taskTypeNameEl = container.querySelector('#task_type_name');
+        const locationNameEl = container.querySelector('#request_location_name');
+        const estimatedTimeEl = container.querySelector('#estimated_time');
+        const timelineContainerEl = container.querySelector('#status-timeline');
+
+        if (taskTypeNameEl) taskTypeNameEl.textContent = isCall ? "로봇 호출" : p.task_type_name;
+        if (locationNameEl) locationNameEl.textContent = `목적지 ${p.request_location || p.location_name}`;
+        
+        // 타임라인 데이터 정의
+        const timelineData = isCall ? [
+            { id: 'status_creation', time: p.task_creation_time, text: '호출 접수됨' },
+            { id: 'status_arrival', time: null, text: '로봇 도착' },
+        ] : [
+            { id: 'status_creation', time: p.task_creation_time, text: '주문 접수됨' },
+            { id: 'status_assignment', time: p.robot_assignment_time, text: '로봇 배정됨' },
+            { id: 'status_pickup', time: p.pickup_completion_time, text: '픽업 완료됨' },
+            { id: 'status_arrival', time: p.delivery_arrival_time, text: '배달 완료됨' }
+        ];
+        
+        // 도착 예정 시간 표시
+        const lastCompleted = [...timelineData].reverse().find(s => s.time);
+        if (lastCompleted && lastCompleted.id !== 'status_arrival' && p.estimated_time) {
+            const arrivalTime = new Date(new Date(lastCompleted.time).getTime() + p.estimated_time * 1000);
+            if (estimatedTimeEl) estimatedTimeEl.textContent = `${formatTime(arrivalTime.toISOString())} 도착 예정`;
+        } else {
+            if (estimatedTimeEl) estimatedTimeEl.textContent = '완료';
+        }
+
+        // 타임라인 HTML 생성
+        if (timelineContainerEl) {
+            timelineContainerEl.innerHTML = ''; // 기존 타임라인 비우기
+            
+            timelineData.forEach(status => {
+                const item = document.createElement('div');
+                item.className = `timeline-item ${!status.time ? 'inactive' : ''}`;
+                
+                // ✅ Bug Fix 2: CSS와 일치하도록 HTML 구조와 클래스 이름 수정
+                item.innerHTML = `
+                    <div class="timeline-point">
+                        <div class="point"></div>
+                        <div class="line"></div>
+                    </div>
+                    <div class="details">
+                        <span class="label">${status.text}</span>
+                        <span class="time">${formatTime(status.time)}</span>
+                    </div>`;
+                timelineContainerEl.appendChild(item);
+            });
+        }
+    }
+
+    // 최초 1회 즉시 실행 후, 15초마다 주기적으로 상태 업데이트
+    fetchAndUpdateStatus();
+    historyInterval = setInterval(fetchAndUpdateStatus, 15000);
 }
-
-/*
-📌 시나리오 흐름 (Mermaid.js)
-
-```mermaid
-sequenceDiagram
-  participant Guest
-  participant GUI
-  participant Server
-
-  Guest->>GUI: 요청 이력 조회 클릭
-  GUI->>Server: POST /api/gui/get_task_list
-  Server-->>GUI: tasks[] 응답
-  GUI->>Guest: 리스트 렌더링
-
-  Guest->>GUI: 상세보기 클릭
-  GUI->>Server: POST /api/gui/get_order_history 또는 get_call_history
-  Server-->>GUI: payload 응답
-  GUI->>Guest: 상세 타임라인 렌더링
-```
-*/

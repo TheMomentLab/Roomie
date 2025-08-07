@@ -1,9 +1,24 @@
-# models.py (수정 후)
+# models.py (명세서 기반으로 재구성)
 
-from pydantic import BaseModel, Field
-from typing import List, Optional
+from pydantic import BaseModel
+from typing import List, Optional, Union
 
-# --- 공통 모델 ---
+# --- 개별 요청 페이로드 모델 ---
+# 각 action에 맞는 payload를 명확히 정의합니다.
+
+class CreateCallTaskPayload(BaseModel):
+    location_name: str
+    task_type_id: int
+
+class GetHistoryPayload(BaseModel):
+    location_name: Optional[str] = None # get_call_history 용
+    request_location: Optional[str] = None # get_order_history, get_task_list 용
+    task_name: Optional[str] = None
+    task_type_name: Optional[str] = None
+
+class GetMenuPayload(BaseModel):
+    location_name: str
+
 class OrderItem(BaseModel):
     name: str
     quantity: int
@@ -12,27 +27,19 @@ class OrderItem(BaseModel):
 class OrderDetails(BaseModel):
     items: List[OrderItem]
 
-# --- 신규 추가 모델 ---
-class RobotStatus(BaseModel):
-    x: float
-    y: float
-    floor_id: int = Field(alias="floorId") # JSON의 floorId와 매핑
-
-# --- 페이로드 모델 (명세서에 맞춰 필드 수정 및 추가) ---
-class RequestPayload(BaseModel):
-    # create_call_task 용
-    location: Optional[str] = None
-    task_type: Optional[int] = None
-
-    # 메뉴, 배송, 내역 조회 등에서 사용
-    location_name: Optional[str] = None
-    request_location: Optional[str] = None
-    task_type_name: Optional[str] = None
-    task_name: Optional[str] = None
-    order_details: Optional[OrderDetails] = None
+class CreateDeliveryTaskPayload(BaseModel):
+    location_name: str
+    task_type_name: str
+    order_details: OrderDetails
 
 # --- 최상위 요청 모델 ---
+# Union을 사용하여 action에 따라 올바른 payload 모델을 선택하도록 합니다.
 class RequestModel(BaseModel):
-    type: str # "request"
+    type: str
     action: str
-    payload: Optional[RequestPayload] = {}
+    payload: Union[
+        CreateCallTaskPayload,
+        GetHistoryPayload,
+        GetMenuPayload,
+        CreateDeliveryTaskPayload
+    ]
