@@ -46,7 +46,7 @@ bool Controller::init() {
   if (lockServo.attached()) {
     Serial.println("서보모터 초기화 성공");
     servoAttached = true;
-    setLockState(false);
+    setLockState(true);
   } else {
     Serial.println("⚠️ 서보모터 초기화 실패!");
     servoAttached = false;

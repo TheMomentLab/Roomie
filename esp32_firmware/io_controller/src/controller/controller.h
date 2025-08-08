@@ -15,7 +15,7 @@
 #define ITEM_ECHO_PIN 23
 
 // 로봇 ID
-#define ROBOT_ID 1
+#define ROBOT_ID 0
 
 // 로봇 상태 정의
 enum RobotState {

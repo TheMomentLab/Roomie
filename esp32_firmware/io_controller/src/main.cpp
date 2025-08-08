@@ -13,9 +13,12 @@
 #include "topics/topic_manager.h"
 
 // ==================== 설정 상수 ====================
-const char* WIFI_SSID = "AIE_509_2.4G";
-const char* WIFI_PASSWORD = "addinedu_class1";
-const byte MICRO_ROS_AGENT_IP[] = {192, 168, 0, 47};
+const char* WIFI_SSID = "roomie";
+const char* WIFI_PASSWORD = "hellohello";
+const byte MICRO_ROS_AGENT_IP[] = {192, 168, 0, 5};
+// const char* WIFI_SSID = "AIE_509_2.4G";
+// const char* WIFI_PASSWORD = "addinedu_class1";
+// const byte MICRO_ROS_AGENT_IP[] = {192, 168, 0, 47};
 const int MICRO_ROS_AGENT_PORT = 8888;
 const char* NODE_NAME = "roomie_ioc";
 const unsigned long WIFI_TIMEOUT_MS = 20000;

@@ -50,7 +50,7 @@ void TopicManager::handleRobotState(const roomie_msgs__msg__RobotState* msg) {
                 msg->robot_id, msg->robot_state_id);
   
   // 해당 로봇의 메시지인지 확인
-  if (msg->robot_id == 1) {  // ROBOT_ID
+  if (msg->robot_id == 0) {  // ROBOT_ID
     RobotState state = static_cast<RobotState>(msg->robot_state_id);
     controller->setRobotState(state);
     
