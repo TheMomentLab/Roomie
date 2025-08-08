@@ -45,6 +45,16 @@ class FoodPickupArrivalEvent(BaseModel):
     action: str = "food_pickup_arrival"
     payload: FoodPickupArrivalEventPayload
 
+# SGUI 음식 배송 장소 도착 알림
+class FoodDeliveryArrivalEventPayload(BaseModel):
+    task_id: int
+    robot_id: int
+
+class FoodDeliveryArrivalEvent(BaseModel):
+    type: str = "event"
+    action: str = "food_pickup_arrival"
+    payload: FoodDeliveryArrivalEventPayload
+
 # SGUI 비품 픽업 장소 도착 알림
 class SupplyPickupArrivalEventPayload(BaseModel):
     task_id: int

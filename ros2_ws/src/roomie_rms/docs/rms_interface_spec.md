@@ -228,6 +228,18 @@ string message
 }
 ```
 
+#### 음식 배송장소 도착 알림 (food_delivery_arrival)
+```json
+{
+  "type": "event",
+  "action": "food_delivery_arrival",
+  "payload": {
+    "task_id": 1,
+    "robot_id": 1
+  }
+}
+```
+
 #### 비품 요청 발생 알림 (supply_order_creation)
 ```json
 {

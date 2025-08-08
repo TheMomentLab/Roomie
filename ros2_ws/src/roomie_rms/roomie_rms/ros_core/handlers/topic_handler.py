@@ -1,4 +1,5 @@
 from datetime import datetime
+import json
 
 from app.utils.logger import get_logger, log_database_operation, log_websocket_event
 from app.utils.error_handler import handle_database_errors, database_transaction, safe_database_connection
@@ -37,7 +38,7 @@ class TopicHandler:
 
     @handle_database_errors
     def robot_state_callback(self, msg):
-        """RC로부터 로봇 상태 정보를 받아 DB에 업데이트하고, AGUI/SGUI에 알림 및 로그를 기록합니다."""
+        """RC로부터 로봇 상태 정보를 받아 DB에 업데이트하고, GGUI/SGUI에 알림을 전송합니다."""
         logger.info(
             "로봇 상태 수신",
             category="ROS2", subcategory="TOPIC-SUB",
@@ -64,6 +65,51 @@ class TopicHandler:
                         error_id=current_snapshot['error_id']
                     )
 
+                    # 3. 수령대기 상태일 때 GGUI와 SGUI에 알림 전송
+                    if msg.robot_state_id == settings.db_consts.robot_status.get('수령대기'):
+                        logger.info(f"로봇 {msg.robot_id} 수령대기 상태 - GGUI/SGUI 알림 전송")
+                        
+                        # 현재 로봇이 수행 중인 작업 정보 조회
+                        cursor.execute("""
+                            SELECT t.id, t.location_id, l.name as location_name, tt.name as task_type_name
+                            FROM task t
+                            JOIN location l ON t.location_id = l.id
+                            JOIN task_type tt ON t.task_type_id = tt.id
+                            WHERE t.robot_id = %s AND t.task_status_id NOT IN (7, 13, 22)
+                            ORDER BY t.task_creation_time DESC
+                            LIMIT 1
+                        """, (msg.robot_id,))
+                        task_info = cursor.fetchone()
+                        
+                        if task_info:
+                            task_id = task_info['id']
+                            location_name = task_info['location_name']
+                            task_type_name = task_info['task_type_name']
+                            
+                            # GGUI에 배송완료 알림 전송
+                            ggui_event_data = {
+                                "type": "event",
+                                "action": "delivery_completion",
+                                "payload": {
+                                    "task_name": f"TASK_{task_id:03d}",
+                                    "request_location": location_name
+                                }
+                            }
+                            websocket_manager.send_to_client_by_location_sync("guest", location_name, json.dumps(ggui_event_data))
+                            log_websocket_event("SEND", f"guest@{location_name}", f"배송완료 알림 - Task {task_id}")
+                            
+                            # SGUI에 배송완료 알림 전송
+                            sgui_action = "food_delivery_arrival" if task_type_name == "음식배송" else "supply_delivery_arrival"
+                            sgui_event_data = {
+                                "type": "event",
+                                "action": sgui_action,
+                                "payload": {
+                                    "task_id": task_id,
+                                    "robot_id": msg.robot_id
+                                }
+                            }
+                            websocket_manager.broadcast_to_sync("staff", json.dumps(sgui_event_data))
+                            log_websocket_event("BROADCAST", "staff", f"배송완료 알림({sgui_action}) - Task {task_id}")
 
             # 복귀 대기 중 상태일 때 복귀 로직 실행
             if msg.robot_state_id == settings.db_consts.robot_status.get('복귀 대기 중'):

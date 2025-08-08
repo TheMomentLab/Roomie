@@ -143,13 +143,14 @@ roomie_rms/
     ├── logs/                    # 로그 파일 저장소
     │   └── roomie_rms_*.log     # 애플리케이션 로그 (세션별로 생성)
     │
-    ├── static/                  # 정적 파일
+    ├── assets/                  # 정적 파일
     │   ├── images/              # 이미지 파일
     │   │   ├── food/            # 음식 이미지
     │   │   └── supply/          # 물품 이미지
-    │   └── sql/                 # 데이터베이스 스키마 및 초기 데이터
+    │   └── sql/                 # 데이터베이스 스키마 및 데이터
     │       ├── roomie_db_tables.sql  # 테이블 스키마
-    │       └── roomie_db_data.sql    # 초기 데이터
+    │       ├── roomie_db_data.sql    # 초기 데이터
+    │       └── roomie_db_dummy.sql   # 더미 데이터
     │
     └── testing/                 # 테스트 도구
         ├── __init__.py
