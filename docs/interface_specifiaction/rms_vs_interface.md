@@ -198,11 +198,41 @@ int32 robot_id
 bool dynamic
 float32 x
 float32 y
+float32 z
 ```
 
 **dynamic 값:**
 - `False`: 정적 장애물
 - `True`: 동적 장애물
+
+**출력 단위:**
+- X, Y, Z 좌표: 미터(m)
+
+**발행 주기:**
+- 감지될 때마다 발행
+
+**좌표계 정의:**
+- 기준 프레임: 전방 뎁스 카메라(광학 중심)
+- X+: 화면 오른쪽, Y+: 화면 위쪽, Z+: 카메라 전방(깊이)
+- 단위: 미터(m)
+
+### 2.2 유리 문 상태 감지 결과
+- **From**: VS → RC
+- **Protocol**: ROS2 Topic
+- **Topic**: `/vs/glass_door_status`
+
+```msg
+# GlassDoorStatus.msg
+int32 robot_id
+bool opened
+```
+
+**opened 산출 로직:**
+- 유리문 감지됨: `opened=False`
+- 유리문 감지되지 않음: `opened=True`
+
+**발행 주기:**
+- 감지될 때마다 발행
 
 ---
 
