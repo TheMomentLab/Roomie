@@ -1,8 +1,8 @@
 
 
 # # config.py
-RMS_HOST = "0.0.0.0"
-RMS_PORT = 8888
+RMS_HOST = "192.168.0.5"
+RMS_PORT = 8000
 RMS_WS_URL = f"ws://{RMS_HOST}:{RMS_PORT}/api/gui/ws/staff/staff_01"
 RMS_HTTP_URL = f"http://{RMS_HOST}:{RMS_PORT}/api/gui"
 

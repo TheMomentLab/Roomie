@@ -7,7 +7,7 @@ import { initWebSocket } from "./common.js";
 
 // --- 전역 설정 ---
 function getConfigFromRoomParam() {
-  const roomParam = new URLSearchParams(window.location.search).get("room") || "ROOM_102";
+  const roomParam = new URLSearchParams(window.location.search).get("room") || "ROOM_101";
   const configMap = {
     ROOM_201: { ROOM_ID: "ROOM_201", ENABLED_FEATURES: { food: true, supply: true, robot: true, history: true } },
     ROOM_101: { ROOM_ID: "ROOM_101", ENABLED_FEATURES: { food: true, supply: true, robot: true, history: true } },
@@ -15,7 +15,7 @@ function getConfigFromRoomParam() {
     LOB_CALL: { ROOM_ID: "LOB_CALL", ENABLED_FEATURES: { food: false, supply: false, robot: true, history: true } },
     RES_CALL: { ROOM_ID: "RES_CALL", ENABLED_FEATURES: { food: false, supply: false, robot: true, history: true } }
   };
-  return configMap[roomParam] || configMap["ROOM_102"];
+  return configMap[roomParam] || configMap["ROOM_101"];
 }
 
 
@@ -29,10 +29,10 @@ const ROOM_ID = CONFIG.ROOM_ID;
 const ENABLED_FEATURES = CONFIG.ENABLED_FEATURES;
 window.ROOM_ID = ROOM_ID;
 const IS_DEV = true;
-const BASE_URL = IS_DEV ? "http://127.0.0.1:8888" : "https://roomie.com";
+const BASE_URL = IS_DEV ? "http://192.168.0.5:8000" : "https://roomie.com";
 //const BASE_URL = IS_DEV ? "http://0.0.0.0:8888" : "https://roomie.com";
 window.API_URL = `${BASE_URL}/api/gui`;
-window.WS_URL = `${BASE_URL.replace("http", "ws")}/ws/guest/${ROOM_ID}`;
+window.WS_URL = `${BASE_URL.replace("http", "ws")}/api/gui/ws/guest/${ROOM_ID}`;
 
 // --- 앱 상태 관리 ---
 let currentOrderType = 'food';

@@ -14,10 +14,12 @@
     --main-font: 'Noto Sans KR', sans-serif;
 }
 
-
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--main-font); background-color: #333; }
 
 /* 2. 공통 레이아웃 */
 #app-container { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }
+.app-layout { width: 100%; height: 100%; max-height: 100vh; display: flex; flex-direction: column; color: var(--light-text-color); background-size: cover; background-position: center; background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png'); padding: 30px; position: relative; overflow-y: auto; }
 
 .app-layout .main-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
 .main-content.main-content-sub {
@@ -120,7 +122,7 @@
 
 /* --- 상세 상태 및 타임라인 --- */
 .content { width: 100%; flex-grow: 1; display: flex; }
-.status-card { width: 100%; background-color: white; border-radius: 19px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.status-card { width: 100%; background-color: white; color: #474646; border-radius: 19px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
 .status-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
 .status-timeline { display: flex; flex-direction: column; }
 .timeline-item { display: flex; align-items: flex-start; gap: 1.5rem; }
@@ -142,6 +144,32 @@
 .robot-icon-large {
     width: 150px;
     height: 150px;
+}
+#toast-full-image {
+    display: block;         /* 이미지 깨짐 방지 */
+    max-width: 100%;        /* 부모 요소 너비에 맞게 조절 */
+    max-height: 100%;       /* 부모 요소 높이에 맞게 조절 */
+    object-fit: contain;    /* 이미지 비율 유지하며 모두 보이게 */
+}
+
+.global-toast {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 9999;
+    display: flex;          /* Flex 컨테이너로 설정 */
+    align-items: center;     /* 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
+}
+
+.global-toast.hidden {
+    display: none;
 }
 
 /* --- 상태 표시 페이지 (호출, 완료 등) 공통 스타일 --- */
@@ -191,6 +219,7 @@
     flex-shrink: 0;
 }
 .box-header .header-btn {
+    background-color: #050303;
     border: none;
     cursor: pointer;
     padding: 0;
@@ -200,6 +229,15 @@
     flex-shrink: 0;
 }
 
+.btn-header-action {
+    background-color: #2F2F2F; /* 검은색 배경 */
+    color: rgb(5, 2, 2);
+    font-family: var(--main-font);
+    font-size:20px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px; /* 둥근 모서리 */
+}
 /* --- 흰색 박스 내부 헤더 --- */
 .box-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; flex-shrink: 0; }
 .box-header .page-title { font-size: 24px; font-weight: 500; flex-grow: 1; text-align: center; }
@@ -241,5 +279,3 @@
     cursor: pointer;
     margin-top: auto;
 }
-
-

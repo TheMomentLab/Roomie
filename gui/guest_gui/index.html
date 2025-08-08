@@ -6,14 +6,19 @@
     <title>ROOMIE - 객실 서비스</title>
     <link rel="stylesheet" href="./css/common.css" />
     <style>
-
+        /* index.html에만 적용되는 스타일은 유지합니다. */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #333;
+            margin: 0;
+        }
     </style>
 </head>
 <body>
     <div id="app-container">
-
+        <!-- ✅ 중복된 global-toast 제거 -->
         <div id="global-toast" class="global-toast hidden">
-            <img id="toast-full-image" src="" alt="notification">
+            <img id="toast-full-image" src="" alt="notification" style="margin-right: 15px;">
             <span id="toast-message"></span> 
         </div>
 
