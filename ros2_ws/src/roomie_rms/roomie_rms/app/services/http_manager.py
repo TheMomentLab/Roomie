@@ -525,7 +525,7 @@ class HttpManager:
         async def get_task_list(request: GetTaskListRequest):
             """(Guest) 특정 위치의 작업 목록 조회 요청"""
             payload = request.payload
-            location_name = payload.location_name
+            location_name = payload.request_location
             logger.info(
                 "Guest 작업 목록 조회 요청 수신",
                 category="API", subcategory="HTTP-REQ",
@@ -576,7 +576,7 @@ class HttpManager:
 
                         response_payload = GetTaskListResponsePayload(
                             location_name=location_name,
-                            tasks=task_items
+                            order_details={"tasks": task_items}
                         )
                         response = GetTaskListResponse(payload=response_payload)
                         

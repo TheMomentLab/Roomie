@@ -211,7 +211,7 @@ class CreateCallTaskResponse(BaseModel):
 
 # 호출 내역 조회 요청/응답
 class GetCallHistoryRequestPayload(BasePayload):
-    location_name: str
+    request_location: str
     task_name: str
 
 class GetCallHistoryRequest(BaseModel):
@@ -336,7 +336,7 @@ class GetOrderHistoryResponse(BaseModel):
 
 # 특정 위치의 작업 목록 조회 요청/응답
 class GetTaskListRequestPayload(BasePayload):
-    location_name: str
+    request_location: str
 
 class GetTaskListRequest(BaseModel):
     type: str = "request"
@@ -350,7 +350,7 @@ class TaskListItem(BaseModel):
 
 class GetTaskListResponsePayload(BasePayload):
     location_name: str
-    tasks: List[TaskListItem]
+    order_details: Dict[str, List[TaskListItem]]
 
 class GetTaskListResponse(BaseModel):
     type: str = "response"
