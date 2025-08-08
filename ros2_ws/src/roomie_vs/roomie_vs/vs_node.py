@@ -256,8 +256,12 @@ class OpenNI2Camera:
                     depth_array = np.frombuffer(depth_data, dtype=np.uint16)
                     
                     h = depth_frame.height
-                    w = depth_frame.width  
+                    w = depth_frame.width
                     depth_image = depth_array.reshape((h, w))
+
+                    # 해상도 저장 (정규화용)
+                    self.depth_width = w
+                    self.depth_height = h
                     
                 except Exception as e:
                     self.logger.warning(f"Depth 프레임 읽기 실패: {e}")
@@ -2589,9 +2593,9 @@ class VSNode(Node):
                     obstacle_msg = Obstacle()
                     obstacle_msg.robot_id = obstacle_info['robot_id']
                     obstacle_msg.dynamic = obstacle_info['dynamic']
-                    obstacle_msg.x = obstacle_info['x']  # 실제 월드 X 좌표 (미터)
-                    obstacle_msg.y = obstacle_info['y']  # 실제 월드 Y 좌표 (미터)
-                    obstacle_msg.z = obstacle_info['z']  # 실제 월드 Z 좌표 (미터)
+                    obstacle_msg.x = obstacle_info['x']  # 화면 정규화 X (0~1)
+                    obstacle_msg.y = obstacle_info['y']  # 화면 정규화 Y (0~1)
+                    obstacle_msg.depth = obstacle_info['depth']  # 뎁스 (미터)
                     
                     self.obstacle_pub.publish(obstacle_msg)
                     
@@ -2599,8 +2603,8 @@ class VSNode(Node):
                     obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
                     self.get_logger().debug(
                         f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
-                        f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m, {obstacle_info['z']:.2f}m) "
-                        f"거리: {obstacle_info['distance']:.2f}m"
+                        f"정규좌표: ({obstacle_info['x']:.2f}, {obstacle_info['y']:.2f}), "
+                        f"depth: {obstacle_info['depth']:.2f}m"
                     )
                 
                 # 이전 장애물 정보 저장 (보수적 소멸을 위해)
