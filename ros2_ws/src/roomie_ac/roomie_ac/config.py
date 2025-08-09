@@ -54,6 +54,7 @@ USE_STABLE_ORIENTATION = True
 IGNORE_HAND_EYE_CALIBRATION = True
 
 
+
 # 파일 경로 설정
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = os.path.join(get_package_share_directory('roomie_ac'), 'data')
@@ -81,7 +82,7 @@ JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱�
 # IK (Inverse Kinematics) 설정
 ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
 IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
-IK_TOLERANCE_M = 2e-3 # IK 오차 허용 범위 (m)
+IK_TOLERANCE_M = 1e-3 # IK 오차 허용 범위 (m)
 
 
 
@@ -118,7 +119,7 @@ ROBOT_ID = 0
 # 사전 정의된 버튼 위치 (미터 단위, MODEL_ONLY 모드용)
 PREDEFINED_BUTTON_POSES_M = {
     0: np.array([0.235, 0.0, 0.305]),  # 예시 좌표 (button_id: 2)
-    1: np.array([0.235, 0.0, 0.235]),  
+    1: np.array([0.235, 0.05, 0.195]),  
     2: np.array([0.235, 0.0, 0.235]), 
     3: np.array([0.235, 0.0, 0.235]),  
     4: np.array([0.235, 0.0, 0.235]),  
@@ -150,8 +151,8 @@ PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_POSITION_TOLERANCE_M = 0.002
+SERVOING_POSITION_TOLERANCE_M = 0.001
 SERVOING_STANDBY_DISTANCE_M = 0.05 #  목표 조준을 위한 안전거리
 PRESS_FORWARD_DISTANCE_M = 0.053 # 실제 버튼을 누르는 이동 거리
-SERVOING_MAX_STEP_M = 0.02 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
-IK_MIN_STEP_M = 0.005 # 5mm   이 거리보다 짧은 이동은 무시
+SERVOING_MAX_STEP_M = 0.01 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
+IK_MIN_STEP_M = 0.004 # 5mm   이 거리보다 짧은 이동은 무시
