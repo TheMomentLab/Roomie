@@ -18,4 +18,9 @@ __pycache__/
 
 # OS 관련 파일들
 .DS_Store
-Thumbs.db 
+Thumbs.db
+
+# OpenNI2 관련 파일들 (외부 SDK)
+OpenNI2/
+src/roomie_vs/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/
+libOpenNI2.so 
