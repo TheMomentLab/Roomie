@@ -56,13 +56,13 @@ class VSInterfaceTestClient(Node):
         self.last_obstacle_time = time.time()
         if self.obstacle_monitoring:
             obstacle_type = "동적" if msg.dynamic else "정적"
-            self.get_logger().info(f"🚧 장애물 감지: {obstacle_type} 장애물 (x={msg.x:.3f}, y={msg.y:.3f})")
-    
+            self.get_logger().info(f"🚧 장애물 감지: {obstacle_type} 장애물 (x={msg.x:.3f}, y={msg.y:.3f}, depth={msg.depth:.2f}m)")
+ 
     def on_glass_door_status(self, msg):
         """유리문 상태 콜백"""
         self.last_glass_door_time = time.time()
         if self.glass_door_monitoring:
-            door_status = "열림" if msg.door_opened else "닫힘"
+            door_status = "열림" if msg.opened else "닫힘"
             self.get_logger().info(f"🚪 유리문 상태: {door_status}")
     
     def check_service_availability(self):

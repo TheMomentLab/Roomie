@@ -35,6 +35,12 @@ class ObstacleDetector:
                             center_x, center_y, obj['depth_mm'], is_flipped=True
                         )
                         
+                        # 화면 정규화 좌표 계산 (0~1)
+                        image_width = 640  # 카메라 해상도
+                        image_height = 480
+                        normalized_x = center_x / image_width
+                        normalized_y = center_y / image_height
+                        
                         # 장애물 타입 결정
                         is_dynamic = obj['class_name'] == 'person'
                         
@@ -45,14 +51,19 @@ class ObstacleDetector:
                         obj['world_y'] = world_y
                         obj['world_z'] = world_z
                         obj['distance_m'] = distance_m
+                        obj['normalized_x'] = normalized_x
+                        obj['normalized_y'] = normalized_y
                         
-                        # 장애물 메시지용 정보
+                        # 장애물 메시지용 정보 (문서 스펙 준수)
                         obstacle_info = {
                             'robot_id': self.robot_id,
                             'dynamic': is_dynamic,
-                            'x': world_x,  # 실제 월드 좌표 (미터)
-                            'y': world_y,  # 실제 월드 좌표 (미터)
-                            'z': world_z,  # 실제 월드 좌표 (미터)
+                            'x': normalized_x,  # 화면 상 정규화된 좌표 (0~1)
+                            'y': normalized_y,  # 화면 상 정규화된 좌표 (0~1)
+                            'depth': distance_m,  # 미터(m) - 뎁스 카메라가 인식하는 depth
+                            'world_x': world_x,  # 디버그용 월드 좌표
+                            'world_y': world_y,  # 디버그용 월드 좌표
+                            'world_z': world_z,  # 디버그용 월드 좌표
                             'distance': distance_m,
                             'class_name': obj['class_name'],
                             'confidence': obj['confidence']

@@ -2598,8 +2598,9 @@ class VSNode(Node):
                     obstacle_msg = Obstacle()
                     obstacle_msg.robot_id = obstacle_info['robot_id']
                     obstacle_msg.dynamic = obstacle_info['dynamic']
-                    obstacle_msg.x = obstacle_info['x']  # 실제 월드 X 좌표 (미터)
-                    obstacle_msg.y = obstacle_info['y']  # 실제 월드 Y 좌표 (미터)
+                    obstacle_msg.x = obstacle_info['x']  # 화면 상 정규화된 좌표 (0~1)
+                    obstacle_msg.y = obstacle_info['y']  # 화면 상 정규화된 좌표 (0~1)
+                    obstacle_msg.depth = obstacle_info['depth']  # 미터(m) - 뎁스 카메라가 인식하는 depth
                     
                     self.obstacle_pub.publish(obstacle_msg)
                     
@@ -2607,8 +2608,8 @@ class VSNode(Node):
                     obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
                     self.get_logger().debug(
                         f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
-                        f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m) "
-                        f"거리: {obstacle_info['distance']:.2f}m"
+                        f"화면좌표: ({obstacle_info['x']:.3f}, {obstacle_info['y']:.3f}) "
+                        f"거리: {obstacle_info['depth']:.2f}m"
                     )
                 
                 # 이전 장애물 정보 저장 (보수적 소멸을 위해)

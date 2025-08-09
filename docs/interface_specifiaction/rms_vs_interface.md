@@ -185,6 +185,41 @@ int32 location_id
 
 ---
 
+### 1.6 등록 요청 (Action)
+- **From**: RC → VS
+- **Protocol**: ROS2 Action
+- **Action**: `/vs/action/enroll`
+
+```action
+# Enroll.action
+# Goal
+float32 duration_sec
+---
+# Result
+bool success
+---
+# Feedback
+float32 progress
+```
+
+---
+
+### 1.7 추적 중지 요청
+- **From**: RC → VS
+- **Protocol**: ROS2 Service
+- **Topic**: `/vs/command/stop_tracking`
+
+```srv
+# std_srvs/Trigger.srv
+# Request
+---
+# Response
+bool success
+string message
+```
+
+---
+
 ## 2. Topic Interfaces
 
 ### 2.1 장애물 감지 결과
@@ -229,6 +264,26 @@ bool opened
 
 **발행 주기:**
 - 감지될 때마다 발행
+
+### 2.3 추적 결과
+- **From**: VS → RC
+- **Protocol**: ROS2 Topic
+- **Topic**: `/vs/tracking`
+
+```msg
+# Tracking.msg
+int32 id
+bool tracking
+float32 cx   # [0..1], 좌상단 원점, 표시 영상 기준
+float32 cy   # [0..1]
+float32 scale  # bbox_height / image_height
+uint8 event   # 0=NONE, 1=LOST, 2=REACQUIRED
+```
+
+**규약:**
+- `cx, cy`: 정규화 중심 좌표 (영상 좌우반전 후 기준)
+- `scale`: 거리 대용치 (값이 클수록 대상이 가까움)
+- `event`: 상태 전이 프레임에서만 비-0 값 발행
 
 ---
 
@@ -277,9 +332,12 @@ Vision Service는 3개의 카메라를 사용합니다:
   - `door_elevator/DoorStatus.srv`
   - `door_elevator/ElevatorStatus.srv`
   - `sensor/ButtonStatus.srv`
+  - `std_srvs/Trigger.srv` (alias: `/vs/command/stop_tracking`)
 - **Messages**: `roomie_msgs/msg/`
   - `robot_status/Obstacle.msg`
   - `robot_status/GlassDoorStatus.msg`
+  - `robot_status/Tracking.msg`
 - **Actions**: `roomie_msgs/action/`
+  - `Enroll.action`
  
 
