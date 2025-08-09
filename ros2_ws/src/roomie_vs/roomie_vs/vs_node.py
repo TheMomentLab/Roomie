@@ -1,5 +1,35 @@
 #!/usr/bin/env python3
 
+# 🔧 ROS2 동적 라이브러리 로딩 순서 문제 해결 (시스템 레벨 해결로 더 이상 불필요)
+# import ctypes
+# import os
+# try:
+#     # roomie_msgs 라이브러리들을 순서대로 강제 로드
+#     roomie_lib_path = '/home/jinhyuk2me/project_ws/Roomie/ros2_ws/install/roomie_msgs/lib'
+#     
+#     # 필요한 라이브러리들만 명시적으로 로드
+#     essential_libs = [
+#         'libroomie_msgs__rosidl_generator_c.so',
+#         'libroomie_msgs__rosidl_typesupport_c.so',
+#         'libroomie_msgs__rosidl_typesupport_fastrtps_c.so', 
+#         'libroomie_msgs__rosidl_typesupport_introspection_c.so',
+#         'libroomie_msgs__rosidl_generator_py.so',
+#     ]
+#     
+#     loaded_count = 0
+#     for lib_name in essential_libs:
+#         lib_path = f'{roomie_lib_path}/{lib_name}'
+#         try:
+#             if os.path.exists(lib_path):
+#                 ctypes.CDLL(lib_path)
+#                 loaded_count += 1
+#         except Exception:
+#             pass  # 개별 라이브러리 로딩 실패는 무시
+#     
+#     print(f"✅ roomie_msgs 라이브러리 pre-loading 완료 ({loaded_count}/{len(essential_libs)})")
+# except Exception as e:
+#     print(f"⚠️ roomie_msgs 라이브러리 pre-loading 실패: {e}")
+
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -98,12 +128,12 @@ def setup_openni2_environment():
         print(f"❌ OpenNI2 경로를 찾을 수 없습니다: {openni_path}")
         return False
     
-    # 환경변수 설정
-    os.environ['OPENNI2_REDIST'] = openni_path
-    if 'LD_LIBRARY_PATH' in os.environ:
-        os.environ['LD_LIBRARY_PATH'] += f":{openni_path}"
-    else:
-        os.environ['LD_LIBRARY_PATH'] = openni_path
+    # # 환경변수 설정
+    # os.environ['OPENNI2_REDIST'] = openni_path
+    # if 'LD_LIBRARY_PATH' in os.environ:
+    #     os.environ['LD_LIBRARY_PATH'] += f":{openni_path}"
+    # else:
+    #     os.environ['LD_LIBRARY_PATH'] = openni_path
     
     # PYTHONPATH에 사용자 라이브러리 경로 추가
     user_lib_path = "/home/jinhyuk2me/.local/lib/python3.12/site-packages"
@@ -142,10 +172,10 @@ class OpenNI2Camera:
         self.depth_stream = None
         
         # 카메라 내부 파라미터 (Astra 실제값 추정)
-        self.depth_fx = 1140.6  # 기본값: 장치 FOV에서 계산 실패 시 사용
-        self.depth_fy = 1140.6  # 기본값: 장치 FOV에서 계산 실패 시 사용
-        self.depth_cx = 320.0   # 기본값: 640x480 기준
-        self.depth_cy = 240.0   # 기본값: 640x480 기준
+        self.depth_fx = 1140.6  # 2배 증가 (스케일 보정)
+        self.depth_fy = 1140.6  # 2배 증가 (스케일 보정)
+        self.depth_cx = 320.0
+        self.depth_cy = 240.0
         
         # 현재 프레임들
         self.current_depth = None
@@ -185,27 +215,6 @@ class OpenNI2Camera:
                 self.depth_stream.start()
                 video_mode = self.depth_stream.get_video_mode()
                 self.logger.info(f"Depth 스트림: {video_mode.resolutionX}x{video_mode.resolutionY}@{video_mode.fps}fps")
-                # Try to derive intrinsics from FOV if available
-                try:
-                    width = getattr(video_mode, 'resolutionX', 640)
-                    height = getattr(video_mode, 'resolutionY', 480)
-                    hfov = None
-                    vfov = None
-                    # OpenNI2 표준 메서드명 (camelCase) 사용
-                    if hasattr(self.depth_stream, 'getHorizontalFieldOfView'):
-                        hfov = self.depth_stream.getHorizontalFieldOfView()
-                    if hasattr(self.depth_stream, 'getVerticalFieldOfView'):
-                        vfov = self.depth_stream.getVerticalFieldOfView()
-                    if hfov and vfov:
-                        import math
-                        # FOV는 라디안 단위
-                        self.depth_fx = (width / 2.0) / math.tan(hfov / 2.0)
-                        self.depth_fy = (height / 2.0) / math.tan(vfov / 2.0)
-                        self.depth_cx = width / 2.0
-                        self.depth_cy = height / 2.0
-                        self.logger.info(f"Intrinsics from FOV -> fx:{self.depth_fx:.1f}, fy:{self.depth_fy:.1f}, cx:{self.depth_cx:.1f}, cy:{self.depth_cy:.1f}")
-                except Exception as e:
-                    self.logger.warning(f"FOV 기반 내부 파라미터 산출 실패: {e}")
             except Exception as e:
                 self.logger.warning(f"Depth 스트림 생성 실패: {e}")
                 self.depth_stream = None
@@ -256,12 +265,8 @@ class OpenNI2Camera:
                     depth_array = np.frombuffer(depth_data, dtype=np.uint16)
                     
                     h = depth_frame.height
-                    w = depth_frame.width
+                    w = depth_frame.width  
                     depth_image = depth_array.reshape((h, w))
-
-                    # 해상도 저장 (정규화용)
-                    self.depth_width = w
-                    self.depth_height = h
                     
                 except Exception as e:
                     self.logger.warning(f"Depth 프레임 읽기 실패: {e}")
@@ -298,7 +303,7 @@ class OpenNI2Camera:
         
         # Y축 계산: 픽셀 오프셋을 실제 거리로 변환 (스케일링 조정)
         pixel_offset_y = v - self.depth_cy  # 중심에서 픽셀 차이
-        y = -(pixel_offset_y * z) / self.depth_fy  # 화면 위쪽이 +Y가 되도록 부호 반전
+        y = (pixel_offset_y * z) / self.depth_fy  # 원래 크기로 조정
         
         return x, y, z
     
@@ -2593,9 +2598,8 @@ class VSNode(Node):
                     obstacle_msg = Obstacle()
                     obstacle_msg.robot_id = obstacle_info['robot_id']
                     obstacle_msg.dynamic = obstacle_info['dynamic']
-                    obstacle_msg.x = obstacle_info['x']  # 화면 정규화 X (0~1)
-                    obstacle_msg.y = obstacle_info['y']  # 화면 정규화 Y (0~1)
-                    obstacle_msg.depth = obstacle_info['depth']  # 뎁스 (미터)
+                    obstacle_msg.x = obstacle_info['x']  # 실제 월드 X 좌표 (미터)
+                    obstacle_msg.y = obstacle_info['y']  # 실제 월드 Y 좌표 (미터)
                     
                     self.obstacle_pub.publish(obstacle_msg)
                     
@@ -2603,8 +2607,8 @@ class VSNode(Node):
                     obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
                     self.get_logger().debug(
                         f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
-                        f"정규좌표: ({obstacle_info['x']:.2f}, {obstacle_info['y']:.2f}), "
-                        f"depth: {obstacle_info['depth']:.2f}m"
+                        f"월드좌표: ({obstacle_info['x']:.2f}m, {obstacle_info['y']:.2f}m) "
+                        f"거리: {obstacle_info['distance']:.2f}m"
                     )
                 
                 # 이전 장애물 정보 저장 (보수적 소멸을 위해)
@@ -3860,6 +3864,18 @@ class VSNode(Node):
                 self.get_logger().error(f"❌ 종료 처리 오류: {e}")
                 import sys
                 sys.exit(1)
+    
+    def _on_gpu_error(self, error: Exception):
+        """🚨 GPU 오류 시 호출되는 콜백"""
+        self.get_logger().error(f"🚨 GPU 오류 발생: {error}")
+        
+        # GPU 오류 시 자동으로 CPU 모드로 전환
+        try:
+            self.get_logger().warning("⚠️ GPU 오류로 인해 EasyOCR을 CPU 모드로 전환합니다")
+            self.display_ocr.switch_to_cpu_mode()
+            self.get_logger().info("✅ GPU 오류 대응: CPU 모드 전환 완료")
+        except Exception as e:
+            self.get_logger().error(f"❌ GPU 오류 대응 실패: {e}")
 
     def __del__(self):
         """소멸자 - 멀티 카메라 시스템 정리"""

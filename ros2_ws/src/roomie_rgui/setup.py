@@ -36,7 +36,7 @@ setup(
     maintainer_email='admin@roomie.com',
     description='Robot GUI for Roomie service robot system',
     license='MIT',
-    tests_require=['pytest'],
+    extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
             'rgui_node = roomie_rgui.rgui_node:main',

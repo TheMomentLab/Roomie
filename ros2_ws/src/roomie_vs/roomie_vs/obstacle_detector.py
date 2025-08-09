@@ -50,9 +50,10 @@ class ObstacleDetector:
                         obstacle_info = {
                             'robot_id': self.robot_id,
                             'dynamic': is_dynamic,
-                            'x': center_x / depth_camera.depth_width,   # 화면 정규화 X (0~1)
-                            'y': center_y / depth_camera.depth_height,  # 화면 정규화 Y (0~1)
-                            'depth': distance_m,                         # 뎁스 (미터)
+                            'x': world_x,  # 실제 월드 좌표 (미터)
+                            'y': world_y,  # 실제 월드 좌표 (미터)
+                            'z': world_z,  # 실제 월드 좌표 (미터)
+                            'distance': distance_m,
                             'class_name': obj['class_name'],
                             'confidence': obj['confidence']
                         }
@@ -62,8 +63,8 @@ class ObstacleDetector:
                         self.logger.debug(
                             f"🚧 장애물 감지: {obj['class_name']} "
                             f"타입: {'동적' if is_dynamic else '정적'} "
-                            f"depth: {distance_m:.2f}m "
-                            f"정규좌표: ({center_x / depth_camera.depth_width:.2f}, {center_y / depth_camera.depth_height:.2f})"
+                            f"거리: {distance_m:.2f}m "
+                            f"좌표: ({world_x:.2f}, {world_y:.2f})"
                         )
         
         return obstacles 
