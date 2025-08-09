@@ -18,7 +18,7 @@ class KinematicsSolver:
         full_joints[self.active_links_mask] = active_joints_rad
         return full_joints
 
-    def solve_ik(self, target_pos, target_orientation_matrix, current_active_angles_rad):
+    def solve_ik(self, target_pos, target_orientation_vector, current_active_angles_rad):
         """
         [최종 버전] 목표 3D 위치와 '방향'에 대한 IK 솔루션을 계산합니다.
         """
@@ -32,8 +32,10 @@ class KinematicsSolver:
         try:
             q_solution_all = self.chain.inverse_kinematics(
                 target_position=target_pos,
-                target_orientation=target_orientation_matrix,
-                orientation_mode='z', # <--- 'Z'에서 None으로 변경하여 방향 제약을 해제합니다.
+                # [수정] 3x3 행렬 대신 방향 '벡터'를 받음
+                target_orientation=target_orientation_vector, 
+                # [수정] orientation_mode를 'X'로 설정 (URDF의 tool_tip X축 방향을 제어)
+                orientation_mode='X', 
                 initial_position=q_full_seed,
                 max_iter=config.IK_MAX_ITERATIONS
             )

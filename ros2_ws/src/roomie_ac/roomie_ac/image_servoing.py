@@ -14,7 +14,6 @@ class ImageServoing:
         self.coord_transformer = coord_transformer
         self.robot_id = config.ROBOT_ID
         self.max_attempts = 10000
-        self.position_tolerance_m = 0.002
         # ➕ [추가] 정렬 성공 시의 최종 목표 Pose와 Orientation을 저장할 속성
         self.last_target_pose = None
         self.last_target_orientation = None
@@ -31,10 +30,10 @@ class ImageServoing:
             self._log(f"--- 정렬 시도 #{attempt + 1} ---")
 
             # 1. 비전 서비스로부터 버튼 위치 정보 획득
-            response = self.vision_client.request_button_status(self.robot_id, button_id)
+            response = await self.vision_client.request_button_status(self.robot_id, button_id)
             if not response or not response.success:
                 self._log("버튼 정보를 얻지 못했습니다. 시야에 없는지 확인하세요.", error=True)
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(0.2)
                 continue
             
             # 2. 2D 이미지 좌표 생성
@@ -59,35 +58,32 @@ class ImageServoing:
             if target_xyz is None:
                 self._log("목표 '준비 위치' 계산 실패. PnP 에러일 수 있습니다.", error=True)
                 continue
-
-            # ======================= [핵심 수정 시작] =======================
-            # PBVS 모드의 안정성을 위해, 비전으로 계산된 방향 대신
-            # MODEL_ONLY 모드처럼 항상 로봇 베이스와 정렬된 방향을 사용하도록 강제합니다.
-            # 이렇게 하면 press_forward_x()가 항상 예측 가능한 방향(로봇의 X축)으로 동작합니다.
-            stable_orientation = np.eye(3)
-            # ======================== [핵심 수정 끝] ========================
+            
+            # [수정] IK에 전달할 안정적인 방향 '벡터' 정의
+            forward_vector = np.array([1.0, 0.0, 0.0])
 
             # 5. 현재 위치와 최종 목표 사이의 거리 오차 계산
             current_pos = current_robot_transform[:3, 3]
-            position_error = np.linalg.norm(current_pos - target_xyz)
+            position_error = np.linalg.norm(target_xyz - current_pos)
             self._log(f"목표까지의 남은 거리: {position_error*1000:.2f} mm")
 
-            # 6. 오차가 허용 범위 내이면 성공으로 판단하고 루프 종료
-            if position_error < self.position_tolerance_m:
+            # 6. 오차 허용 범위 내이면 성공
+            if position_error < config.SERVOING_POSITION_TOLERANCE_M:
                 self.last_target_pose = target_xyz
-                # 성공 시에도 안정화된 방향을 저장합니다.
-                self.last_target_orientation = stable_orientation
-                self._log(f"✅ '준비 위치' 정렬 성공. 최종 목표 Pose를 저장했습니다: {np.round(self.last_target_pose, 4)}")
+                self.last_target_orientation = forward_vector
+                self._log("✅ '준비 위치' 정렬 성공.")
                 return True
 
-            # 7. 이번 스텝에서 이동할 '중간 목표 지점'을 계산 (비례 이동)
-            move_vector = target_xyz - current_pos
-            step_target_xyz = current_pos + config.SERVOING_MOVE_GAIN * move_vector
-            self._log(f"  -> 이번 스텝 목표 위치: {np.round(step_target_xyz, 4)}")
+            # ======================= [핵심 알고리즘 개선] =======================
+            # 7. 이번 스텝에서 이동할 거리와 방향 결정
+            move_direction = (target_xyz - current_pos) / position_error
+            step_distance = min(config.SERVOING_MAX_STEP_M, position_error)
+            step_target_xyz = current_pos + move_direction * step_distance
+            # ===================================================================
             
-            # 8. 계산된 중간 목표 지점으로 한 스텝 이동 (안정화된 방향 사용)
-            if not self.motion_controller.move_to_pose_ik(step_target_xyz, stable_orientation):
-                self._log("IK 이동 스텝 실패. 목표에 도달할 수 없습니다.", error=True)
+            # 8. 계산된 목표 지점으로 한 스텝 이동 (방향 벡터 사용)
+            if not self.motion_controller.move_to_pose_ik(step_target_xyz, forward_vector):
+                self._log("IK 이동 스텝 실패.", error=True)
                 return False
 
             await asyncio.sleep(0.2)

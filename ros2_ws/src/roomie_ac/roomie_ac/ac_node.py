@@ -3,11 +3,15 @@
 import rclpy
 import asyncio
 import time
+import threading
 from rclpy.node import Node
 from rclpy.action import ActionServer
-from rclpy.executors import MultiThreadedExecutor
 import numpy as np
+from rclpy.callback_groups import ReentrantCallbackGroup
+import traceback
+
 from roomie_msgs.action import SetPose, ClickButton
+from . import config
 from .vision_client import VisionServiceClient
 from .serial_manager import SerialManager
 from .kinematics_solver import KinematicsSolver
@@ -15,30 +19,21 @@ from .motion_controller import MotionController
 from .image_servoing import ImageServoing
 from .ros_joint_publisher import ROSJointPublisher
 from .coordinate_transformer import CoordinateTransformer
-from rclpy.callback_groups import ReentrantCallbackGroup
-from .config import (
-    Pose, POSE_ANGLES_DEG,
-    ControlMode, CONTROL_STRATEGY,
-    ROBOT_ID,
-    ButtonActionStatus,
-    PREDEFINED_BUTTON_POSES_M, 
-    SERVOING_STANDBY_DISTANCE_M,
-    PRESS_FORWARD_DISTANCE_M,
-    IMAGE_WIDTH_PX,
-    IMAGE_HEIGHT_PX  
-)
 
 class ArmActionServer(Node):
-    """
-    팔 제어와 관련된 모든 Action 요청을 처리하는 메인 서버 노드
-    """
-    def __init__(self):
+    def __init__(self, loop):
         super().__init__('arm_action_server')
-
+        self.loop = loop
         self.callback_group = ReentrantCallbackGroup()
 
-        # --- 모든 객체 생성 ---
+        # --- 의존성 객체 생성 ---
         self.serial_manager = SerialManager()
+        if not self.serial_manager.connect():
+            # 초기화 실패 시 로깅 후 종료
+            self.get_logger().fatal("시리얼 연결에 실패하여 노드를 종료합니다.")
+            # rclpy.shutdown()을 직접 호출하기보다 예외를 발생시켜 main에서 처리하도록 함
+            raise ConnectionError("Serial connection failed.")
+            
         self.kin_solver = KinematicsSolver()
         self.joint_publisher = ROSJointPublisher(callback_group=self.callback_group)
         self.vision_client = VisionServiceClient(callback_group=self.callback_group) 
@@ -46,196 +41,189 @@ class ArmActionServer(Node):
         self.motion_controller = MotionController(self.kin_solver, self.serial_manager, self.joint_publisher)
         self.image_servo = ImageServoing(self.vision_client, self.motion_controller, self.coord_transformer)
         
-        initial_angles = self.serial_manager.connect()
-        if initial_angles is None:
-            self.get_logger().fatal("시리얼 연결에 실패하여 노드를 종료합니다.")
-            return
-
-        # --- Action 서버 생성 ---
-        self._set_pose_server = ActionServer(
-            self, SetPose, '/arm/action/set_pose', self.set_pose_callback,
-            callback_group=self.callback_group
-        )
-        self._click_button_server = ActionServer(
-            self, ClickButton, '/arm/action/click_button', self.click_button_callback,
-            callback_group=self.callback_group
-        )
+        # --- Action 서버 생성 (콜백은 모두 동기 함수) ---
+        self._set_pose_server = ActionServer(self, SetPose, '/arm/action/set_pose', self.set_pose_callback, callback_group=self.callback_group)
+        self._click_button_server = ActionServer(self, ClickButton, '/arm/action/click_button', self.click_button_callback, callback_group=self.callback_group)
 
         self.get_logger().info("✅ Arm Action Server가 성공적으로 시작되었습니다.")
-
+        self.goal_handle = None # goal_handle을 클래스 멤버로 관리
 
     def set_pose_callback(self, goal_handle):
-        """[지휘] SetPose Action 요청을 처리합니다."""
-
-        if goal_handle.request.robot_id != ROBOT_ID:
-            msg = f"요청된 robot_id({goal_handle.request.robot_id})가 현재 로봇 ID({ROBOT_ID})와 일치하지 않습니다."
-            self.get_logger().error(msg)
-            goal_handle.abort()
-            return SetPose.Result(robot_id=ROBOT_ID, success=False)
-
-        self.get_logger().info(f"[DEBUG] 수신된 pose_id: {goal_handle.request.pose_id}")
-        try:
-            requested_pose = Pose(goal_handle.request.pose_id)
-            self.get_logger().info(f"[DEBUG] Enum 변환 결과: {requested_pose.name}")
-        except ValueError:
-            self.get_logger().error(f"[ERROR] 유효하지 않은 pose_id 수신: {goal_handle.request.pose_id}")
-            goal_handle.abort()
-            return SetPose.Result(robot_id=ROBOT_ID, success=False)
-
-        self.get_logger().info("🟡 먼저 관측 자세(OBSERVE)로 이동합니다.")
-        self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
-
-        target_angles_deg = POSE_ANGLES_DEG.get(requested_pose)
-        if target_angles_deg is not None:
-            self.get_logger().info(f"==> [DEBUG] MotionController에 전달할 목표 각도: {target_angles_deg}")
-            success = self.motion_controller.move_to_angles_deg(target_angles_deg)
-            self.get_logger().info(f"<== [DEBUG] MotionController로부터 반환된 결과: success={success}")
-
-            if success:
-                self.get_logger().info(f"'{requested_pose.name}' 자세로 이동 완료.")
-                goal_handle.succeed()
-                return SetPose.Result(robot_id=ROBOT_ID, success=True)
-
-        msg = f"'{requested_pose.name}' 자세로 이동 실패."
-        self.get_logger().error(msg)
-        self.get_logger().info("안전 모드: 이동 실패로 관측 자세로 복귀합니다.")
-        self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
-
-        goal_handle.abort()
-        return SetPose.Result(robot_id=ROBOT_ID, success=True)
-    
-    def click_button_callback(self, goal_handle):
-        self.get_logger().info(f"ClickButton 목표 수신: button_id={goal_handle.request.button_id} (제어 모드: {CONTROL_STRATEGY.name})")
+        # SetPose는 간단한 동기 작업이므로 직접 처리
+        self.get_logger().info(f"SetPose 목표 수신: pose_id={goal_handle.request.pose_id}")
+        result = SetPose.Result(robot_id=config.ROBOT_ID, success=False)
         
         try:
-            return asyncio.run(self._execute_click_button_logic(goal_handle))
+            requested_pose = config.Pose(goal_handle.request.pose_id)
+            target_angles = config.POSE_ANGLES_DEG.get(requested_pose)
+            if self.motion_controller.move_to_angles_deg(target_angles):
+                self.get_logger().info(f"'{requested_pose.name}' 자세로 이동 완료.")
+                goal_handle.succeed()
+                result.success = True
+            else:
+                self.get_logger().error(f"'{requested_pose.name}' 자세로 이동 실패.")
+                goal_handle.abort()
         except Exception as e:
-            self.get_logger().error(f"🔴 작업 실패 (상위 핸들러): {e}")
+            self.get_logger().error(f"SetPose 처리 중 예외 발생: {e}")
             goal_handle.abort()
-            result = ClickButton.Result()
-            result.robot_id = ROBOT_ID
-            result.success = True
-            result.message = f"Failed with exception: {e}"
-            self.get_logger().info("→ 안전을 위해 관측 자세로 복귀합니다.")
-            self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
-            return result
+        
+        return result
 
-    # [수정] IK_DIRECT 모드 로직 추가
-     # [수정] X축을 기준으로 누르도록 로직 복원
-    async def _execute_click_button_logic(self, goal_handle):
-        result = ClickButton.Result()
-        result.robot_id = ROBOT_ID
+    def click_button_callback(self, goal_handle):
+        """
+        ROS 스레드에서 호출되는 동기 콜백. 비동기 로직 실행을 예약하고 결과를 기다립니다.
+        """
+        self.get_logger().info(f"ClickButton 목표 수신 (ROS 스레드: {threading.get_ident()})")
+        future = asyncio.run_coroutine_threadsafe(
+            self._execute_click_button_logic_async(goal_handle),
+            self.loop
+        )
+        try:
+            # 비동기 작업의 최종 결과를 기다림
+            return future.result()
+        except Exception as e:
+            self.get_logger().error(f"비동기 작업 실행 중 최상위 예외 발생: {e}\n{traceback.format_exc()}")
+            goal_handle.abort()
+            return ClickButton.Result(success=False, message=str(e))
+
+    async def _execute_click_button_logic_async(self, goal_handle):
+        """
+        Asyncio 스레드에서 실행되는 모든 실제 로직.
+        """
+        self.get_logger().info(f"비동기 로직 시작 (Asyncio 스레드: {threading.get_ident()})")
+        self.goal_handle = goal_handle
+        result = ClickButton.Result(robot_id=config.ROBOT_ID, success=False)
         feedback = ClickButton.Feedback()
         button_id = goal_handle.request.button_id
 
-        target_3d_pose = None
-        target_orientation = None
-
         try:
-            # Step 0: 관측 자세로 이동
-            self.get_logger().info("🟡 시작 전 관측 자세로 이동합니다.")
-            self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
+            # 1. 관측 자세로 이동
+            if not self.motion_controller.move_to_angles_deg(config.POSE_ANGLES_DEG[config.Pose.OBSERVE]):
+                raise RuntimeError("시작 전 관측 자세로 이동 실패")
             await asyncio.sleep(0.5)
 
-            # Step 1: 제어 전략에 따른 위치 결정 (이 부분은 기존과 동일)
-            if CONTROL_STRATEGY == ControlMode.PBVS:
-                self.get_logger().info(">> [PBVS 제어] 시각 서보잉 정렬을 시작합니다.")
-                feedback.status = ButtonActionStatus.ALIGNING_TO_TARGET
-                goal_handle.publish_feedback(feedback)
+            # 2. 제어 전략에 따라 목표 위치 결정 (PBVS 모드 포함)
+            standby_pose, orientation_vector = await self._determine_target_async(button_id, feedback)
 
-                align_success = await self.image_servo.align_to_standby_pose(button_id)
-                if not align_success:
-                    raise RuntimeError("시각 서보잉 정렬에 최종 실패했습니다.")
-                
-                target_3d_pose = self.image_servo.last_target_pose
-                target_orientation = self.image_servo.last_target_orientation
+            # 3. 물리적 버튼 누르기 실행
+            await self._execute_physical_press_async(standby_pose, orientation_vector, feedback)
 
-            elif CONTROL_STRATEGY == ControlMode.MODEL_ONLY:
-                self.get_logger().info(">> [모델 전용 제어]를 시작합니다.")
-                feedback.status = ButtonActionStatus.MOVING_TO_TARGET
-                goal_handle.publish_feedback(feedback)
-
-                target_3d_pose = PREDEFINED_BUTTON_POSES_M.get(button_id)
-                if target_3d_pose is None:
-                    raise RuntimeError(f"button_id {button_id}에 대한 좌표가 config에 없습니다.")
-                
-                target_orientation = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
-
-          # ======================= [핵심 수정: 절대 좌표 기반 로직] =======================
-            # Step 2: 버튼 누르기 (절대 좌표 이동 방식)
-            self.get_logger().info("✅ 정렬/이동 완료. 공통 누르기/후퇴 단계를 시작합니다.")
-            if target_3d_pose is None or target_orientation is None:
-                raise RuntimeError("목표 pose 또는 orientation이 설정되지 않았습니다.")
-
-            # PBVS/IK_DIRECT의 경우 target_3d_pose가 이미 대기 위치(standby_pose)입니다.
-            # MODEL_ONLY의 경우, config 좌표가 누르기 위치(press_pose)이므로 대기 위치를 계산합니다.
-            if CONTROL_STRATEGY == ControlMode.MODEL_ONLY:
-                 ee_x_axis = target_orientation[:, 0]
-                 standby_pose = target_3d_pose - ee_x_axis * SERVOING_STANDBY_DISTANCE_M
-                 press_pose = target_3d_pose # config 좌표가 바로 누를 위치
-            else: # PBVS, IK_DIRECT
-                 standby_pose = target_3d_pose # 비전으로 계산된 위치가 대기 위치
-                 # [중요] press_pose를 절대 좌표로 직접 계산합니다.
-                 # 현재 로봇의 방향(target_orientation)이 단위 행렬(np.eye(3))로 고정되어 있으므로,
-                 # 로봇 베이스의 X축이 곧 로컬 X축과 같습니다.
-                 press_move_vector = np.array([PRESS_FORWARD_DISTANCE_M, 0, 0])
-                 press_pose = standby_pose + press_move_vector
-
-            # 1. 대기 위치로 이동
-            self.get_logger().info(f">> 대기 위치로 최종 이동: {np.round(standby_pose, 4)}")
-            if not self.motion_controller.move_to_pose_ik(standby_pose, target_orientation):
-                raise RuntimeError("대기 위치 이동에 실패했습니다.")
-            
-            await asyncio.sleep(0.5)
-
-            # 2. 계산된 '절대 누르기 위치'로 이동
-            self.get_logger().info(">> X축으로 누르기 동작 수행 (절대 좌표 이동)")
-            feedback.status = ButtonActionStatus.PRESSING
-            goal_handle.publish_feedback(feedback)
-            if not self.motion_controller.move_to_pose_ik(press_pose, target_orientation):
-                 raise RuntimeError("누르기(절대 위치) 동작에 실패했습니다.")
-
-            await asyncio.sleep(0.5)
-
-            # 3. 다시 '절대 대기 위치'로 후퇴
-            self.get_logger().info(">> X축으로 후퇴 동작 수행 (절대 좌표 이동)")
-            feedback.status = ButtonActionStatus.RETRACTING
-            goal_handle.publish_feedback(feedback)
-            if not self.motion_controller.move_to_pose_ik(standby_pose, target_orientation):
-                raise RuntimeError("후퇴 동작에 실패했습니다.")
-            # ======================================================================
-            
-        except Exception as e:
-            self.get_logger().error(f"🔴 작업 실패: {e}")
-            goal_handle.abort()
+            # 4. 최종 성공 처리
+            self.get_logger().info(f"🟢 버튼 {button_id} 클릭 임무 성공적으로 완료.")
+            goal_handle.succeed()
             result.success = True
-            result.message = str(e)
-            self.get_logger().info("→ 안전을 위해 관측 자세로 복귀합니다.")
-            self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
-            return result
+            result.message = f"버튼 {button_id} 클릭 임무 성공"
 
-        self.get_logger().info(f"🟢 버튼 {button_id} 클릭 임무 성공적으로 완료.")
-        goal_handle.succeed()
-        result.success = True
-        result.message = f"버튼 {button_id} 클릭 임무 성공"
-        self.get_logger().info("→ 임무 종료. 관측 자세로 복귀합니다.")
-        self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
+        except Exception as e:
+            error_message = f"🔴 작업 실패: {e}\n{traceback.format_exc()}"
+            self.get_logger().error(error_message)
+            goal_handle.abort()
+            result.message = str(e)
+        
+        finally:
+            self.get_logger().info("→ 임무 종료. 안전을 위해 관측 자세로 복귀합니다.")
+            self.motion_controller.move_to_angles_deg(config.POSE_ANGLES_DEG[config.Pose.OBSERVE])
+
         return result
-    
+
+    async def _determine_target_async(self, button_id, feedback_handle):
+        """
+        PBVS와 MODEL_ONLY 모드를 모두 처리하는 비동기 함수.
+        """
+        if config.CONTROL_STRATEGY == config.ControlMode.PBVS:
+            self.get_logger().info(">> [PBVS 제어] 시각 서보잉 정렬을 시작합니다.")
+            feedback_handle.status = config.ButtonActionStatus.ALIGNING_TO_TARGET
+            self.goal_handle.publish_feedback(feedback_handle)
+            
+            # 👈 [복원] 비동기 비전 서보잉 로직을 await으로 호출
+            align_success = await self.image_servo.align_to_standby_pose(button_id)
+            if not align_success:
+                raise RuntimeError("시각 서보잉 정렬에 최종 실패했습니다.")
+            
+            # PBVS 성공 시, 정렬된 위치가 바로 '대기 위치'가 됨
+            standby_pose = self.image_servo.last_target_pose
+            orientation_vector = self.image_servo.last_target_orientation
+            return standby_pose, orientation_vector
+
+        elif config.CONTROL_STRATEGY == config.ControlMode.MODEL_ONLY:
+            self.get_logger().info(">> [모델 전용 제어]를 시작합니다.")
+            feedback_handle.status = config.ButtonActionStatus.MOVING_TO_TARGET
+            self.goal_handle.publish_feedback(feedback_handle)
+            
+            target_pose = config.PREDEFINED_BUTTON_POSES_M.get(button_id)
+            if target_pose is None:
+                raise RuntimeError(f"config에 button_id {button_id} 좌표가 없습니다.")
+            
+            orientation_vector = np.array([1.0, 0.0, 0.0]) # 정면 방향 벡터
+            
+            # 모델 전용 모드에서는 목표 위치에서 뒤로 물러나 '대기 위치'를 계산
+            retreat_vector = orientation_vector * config.SERVOING_STANDBY_DISTANCE_M
+            standby_pose = target_pose - retreat_vector
+            return standby_pose, orientation_vector
+        
+        raise NotImplementedError(f"지원하지 않는 제어 전략: {config.CONTROL_STRATEGY.name}")
+
+    async def _execute_physical_press_async(self, standby_pose, orientation_vector, feedback_handle):
+        """
+        계산된 대기 위치를 기준으로 누르기/후퇴 동작을 수행하는 비동기 함수.
+        """
+        # 누를 위치 계산
+        press_vector = orientation_vector * config.PRESS_FORWARD_DISTANCE_M
+        press_pose = standby_pose + press_vector
+
+        self.get_logger().info(f">> 대기 위치로 이동: {np.round(standby_pose, 4)}")
+        if not self.motion_controller.move_to_pose_ik(standby_pose, orientation_vector):
+            raise RuntimeError("대기 위치 이동에 실패했습니다.")
+        await asyncio.sleep(0.5)
+
+        self.get_logger().info(f">> 계산된 누르기 위치로 이동: {np.round(press_pose, 4)}")
+        feedback_handle.status = config.ButtonActionStatus.PRESSING
+        self.goal_handle.publish_feedback(feedback_handle)
+        if not self.motion_controller.move_to_pose_ik(press_pose, orientation_vector):
+            raise RuntimeError("누르기 동작에 실패했습니다.")
+        await asyncio.sleep(1.0) # 누르는 시간 확보
+
+        self.get_logger().info(">> 대기 위치로 후퇴")
+        feedback_handle.status = config.ButtonActionStatus.RETRACTING
+        self.goal_handle.publish_feedback(feedback_handle)
+        if not self.motion_controller.move_to_pose_ik(standby_pose, orientation_vector):
+            raise RuntimeError("후퇴 동작에 실패했습니다.")
+        await asyncio.sleep(0.5)
+
+
 def main(args=None):
     rclpy.init(args=args)
+    loop = asyncio.get_event_loop()
+    arm_action_server = None
+    
     try:
-        arm_action_server = ArmActionServer()
-        if arm_action_server.serial_manager.is_ready:
-            executor = MultiThreadedExecutor()
-            rclpy.spin(arm_action_server, executor=executor)
-    except Exception as e:
-        print(f"노드 실행 중 심각한 오류 발생: {e}")
-    finally:
-        if 'arm_action_server' in locals() and rclpy.ok():
-            arm_action_server.destroy_node()
-        rclpy.shutdown()
+        arm_action_server = ArmActionServer(loop)
+        
+        # rclpy.spin을 별도의 스레드에서 실행
+        ros_thread = threading.Thread(target=rclpy.spin, args=(arm_action_server,), daemon=True)
+        ros_thread.start()
+        
+        arm_action_server.get_logger().info(f"ROS 스핀 스레드 시작 (스레드 ID: {ros_thread.ident})")
+        arm_action_server.get_logger().info(f"Asyncio 이벤트 루프 시작 (메인 스레드 ID: {threading.get_ident()})")
 
+        # 메인 스레드는 asyncio 이벤트 루프를 실행
+        loop.run_forever()
+
+    except (KeyboardInterrupt, ConnectionError) as e:
+        if isinstance(e, ConnectionError):
+             print(f"초기화 실패: {e}")
+        else:
+             print("키보드 인터럽트로 종료합니다.")
+    except Exception as e:
+        print(f"예기치 않은 오류 발생: {e}\n{traceback.format_exc()}")
+    finally:
+        if loop.is_running():
+            loop.stop()
+        # 노드가 성공적으로 생성되었다면 정리
+        if arm_action_server and rclpy.ok():
+            arm_action_server.destroy_node()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

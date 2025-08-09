@@ -36,6 +36,14 @@ HAND_EYE_UNIT = 'mm'  # 또는 'm'
 # 기본 설정 (DEBUG 등)
 DEBUG = True
 
+# True일 경우, PBVS/IBVS 제어 시 시야에서 계산된 방향 대신 로봇 베이스와 정렬된 안정적인 방향을 사용합니다.
+USE_STABLE_ORIENTATION = True 
+
+# True일 경우, Hand-Eye 보정 행렬을 무시하고 단위 행렬을 사용합니다 (디버깅용).
+IGNORE_HAND_EYE_CALIBRATION = True
+
+
+
 # 파일 경로 설정
 SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = os.path.join(get_package_share_directory('roomie_ac'), 'data')
@@ -48,7 +56,7 @@ SERIAL_BAUD_RATE = 460800
 SERIAL_TIMEOUT = 10.0 # 시리얼 연결 및 응답 대기 타임아웃
 
 # --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 2  # 사용자의 카메라 장치 번호
+CAMERA_DEVICE_ID = 4  # 사용자의 카메라 장치 번호
 YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 
 
@@ -64,6 +72,8 @@ JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱�
 ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
 IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
 IK_TOLERANCE_M = 2e-3 # IK 오차 허용 범위 (m)
+
+
 
 # 워크스페이스 (작업 공간) 설정
 WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
@@ -135,6 +145,7 @@ PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_STANDBY_DISTANCE_M = 0.08 # 버튼으로부터 5cm 대기 거리
+SERVOING_POSITION_TOLERANCE_M = 0.004
+SERVOING_STANDBY_DISTANCE_M = 0.08 # 버튼으로부터 5cm 대기 거리 -
 PRESS_FORWARD_DISTANCE_M = 0.08 # 3cm 누르기 거리
-SERVOING_MAX_MOVE_M = 0.5 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
+SERVOING_MAX_STEP_M = 0.03 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
