@@ -13,22 +13,16 @@ class VisionServiceClient(Node):
     """
     def __init__(self, callback_group: ReentrantCallbackGroup):
         super().__init__('vision_service_client_node')
-        
         self.cli = self.create_client(ButtonStatus, '/vs/command/button_status', callback_group=callback_group)
-        self.get_logger().info('VisionServiceClient 노드 초기화됨. VS 서비스 대기 중...')
-
-        # 서비스가 준비될 때까지 기다리는 로직은 그대로 유지합니다.
-        while not self.cli.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('VS 서비스가 사용 가능해질 때까지 기다리는 중...')
-        self.get_logger().info('VS 서비스가 사용 가능합니다.')
+        # [수정] 시작 시 서비스 연결을 기다리지 않습니다.
+        self.get_logger().info('VisionServiceClient 노드 초기화됨.')
 
     async def request_button_status(self, robot_id: int, button_id: int):
-        """
-        [최종 수정] Vision Service에 특정 버튼의 상태 정보를 비동기(asynchronous) 방식으로 요청합니다.
-        """
-        if robot_id != config.ROBOT_ID:
-            self.get_logger().warn(f"요청된 robot_id({robot_id})가 현재 로봇 ID({config.ROBOT_ID})와 일치하지 않아 VS 요청을 무시합니다.")
+        # [수정] 서비스 요청 직전에 서비스가 사용 가능한지 확인합니다.
+        if not self.cli.service_is_ready():
+            self.get_logger().error('Vision Service가 사용 불가능합니다. 서비스 노드가 실행 중인지 확인하세요.')
             return None
+
 
         request = ButtonStatus.Request()
         request.robot_id = robot_id

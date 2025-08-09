@@ -18,13 +18,15 @@ class KinematicsSolver:
         full_joints[self.active_links_mask] = active_joints_rad
         return full_joints
 
-    def solve_ik(self, target_pos, target_orientation_vector, current_active_angles_rad):
+    def solve_ik(self, target_pos, target_orientation, current_active_angles_rad):
         """
-        [최종 버전] 목표 3D 위치와 '방향'에 대한 IK 솔루션을 계산합니다.
+        [수정됨] 목표 3D 위치와 '방향 행렬 (또는 None)'에 대한 IK 솔루션을 계산합니다.
+        target_orientation이 None이면 ikpy가 방향을 제한하지 않습니다.
         """
         if config.DEBUG:
             print("\n--- IK 계산 시작 ---")
             print(f"  - 목표 좌표 (m): {np.round(target_pos, 4)}")
+            print(f"  - 목표 방향: {'자동' if target_orientation is None else '지정됨'}")
             print(f"  - 현재 활성 관절 각도 (rad): {np.round(current_active_angles_rad, 4)}")
 
         q_full_seed = self._get_full_joints(current_active_angles_rad)
@@ -32,10 +34,9 @@ class KinematicsSolver:
         try:
             q_solution_all = self.chain.inverse_kinematics(
                 target_position=target_pos,
-                # [수정] 3x3 행렬 대신 방향 '벡터'를 받음
-                target_orientation=target_orientation_vector, 
-                # [수정] orientation_mode를 'X'로 설정 (URDF의 tool_tip X축 방향을 제어)
-                orientation_mode='X', 
+                # [수정] target_orientation 인자를 그대로 전달 (None이 될 수 있음)
+                target_orientation=target_orientation,
+                orientation_mode=None, # [수정] 특정 축 고정 대신 전체 방향 행렬을 사용하므로 None으로 설정
                 initial_position=q_full_seed,
                 max_iter=config.IK_MAX_ITERATIONS
             )
