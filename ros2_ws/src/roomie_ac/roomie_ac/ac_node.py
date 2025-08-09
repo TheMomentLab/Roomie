@@ -114,7 +114,7 @@ class ArmActionServer(Node):
             goal_handle.abort()
             result = ClickButton.Result()
             result.robot_id = ROBOT_ID
-            result.success = Trued
+            result.success = True
             result.message = f"Failed with exception: {e}"
             self.get_logger().info("→ 안전을 위해 관측 자세로 복귀합니다.")
             self.motion_controller.move_to_angles_deg(POSE_ANGLES_DEG[Pose.OBSERVE])
