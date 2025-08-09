@@ -20,7 +20,6 @@ setup(
     maintainer_email='your_email@example.com',
     description='Roomie Edge Computing Package',
     license='TODO',
-    tests_require=['pytest'],
             entry_points={
             'console_scripts': [
                 'button_detector = scripts.button_detector:main',

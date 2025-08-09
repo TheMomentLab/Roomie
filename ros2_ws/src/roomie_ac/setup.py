@@ -21,7 +21,6 @@ setup(
     maintainer_email='jongbob1918@gmail.com',
     description='Arm Controller Action Server',
     license='TODO: License declaration',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'ac_node = roomie_ac.ac_node:main',

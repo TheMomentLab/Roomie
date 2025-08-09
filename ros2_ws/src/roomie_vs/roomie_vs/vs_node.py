@@ -122,7 +122,7 @@ import os
 
 def setup_openni2_environment():
     """OpenNI2 실행을 위한 환경변수 설정"""
-    openni_path = os.path.expanduser("~/Downloads/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/ros2_astra_camera/astra_camera/openni2_redist/x64")
+    openni_path = os.path.expanduser("~/project_ws/Roomie/ros2_ws/src/roomie_vs/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/ros2_astra_camera/astra_camera/openni2_redist/x64")
     
     if not os.path.exists(openni_path):
         print(f"❌ OpenNI2 경로를 찾을 수 없습니다: {openni_path}")
