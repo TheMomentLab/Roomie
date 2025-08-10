@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CardKeyWaiting</class>
+ <widget class="QWidget" name="CardKeyWaiting">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Card Key Waiting</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: "Malgun Gothic", "Arial", sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+.countdown-circle {
+    color: white;
+    border: 4px solid white;
+    border-radius: 80px;
+    background-color: transparent;
+}
+
+.card-visual {
+    background-color: #434a5a;
+    border-radius: 20px;
+}</string>
+  </property>
+  
+  <!-- 왼쪽 텍스트 영역 -->
+  <widget class="QLabel" name="instructionText">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>200</y>
+     <width>800</width>
+     <height>200</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 48px; 
+font-weight: 600; 
+color: white;
+line-height: 1.4;</string>
+   </property>
+   <property name="text">
+    <string>객실 카드키를
+하단 센서기에 대주세요</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  
+  <!-- 카운트다운 원 -->
+  <widget class="QLabel" name="countdownCircle">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>450</y>
+     <width>160</width>
+     <height>160</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 72px; 
+font-weight: bold; 
+color: white;
+border: 4px solid white;
+border-radius: 80px;
+background-color: transparent;</string>
+   </property>
+   <property name="text">
+    <string>30</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  
+  <!-- 오른쪽 카드 시각화 영역 -->
+  <widget class="QFrame" name="cardVisualFrame">
+   <property name="geometry">
+    <rect>
+     <x>1000</x>
+     <y>200</y>
+     <width>800</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: #434a5a; 
+border-radius: 20px;</string>
+   </property>
+   
+   <!-- 카드키 이미지 영역 -->
+   <widget class="QLabel" name="cardKeyImage">
+    <property name="geometry">
+     <rect>
+      <x>200</x>
+      <y>150</y>
+      <width>400</width>
+      <height>380</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

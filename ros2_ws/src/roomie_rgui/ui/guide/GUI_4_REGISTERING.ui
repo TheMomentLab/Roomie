@@ -1,0 +1,237 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Registering</class>
+ <widget class="QWidget" name="Registering">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Registering</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: "Malgun Gothic", "Arial", sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+QPushButton {
+    color: white;
+    border: none;
+    font-family: "Malgun Gothic", sans-serif;
+    font-weight: bold;
+}
+
+.back-button {
+    background-color: #3498db;
+    border-radius: 15px;
+    font-size: 32px;
+}
+
+.back-button:hover {
+    background-color: #2980b9;
+}
+
+.countdown-circle {
+    color: white;
+    border: 4px solid white;
+    border-radius: 80px;
+    background-color: transparent;
+}
+
+.detection-area {
+    border: 3px solid #3498db;
+    border-radius: 15px;
+    background-color: transparent;
+}
+
+.person-area {
+    border: 2px solid #27ae60;
+    border-radius: 8px;
+    background-color: transparent;
+}</string>
+  </property>
+  
+  <!-- 뒤로가기 버튼 -->
+  <widget class="QPushButton" name="backButton">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>680</y>
+     <width>80</width>
+     <height>80</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: #3498db; 
+border-radius: 15px;
+font-size: 32px; 
+font-weight: bold;</string>
+   </property>
+   <property name="text">
+    <string>‹</string>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+  </widget>
+  
+  <!-- 왼쪽 안내 텍스트 -->
+  <widget class="QLabel" name="instructionText">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>80</y>
+     <width>600</width>
+     <height>250</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 44px; 
+font-weight: 600; 
+color: white;
+line-height: 1.4;</string>
+   </property>
+   <property name="text">
+    <string>형광 사각 라인안에
+5초동안
+위치하여주세요!</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  
+  <!-- 카운트다운 원 -->
+  <widget class="QLabel" name="countdownCircle">
+   <property name="geometry">
+    <rect>
+     <x>180</x>
+     <y>380</y>
+     <width>160</width>
+     <height>160</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 72px; 
+font-weight: bold; 
+color: white;
+border: 4px solid white;
+border-radius: 80px;
+background-color: transparent;</string>
+   </property>
+   <property name="text">
+    <string>5</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  
+  <!-- 오른쪽 위치 감지 영역 -->
+  <widget class="QFrame" name="detectionAreaFrame">
+   <property name="geometry">
+    <rect>
+     <x>800</x>
+     <y>120</y>
+     <width>1000</width>
+     <height>600</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>border: 3px solid #3498db;
+border-radius: 15px;
+background-color: transparent;</string>
+   </property>
+   
+   <!-- 사람 인식 영역 (초록색 박스) -->
+   <widget class="QFrame" name="personDetectionArea">
+    <property name="geometry">
+     <rect>
+      <x>350</x>
+      <y>180</y>
+      <width>300</width>
+      <height>240</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string>border: 2px solid #27ae60;
+border-radius: 8px;
+background-color: transparent;</string>
+    </property>
+   </widget>
+  </widget>
+  
+  <!-- 하단 안내 텍스트 -->
+  <widget class="QLabel" name="bottomGuideText">
+   <property name="geometry">
+    <rect>
+     <x>600</x>
+     <y>780</y>
+     <width>720</width>
+     <height>60</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 24px; 
+font-weight: normal; 
+color: white;</string>
+   </property>
+   <property name="text">
+    <string>고객님의 위치확인을 잠깐기 위한 인식절차입니다.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

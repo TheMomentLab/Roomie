@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>InputMethodSelection</class>
+ <widget class="QWidget" name="InputMethodSelection">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Input Method Selection</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: "Malgun Gothic", "Arial", sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+QPushButton {
+    color: white;
+    border: none;
+    font-family: "Malgun Gothic", sans-serif;
+    font-weight: bold;
+}
+
+.back-button {
+    background-color: #3498db;
+    border-radius: 15px;
+    font-size: 32px;
+}
+
+.back-button:hover {
+    background-color: #2980b9;
+}
+
+.option-card {
+    background-color: #434a5a;
+    border-radius: 20px;
+}
+
+.option-card:hover {
+    background-color: #4a5266;
+}
+
+.option-card:pressed {
+    background-color: #3d434f;
+}</string>
+  </property>
+  
+  <!-- 뒤로가기 버튼 -->
+  <widget class="QPushButton" name="backButton">
+   <property name="geometry">
+    <rect>
+     <x>60</x>
+     <y>50</y>
+     <width>80</width>
+     <height>80</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>75</weight>
+     <bold>true</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">background-color: #3498db; 
+border-radius: 15px;
+font-size: 32px; 
+font-weight: bold;</string>
+   </property>
+   <property name="text">
+    <string>‹</string>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+  </widget>
+  
+  <!-- 왼쪽 카드: 카드키로 호실 선택 -->
+  <widget class="QFrame" name="cardKeyFrame">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>200</y>
+     <width>650</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: #434a5a; 
+border-radius: 20px;</string>
+   </property>
+   
+   <!-- 카드키 이미지 영역 -->
+   <widget class="QLabel" name="cardKeyImage">
+    <property name="geometry">
+     <rect>
+      <x>175</x>
+      <y>120</y>
+      <width>300</width>
+      <height>200</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   
+   <!-- 카드키 텍스트 -->
+   <widget class="QLabel" name="cardKeyText">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>400</y>
+      <width>550</width>
+      <height>150</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Malgun Gothic</family>
+      <pointsize>-1</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font-size: 42px; 
+font-weight: 600; 
+color: white;</string>
+    </property>
+    <property name="text">
+     <string>카드키로 호실 선택</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+  </widget>
+  
+  <!-- 오른쪽 카드: 직접 입력 -->
+  <widget class="QFrame" name="directInputFrame">
+   <property name="geometry">
+    <rect>
+     <x>1070</x>
+     <y>200</y>
+     <width>650</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: #434a5a; 
+border-radius: 20px;</string>
+   </property>
+   
+   <!-- 직접입력 이미지 영역 -->
+   <widget class="QLabel" name="directInputImage">
+    <property name="geometry">
+     <rect>
+      <x>175</x>
+      <y>120</y>
+      <width>300</width>
+      <height>200</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   
+   <!-- 직접입력 텍스트 -->
+   <widget class="QLabel" name="directInputText">
+    <property name="geometry">
+     <rect>
+      <x>50</x>
+      <y>400</y>
+      <width>550</width>
+      <height>150</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Malgun Gothic</family>
+      <pointsize>-1</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font-size: 42px; 
+font-weight: 600; 
+color: white;</string>
+    </property>
+    <property name="text">
+     <string>직접 입력</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+  </widget>
+  
+  <!-- 왼쪽 카드 터치 영역 -->
+  <widget class="QPushButton" name="cardKeyButton">
+   <property name="geometry">
+    <rect>
+     <x>200</x>
+     <y>200</y>
+     <width>650</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string></string>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: transparent;</string>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+  </widget>
+  
+  <!-- 오른쪽 카드 터치 영역 -->
+  <widget class="QPushButton" name="directInputButton">
+   <property name="geometry">
+    <rect>
+     <x>1070</x>
+     <y>200</y>
+     <width>650</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string></string>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: transparent;</string>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

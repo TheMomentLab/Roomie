@@ -32,6 +32,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/robot_status/RoomiePose.msg"
   "msg/robot_status/Obstacle.msg"
   "msg/robot_status/GlassDoorStatus.msg"
+  "msg/robot_status/Tracking.msg"
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
@@ -60,6 +61,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/ReturnCountdown.action"
   "action/SetPose.action"
   "action/ClickButton.action"
+  "action/Enroll.action"
   
   DEPENDENCIES
     geometry_msgs

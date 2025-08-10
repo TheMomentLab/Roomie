@@ -9,9 +9,17 @@ from .ui_loader import load_ui
 
 # 컨트롤러 import
 from .ui_controllers import BaseController, CommonController, DeliveryController, ElevatorController
+from .ui_controllers import GuideController
+from PyQt6.QtCore import QThread, pyqtSignal, pyqtSlot
 
 
 class ScreenManager(QStackedWidget):
+    # 메인 스레드에서 실행되도록 위임하기 위한 신호들
+    requestShowScreen = pyqtSignal(str)
+    requestPlayAudio = pyqtSignal(str, str)
+    requestNotifyDrawerOpened = pyqtSignal(str)
+    requestUpdateCountdown = pyqtSignal(int, str)
+
     def __init__(self, node):
         super().__init__()
         self.node = node
@@ -43,7 +51,13 @@ class ScreenManager(QStackedWidget):
         
         # 음성 설정 로그
         self.node.get_logger().info(f"🔊 음성 시스템 초기화: enabled={self.audio_enabled}, volume={self.audio_volume}")
-        
+
+        # 신호 연결 (메인 스레드에서 실행)
+        self.requestShowScreen.connect(self._show_screen_impl)
+        self.requestPlayAudio.connect(self._play_audio_file_internal)
+        self.requestNotifyDrawerOpened.connect(self._notify_drawer_opened_impl)
+        self.requestUpdateCountdown.connect(self._update_countdown_labels)
+
         # 화면별 음성 파일 매핑
         self.screen_audio_map = {
             # 공통 화면
@@ -70,8 +84,16 @@ class ScreenManager(QStackedWidget):
             
             # 기타
             "RETURN_TO_BASE": "ui/voice/audio_7_복귀_장소로_이동을_시작합니다_.mp3",
+            # 가이드 관련 (초기엔 음성 없음)
+            "GUIDANCE_SCREEN": None,
+            "INPUT_METHOD_SELECTION": None,
+            "CARD_KEY_WAITING": None,
+            "REGISTERING": None,
+            "RECHECKING": None,
+            "GUIDE_REQUEST": None,
+            "DESTINATION_ARRIVED": None,
         }
-
+        
         # 현재 화면 정보
         self.current_screen_name = None
         
@@ -104,6 +126,14 @@ class ScreenManager(QStackedWidget):
             "ELEVATOR_BOARDING": "ui/elevator/ELE_3_BOARDING.ui",
             "ELEVATOR_MOVING_TO_TARGET": "ui/elevator/ELE_4_MOVING_TO_TARGET.ui",
             "ELEVATOR_EXITING": "ui/elevator/ELE_5_EXITING.ui",
+            # 가이드 화면들 (실제 파일명 반영)
+            "GUIDANCE_SCREEN": "ui/guide/GUIDANCE_SCREEN.ui",
+            "INPUT_METHOD_SELECTION": "ui/guide/GUI_2_INPUT_METHOD_SELECTION.ui",
+            "CARD_KEY_WAITING": "ui/guide/GUI_3_CARD_KEY_WAITING.ui",
+            "REGISTERING": "ui/guide/GUI_4_REGISTERING.ui",
+            "RECHECKING": "ui/guide/RECHECKING.ui",
+            "GUIDE_REQUEST": "ui/guide/GUI_1_GUIDE_REQUEST.ui",
+            "DESTINATION_ARRIVED": "ui/guide/DESTINATION_ARRIVED.ui",
         }
 
         # 컨트롤러 팩토리 매핑
@@ -125,6 +155,14 @@ class ScreenManager(QStackedWidget):
             "ELEVATOR_BOARDING": ElevatorController,
             "ELEVATOR_MOVING_TO_TARGET": ElevatorController,
             "ELEVATOR_EXITING": ElevatorController,
+            # 가이드 화면들
+            "GUIDANCE_SCREEN": GuideController,
+            "INPUT_METHOD_SELECTION": GuideController,
+            "CARD_KEY_WAITING": GuideController,
+            "REGISTERING": GuideController,
+            "RECHECKING": GuideController,
+            "GUIDE_REQUEST": GuideController,
+            "DESTINATION_ARRIVED": GuideController,
         }
 
 
@@ -186,7 +224,15 @@ class ScreenManager(QStackedWidget):
         self.node.get_logger().info(f"총 {len(self.screen_widgets)}개 화면 로드 완료!")
 
     def show_screen(self, screen_name):
-        """지정된 화면으로 전환"""
+        """지정된 화면으로 전환 (스레드 안전)"""
+        if QThread.currentThread() != self.thread():
+            # 메인 스레드로 위임
+            self.requestShowScreen.emit(screen_name)
+            return True
+        return self._show_screen_impl(screen_name)
+
+    def _show_screen_impl(self, screen_name):
+        """실제 화면 전환 구현 (메인 스레드에서만 호출)"""
         if screen_name not in self.screen_indices:
             self.node.get_logger().warn(f"존재하지 않는 화면: {screen_name}")
             return False
@@ -231,14 +277,19 @@ class ScreenManager(QStackedWidget):
             self.node.get_logger().warn(f"⚠️ {screen_name} 화면의 음성 매핑이 없음")
     
     def play_audio_file(self, audio_filename):
-        """특정 음성 파일을 직접 재생"""
+        """특정 음성 파일을 직접 재생 (스레드 안전)"""
         if not self.audio_enabled:
             return
-            
+        
         audio_file = f"ui/voice/{audio_filename}"
-        # 즉시 실행 (QTimer.singleShot 대신)
+        if QThread.currentThread() != self.thread():
+            # 메인 스레드로 위임
+            self.requestPlayAudio.emit(audio_file, "개별 음성")
+            return
+        # 메인 스레드인 경우 즉시 실행
         self._play_audio_file_internal(audio_file, f"개별 음성")
     
+    @pyqtSlot(str, str)
     def _play_audio_file_internal(self, audio_file, log_type):
         """내부 음성 재생 메서드 (메인 스레드에서만 호출)"""
         self.node.get_logger().info(f"🎵 _play_audio_file_internal 진입: {audio_file}")
@@ -309,7 +360,39 @@ class ScreenManager(QStackedWidget):
         return None
     
     def notify_drawer_opened(self, detail=""):
-        """현재 컨트롤러에 서랍 열림 알림"""
+        """현재 컨트롤러에 서랍 열림 알림 (스레드 안전)"""
+        if QThread.currentThread() != self.thread():
+            self.requestNotifyDrawerOpened.emit(detail)
+            return
+        self._notify_drawer_opened_impl(detail)
+
+    @pyqtSlot(str)
+    def _notify_drawer_opened_impl(self, detail=""):
         controller = self.get_current_controller()
         if controller and hasattr(controller, 'on_drawer_opened'):
             controller.on_drawer_opened(detail)
+
+    # 카운트다운 라벨 업데이트 (COUNTDOWN 화면)
+    def update_countdown_display(self, remaining_time: int, action_text: str):
+        """COUNTDOWN 라벨 갱신 (스레드 안전)"""
+        if QThread.currentThread() != self.thread():
+            self.requestUpdateCountdown.emit(remaining_time, action_text)
+            return
+        self._update_countdown_labels(remaining_time, action_text)
+
+    @pyqtSlot(int, str)
+    def _update_countdown_labels(self, remaining_time: int, action_text: str):
+        try:
+            countdown_widget = self.screen_widgets.get("COUNTDOWN")
+            if not countdown_widget:
+                self.node.get_logger().warn("COUNTDOWN 화면 위젯을 찾을 수 없음")
+                return
+            from PyQt6.QtWidgets import QLabel
+            countdown_label = countdown_widget.findChild(QLabel, "countdownNumber")
+            if countdown_label:
+                countdown_label.setText(str(remaining_time))
+            title_label = countdown_widget.findChild(QLabel, "countdownTitle")
+            if title_label:
+                title_label.setText(f"{remaining_time}초후에 {action_text}합니다.")
+        except Exception as e:
+            self.node.get_logger().error(f"카운트다운 화면 업데이트 실패: {e}")

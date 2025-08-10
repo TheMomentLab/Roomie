@@ -133,25 +133,10 @@ class RobotGuiNode(Node):
         return result
     
     def update_countdown_display_direct(self, remaining_time, action_text):
-        """카운트다운 화면 직접 업데이트"""
+        """카운트다운 화면 직접 업데이트 (메인 스레드로 위임)"""
         try:
-            countdown_widget = self.screen.screen_widgets.get("COUNTDOWN")
-            if not countdown_widget:
-                self.get_logger().warn("COUNTDOWN 화면 위젯을 찾을 수 없음")
-                return
-            
-            from PyQt6.QtWidgets import QLabel
-            
-            # countdownNumber 라벨 업데이트
-            countdown_label = countdown_widget.findChild(QLabel, "countdownNumber")
-            if countdown_label:
-                countdown_label.setText(str(remaining_time))
-                
-            # countdownTitle 라벨 업데이트
-            title_label = countdown_widget.findChild(QLabel, "countdownTitle")
-            if title_label:
-                title_label.setText(f"{remaining_time}초후에 {action_text}합니다.")
-                
+            # ScreenManager의 스레드 안전 메서드 사용
+            self.screen.update_countdown_display(remaining_time, action_text)
         except Exception as e:
             self.get_logger().error(f"카운트다운 화면 업데이트 실패: {e}")
     
@@ -245,29 +230,9 @@ class RobotGuiNode(Node):
             self.handle_internal_countdown_completed()
             
     def update_countdown_display(self):
-        """카운트다운 화면의 시간 표시 업데이트"""
+        """카운트다운 화면의 시간 표시 업데이트 (메인 스레드로 위임)"""
         try:
-            # 현재 COUNTDOWN 화면의 위젯 가져오기
-            countdown_widget = self.screen.screen_widgets.get("COUNTDOWN")
-            if not countdown_widget:
-                self.get_logger().warn("COUNTDOWN 화면 위젯을 찾을 수 없음")
-                return
-            
-            # countdownNumber 라벨 찾기
-            from PyQt6.QtWidgets import QLabel
-            countdown_label = countdown_widget.findChild(QLabel, "countdownNumber")
-            if countdown_label:
-                # 숫자 업데이트
-                countdown_label.setText(str(self.countdown_remaining))
-                self.get_logger().debug(f"🔢 카운트다운 화면 업데이트: {self.countdown_remaining}")
-            else:
-                self.get_logger().warn("countdownNumber 라벨을 찾을 수 없음")
-                
-            # countdownTitle 라벨도 업데이트 (상황에 맞는 텍스트)
-            title_label = countdown_widget.findChild(QLabel, "countdownTitle")
-            if title_label:
-                title_label.setText(f"{self.countdown_remaining}초후에 {self.countdown_action_text}합니다.")
-                
+            self.screen.update_countdown_display(self.countdown_remaining, self.countdown_action_text)
         except Exception as e:
             self.get_logger().error(f"카운트다운 화면 업데이트 실패: {e}")
     
@@ -377,6 +342,8 @@ class RobotGuiNode(Node):
         elif event_id == 9:  # 호실 번호 인식 완료
             self.get_logger().info(f"🏠 호실 번호 인식 완료: {msg.detail}")
             # 인식된 호실 번호는 detail에 저장됨 (예: "101")
+            # REGISTERING 화면으로 전환
+            self.screen.show_screen("REGISTERING")
         elif event_id == 10:  # 길안내 이동 시작
             self.get_logger().info("🗺️ 길안내 이동 시작")
             # 길안내 시작 시 화면 처리

@@ -56,6 +56,9 @@ except ImportError:
 # 장애물 감지 import
 from .obstacle_detector import ObstacleDetector
 
+# UDP 비디오 스트리밍 import
+from .udp_streamer import UDPVideoStreamer
+
 # CNN 모델 아키텍처 정의 (실제 훈련된 모델과 일치)
 class BalancedButtonCNN(nn.Module):
     """성능과 메모리 균형을 맞춘 CNN 모델"""
@@ -1757,6 +1760,15 @@ class VSNode(Node):
         # 🚧 장애물 감지기 초기화
         self.obstacle_detector = ObstacleDetector(self.get_logger())
         
+        # 📹 UDP 비디오 스트리머 초기화 (후방 카메라 → RGUI)
+        self.udp_streamer = UDPVideoStreamer(
+            target_ip='127.0.0.1',  # 로컬호스트로 전송
+            target_port=9999,       # RGUI에서 수신할 포트
+            max_fps=15,             # 최대 15fps로 제한 (리소스 절약)
+            quality=70              # JPEG 품질 70%
+        )
+        self.get_logger().info("📹 UDP 비디오 스트리머 초기화 완료 (127.0.0.1:9999)")
+        
         # 🔥 최적화된 DisplayOCR 초기화 (EasyOCR만 사용, GPU 리소스 절약)
         self.display_ocr = DisplayOCR(self.get_logger())
         # EasyOCR test_all_models_on_roi와 동일한 단순 크롭 방식 사용
@@ -2820,10 +2832,17 @@ class VSNode(Node):
                     self.current_rear_camera_name = "Rear Webcam"
                 
                 self.get_logger().info(f"📷 후방 카메라: {old_camera_name} → {self.current_rear_camera_name} (모드: {mode_name})")
+                
+                # 📹 후방 카메라가 활성화되면 UDP 스트리밍 시작
+                self._start_rear_camera_streaming()
+                
             else:
                 self.current_rear_camera = None
                 self.current_rear_camera_name = "None"
                 self.get_logger().warning(f"⚠️ 후방 모드 {mode_name}용 카메라가 없습니다")
+                
+                # 📹 후방 카메라가 비활성화되면 UDP 스트리밍 중지
+                self._stop_rear_camera_streaming()
                 
         except Exception as e:
             self.get_logger().error(f"후방 카메라 업데이트 에러: {e}")
@@ -4606,6 +4625,60 @@ class VSNode(Node):
                             cnn_success_count += 1
             
             return processed_objects
+
+
+    def _start_rear_camera_streaming(self):
+        """후방 카메라 UDP 스트리밍 시작"""
+        try:
+            if not hasattr(self, 'streaming_active'):
+                self.streaming_active = False
+                self.streaming_thread = None
+            
+            if not self.streaming_active and self.current_rear_camera is not None:
+                self.streaming_active = True
+                self.streaming_thread = threading.Thread(target=self._rear_camera_streaming_loop, daemon=True)
+                self.streaming_thread.start()
+                self.get_logger().info("📹 후방 카메라 UDP 스트리밍 시작")
+                
+        except Exception as e:
+            self.get_logger().error(f"UDP 스트리밍 시작 실패: {e}")
+    
+    def _stop_rear_camera_streaming(self):
+        """후방 카메라 UDP 스트리밍 중지"""
+        try:
+            if hasattr(self, 'streaming_active') and self.streaming_active:
+                self.streaming_active = False
+                if hasattr(self, 'streaming_thread') and self.streaming_thread:
+                    self.streaming_thread.join(timeout=1.0)
+                self.get_logger().info("📹 후방 카메라 UDP 스트리밍 중지")
+                
+        except Exception as e:
+            self.get_logger().error(f"UDP 스트리밍 중지 실패: {e}")
+    
+    def _rear_camera_streaming_loop(self):
+        """후방 카메라 프레임을 주기적으로 UDP로 전송하는 루프"""
+        try:
+            while self.streaming_active and rclpy.ok():
+                try:
+                    if self.current_rear_camera is not None:
+                        # 후방 카메라에서 프레임 가져오기
+                        color_frame, _ = self.current_rear_camera.get_frames()
+                        
+                        if color_frame is not None:
+                            # UDP로 프레임 전송 (BGR 형식)
+                            self.udp_streamer.send_frame_bgr(color_frame)
+                    
+                    # FPS 제한 (15fps = 66ms 간격)
+                    time.sleep(0.066)
+                    
+                except Exception as e:
+                    self.get_logger().warning(f"프레임 전송 오류: {e}")
+                    time.sleep(0.1)  # 에러 시 잠시 대기
+                    
+        except Exception as e:
+            self.get_logger().error(f"UDP 스트리밍 루프 오류: {e}")
+        finally:
+            self.streaming_active = False
 
 
 def main(args=None):

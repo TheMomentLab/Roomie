@@ -1,0 +1,8 @@
+# Goal
+type: float32 duration_sec
+---
+# Result
+bool success
+---
+# Feedback
+float32 progress 
