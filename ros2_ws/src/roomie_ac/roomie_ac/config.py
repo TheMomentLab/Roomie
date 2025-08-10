@@ -25,16 +25,34 @@ class ButtonActionStatus:
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
 
-# 제어 전략 모드 정의
-class ControlMode(IntEnum):
-    """제어 전략 모드"""
-    MODEL_ONLY = 0
-    PBVS = 1 
+class ControlStrategy(IntEnum):
+    """
+    로봇팔의 전체적인 행동 전략을 결정합니다.
+    1. 즉시 누르기: 사전 정의된 좌표로 즉시 이동하여 누릅니다. (동기)
+    2. 관측 후 누르기: 사전 정의된 좌표의 5cm 앞에서 멈춘 후, 누릅니다. (동기)
+    3. 시각 서보잉: 카메라를 이용해 버튼을 추적하여 누릅니다. (비동기/동기 혼합)
+    """
+    MODEL_DIRECT_PRESS = 1
+    MODEL_STANDBY_PRESS = 2
+    PBVS_PRESS = 3
 
-HAND_EYE_UNIT = 'mm'  # 또는 'm'
+
+# 제어 전략 설정
+# ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
+# ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
+CONTROL_STRATEGY = ControlStrategy.MODEL_STANDBY_PRESS
+
+
 
 # 기본 설정 (DEBUG 등)
 DEBUG = True
+
+# True일 경우, PBVS/IBVS 제어 시 시야에서 계산된 방향 대신 로봇 베이스와 정렬된 안정적인 방향을 사용합니다.
+USE_STABLE_ORIENTATION = True 
+
+# True일 경우, Hand-Eye 보정 행렬을 무시하고 단위 행렬을 사용합니다 (디버깅용).
+IGNORE_HAND_EYE_CALIBRATION = True
+
 
 # 파일 경로 설정
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -48,7 +66,7 @@ SERIAL_BAUD_RATE = 460800
 SERIAL_TIMEOUT = 10.0 # 시리얼 연결 및 응답 대기 타임아웃
 
 # --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 2  # 사용자의 카메라 장치 번호
+CAMERA_DEVICE_ID = 4  # 사용자의 카메라 장치 번호
 YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 
 
@@ -65,6 +83,8 @@ ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 �
 IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
 IK_TOLERANCE_M = 2e-3 # IK 오차 허용 범위 (m)
 
+
+
 # 워크스페이스 (작업 공간) 설정
 WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
 WORKSPACE_R_MAX_M = 0.45
@@ -74,10 +94,7 @@ WORKSPACE_Z_MAX_M = 0.402
 # 동작 및 지연 시간 설정
 COMEBACK_DELAY_SEC = 20.0 # 홈 포지션으로 복귀 대기 시간 (초)
 
-# 제어 전략 설정
-# ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
-# ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
-CONTROL_STRATEGY = ControlMode.MODEL_ONLY
+
 
 # 2. Enum을 키(key)로, 실제 각도값을 값(value)으로 갖는 딕셔너리 생성
 POSE_ANGLES_DEG = {
@@ -95,10 +112,9 @@ HOME_POSITION_SERVO_DEG = POSE_ANGLES_DEG[Pose.INIT]
 
 
 
-
-
 # --- 로봇 및 버튼 ---
 ROBOT_ID = 0
+
 # 사전 정의된 버튼 위치 (미터 단위, MODEL_ONLY 모드용)
 PREDEFINED_BUTTON_POSES_M = {
     0: np.array([0.235, 0.0, 0.305]),  # 예시 좌표 (button_id: 2)
@@ -113,13 +129,12 @@ PREDEFINED_BUTTON_POSES_M = {
     # 다른 버튼 ID와 좌표를 여기에 추가할 수 있습니다.
     # 3: np.array([0.25, -0.1, 0.15]),
 }
+
 REAL_BUTTON_DIAMETER_M = 0.035 # 3.5cm
 # --- 비전 ---
+
 IMAGE_WIDTH_PX = 800
 IMAGE_HEIGHT_PX = 600
-# 중요: 실제 보정 파일 경로로 수정하세요
-CAMERA_PARAMS_FILE = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/camera_params.npz'
-HAND_EYE_MATRIX_FILE = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/hand_eye_matrix.npy'
 HAND_EYE_UNIT = 'mm' # 핸드-아이 보정 시 사용한 단위, 'mm' 또는 'm'
 
 # PnP를 위한 원형 버튼의 3D 모델 포인트 (대칭성 보장)
@@ -135,6 +150,8 @@ PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_STANDBY_DISTANCE_M = 0.08 # 버튼으로부터 5cm 대기 거리
-PRESS_FORWARD_DISTANCE_M = 0.08 # 3cm 누르기 거리
-SERVOING_MAX_MOVE_M = 0.5 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
+SERVOING_POSITION_TOLERANCE_M = 0.002
+SERVOING_STANDBY_DISTANCE_M = 0.05 #  목표 조준을 위한 안전거리
+PRESS_FORWARD_DISTANCE_M = 0.053 # 실제 버튼을 누르는 이동 거리
+SERVOING_MAX_STEP_M = 0.02 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
+IK_MIN_STEP_M = 0.005 # 5mm   이 거리보다 짧은 이동은 무시

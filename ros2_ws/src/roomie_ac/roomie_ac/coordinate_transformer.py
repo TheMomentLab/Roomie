@@ -75,23 +75,20 @@ class CoordinateTransformer:
         return rvec_estimate, tvec_estimate
 
 
-    def get_target_pose_from_points(self, image_points_2d: np.ndarray, robot_fk_transform: np.ndarray):
+    def get_button_pose_in_base_frame(self, image_points_2d: np.ndarray, robot_fk_transform: np.ndarray):
         """
-        [최종 버전] PnP로 계산된 버튼 Pose와 로봇 FK를 이용해,
-        로봇 베이스 기준의 최종 목표 '준비 위치'를 계산합니다.
+        [수정됨] PnP와 FK를 이용해, 로봇 베이스 기준의 '버튼' 6D Pose(4x4 행렬)를 계산합니다.
         """
         if image_points_2d is None or len(image_points_2d) != 4:
             self._log("PnP 계산에 필요한 2D 점이 4개가 아닙니다.", error=True)
-            return None, None  # Standardized to tuple
+            return None
 
         # 중심점 및 너비 추정
         center_x_px = np.mean(image_points_2d[:, 0])
         center_y_px = np.mean(image_points_2d[:, 1])
         width_px = np.max(image_points_2d[:, 0]) - np.min(image_points_2d[:, 0])
-
         image_width = self.cx * 2
         image_height = self.cy * 2
-
         center_x_norm = center_x_px / image_width
         center_y_norm = center_y_px / image_height
         size_norm = width_px / image_width
@@ -114,13 +111,6 @@ class CoordinateTransformer:
                 self.camera_matrix, self.dist_coeffs
             )
 
-        # reprojection error 확인 (log only)
-        projected, _ = cv2.projectPoints(config.OBJECT_POINTS_3D, rvec, tvec, self.camera_matrix, self.dist_coeffs)
-        error = np.linalg.norm(projected.squeeze() - image_points_2d, axis=1).mean()
-
-        self._log(f"[PnP 성공] rvec: {rvec.flatten()}, tvec: {tvec.flatten()}", info=True)
-        self._log(f"[Reproj Error] 평균 오차: {error:.2f}px", info=True)
-
         # 2. rvec, tvec을 4x4 변환 행렬(T_cam_to_btn)로 변환
         R_cam_to_btn, _ = cv2.Rodrigues(rvec)
         T_cam_to_btn = np.eye(4)
@@ -132,15 +122,10 @@ class CoordinateTransformer:
 
         # 4. 로봇 베이스 -> 버튼 변환 행렬 계산
         T_base_to_btn = T_base_to_cam @ T_cam_to_btn
+        
+        # 5. [변경점] '준비 위치' 계산 로직 없이, 버튼의 Pose 행렬을 바로 반환
+        return T_base_to_btn
 
-        # 5. 버튼 위치 기준 Z축 뒤로 이동하여 준비 위치 설정
-        offset = np.eye(4)
-        offset[2, 3] = -config.SERVOING_STANDBY_DISTANCE_M
-        T_final_target = T_base_to_btn @ offset
-
-        target_xyz = T_final_target[:3, 3]
-        target_orientation = T_final_target[:3, :3]
-        return target_xyz, target_orientation
 
     def _log(self, message: str, info: bool = False, error: bool = False):
         if config.DEBUG:

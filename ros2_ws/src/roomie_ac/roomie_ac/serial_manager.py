@@ -1,8 +1,8 @@
 import serial
 import time
-import re
 import numpy as np
 from . import config
+import asyncio
 
 
 class SerialManager:
@@ -17,96 +17,65 @@ class SerialManager:
         try:
             self.ser = serial.Serial(self.port, self.baud, timeout=self.timeout)
             print("🔌 시리얼 포트 연결됨. ESP32 부팅 대기 중")
-            
-            # ======================= [핵심 수정] =======================
-            # 1. 먼저 응답을 기다리는 대신, 초기 자세 명령을 보냅니다.
-            print(f"🤝 로봇과 통신 시작... Python의 홈 포지션 {config.HOME_POSITION_SERVO_DEG}(으)로 동기화 명령을 보냅니다.")
-            
-            # 2. send_command는 명령 전송과 응답 수신을 모두 처리합니다.
-            final_angles = self.send_command(config.HOME_POSITION_SERVO_DEG)
-            # ==========================================================
+            time.sleep(2) 
 
-            if final_angles is not None:
-                print(f"✅ 연결 및 동기화 성공! 최종 확인된 각도: {final_angles}")
+            print(f"🤝 로봇과 통신 시작... 홈 포지션 {config.HOME_POSITION_SERVO_DEG}(으)로 이동 명령 전송.")
+            success = self.send_command(config.HOME_POSITION_SERVO_DEG)
+            
+            if success:
+                print("✅ 연결 및 초기화 명령 전송 성공!")
                 self.is_ready = True
-                return final_angles
+                return True
             else:
-                print("❌ ESP32로부터 초기 동기화 응답을 받지 못했습니다. 펌웨어와 통신 프로토콜을 확인하세요.")
+                print("❌ ESP32로 초기 명령 전송 실패.")
                 self.disconnect()
-                return None
+                return False
 
         except serial.SerialException as e:
             print(f"❌ 시리얼 연결 실패: {e}")
-            return None
+            return False
 
-    def send_command(self, angles_deg):
+    def send_command(self, angles_deg: np.ndarray) -> bool:
         if not self.ser or not self.ser.is_open:
             print("🚫 시리얼 포트가 열려있지 않습니다.")
-            return None
+            return False
 
-        # 정수형으로 변환하여 전송
         int_angles = np.round(angles_deg).astype(int)
         cmd = f"<M:{','.join(map(str, int_angles))}>"
         
         if config.DEBUG: print(f"  [SERIAL TX] -> {cmd}")
-
+        
         try:
-            self.ser.reset_input_buffer() # 명령 보내기 전, 수신 버퍼를 비워 이전 응답과의 혼선을 방지합니다.
             self.ser.write(cmd.encode('utf-8'))
-            self.ser.flush() # 명령이 즉시 전송되도록 보장
-            
-            # 명령을 보낸 후, 상태 응답을 기다립니다.
-            final_response = self.wait_for_status()
-
-            # ======================= [디버깅 코드 추가] =======================
-            if config.DEBUG:
-                print(f"  ==> [DEBUG] send_command가 반환할 최종 값: {final_response}")
-            # =================================================================
-
-            return final_response
+            return True
         except serial.SerialException as e:
             print(f"💥 시리얼 쓰기 작업 중 오류 발생: {e}")
             self.disconnect()
-            return None
+            return False
 
-
-    def wait_for_status(self):
-        if not self.ser: return None
-        try:
-            # 응답의 끝인 '>' 문자를 받을 때까지 기다립니다.
-            response = self.ser.read_until(b'>').decode('utf-8')
-
-            if config.DEBUG:
-                # 수신된 raw 데이터를 그대로 출력하여 디버깅에 용이하게 합니다.
-                print(f"  [SERIAL RX] <- '{response.strip()}'")
-
-            if not response:
-                print(f"❗️ ESP32로부터 응답 시간 초과({self.timeout}초). 연결 상태나 펌웨어를 확인하세요.")
-                return None
-
-            if response.startswith('<S:') and response.endswith('>'):
-                # 정규 표현식을 사용하여 숫자만 정확히 추출합니다.
-                nums_str = re.findall(r'-?\d+', response)
-                if len(nums_str) == 4:
-                    return np.array([int(n) for n in nums_str])
-                else:
-                    print(f"❓ 수신한 상태값의 개수가 4개가 아닙니다: {nums_str}")
-                    return None
-
-            elif '<ERR:' in response:
-                error_code = re.findall(r'\d+', response)
-                print(f"🚨 ESP32 오류 수신! 코드: {error_code[0] if error_code else 'N/A'}")
-                return None
-            
-            else:
-                # 예상치 못한 응답을 받았을 경우
-                print(f"❓ ESP32로부터 알 수 없는 형식의 응답 수신: {response.strip()}")
-                return None
-
-        except Exception as e:
-            print(f"💥 시리얼 응답 처리 중 예외 발생: {e}")
-            return None
-
+    async def wait_for_ack(self, timeout_sec: float) -> bool:
+        """
+        [수정됨] ESP32로부터 동작 완료 신호('<D>')를 비동기적으로 기다립니다.
+        """
+        if not self.ser or not self.ser.is_open:
+            return False
+        
+        # [핵심 수정] 응답을 기다리기 직전에, 시리얼 입력 버퍼를 깨끗이 비웁니다.
+        # 이렇게 하면 과거에 수신된 오래된 데이터(유령 응답)를 무시할 수 있습니다.
+        self.ser.reset_input_buffer()
+        
+        start_time = time.time()
+        buffer = b''
+        while time.time() - start_time < timeout_sec:
+            if self.ser.in_waiting > 0:
+                buffer += self.ser.read(self.ser.in_waiting)
+                if b'<D>' in buffer:
+                    if config.DEBUG: print("  [SERIAL RX] -> <D> (Done ACK 수신)")
+                    return True
+            await asyncio.sleep(0.01) 
+        
+        print(f"⌛️ ACK 대기 시간 초과 ({timeout_sec}초).")
+        return False
 
     def disconnect(self):
         if self.ser and self.ser.is_open:

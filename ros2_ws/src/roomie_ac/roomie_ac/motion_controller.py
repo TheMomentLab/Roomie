@@ -1,5 +1,3 @@
-# roomie_arm_control/motion_controller.py
-
 import numpy as np
 from . import config
 from .kinematics_solver import KinematicsSolver
@@ -13,45 +11,56 @@ class MotionController:
         self.joint_publisher = joint_publisher
         self.current_angles_rad = self._convert_servo_deg_to_rad(np.array(config.HOME_POSITION_SERVO_DEG))
 
-    # [개선] 내부 헬퍼 함수: 실제 시리얼 명령 전송 및 상태 업데이트를 담당
-    def _execute_and_update(self, target_angles_deg: np.ndarray) -> bool:
-        """시리얼 명령을 보내고, 성공 시 내부 상태를 업데이트하며 결과를 반환합니다."""
-        success = self.serial.send_command(target_angles_deg)
-        if success:
-            self.current_angles_rad = self._convert_servo_deg_to_rad(target_angles_deg)
-            self.joint_publisher.publish(config.JOINT_NAMES, self.current_angles_rad)
-            return True
-        return False
+    async def move_to_angles_deg(self, target_angles_deg: np.ndarray, blocking: bool = True) -> bool:
+        self._log(f"서보 각도 [{target_angles_deg}]로 이동 명령 (Blocking: {blocking})")
 
-    def move_to_angles_deg(self, target_angles_deg: np.ndarray) -> bool:
-        """미리 정의된 서보 각도로 직접 이동합니다."""
-        self._log(f"서보 각도 [{target_angles_deg}]로 직접 이동합니다.")
-        # [개선] 헬퍼 함수 호출로 단순화
-        if not self._execute_and_update(target_angles_deg):
-            self._log("서보 이동 명령 실패.", error=True)
+        if not self.serial.send_command(target_angles_deg):
+            self._log("명령 전송 실패.", error=True)
             return False
+
+        if blocking:
+            # [핵심 수정] await를 사용하여 비동기 함수 호출
+            if not await self.serial.wait_for_ack(config.SERIAL_TIMEOUT):
+                self._log("동작 완료 신호(ACK) 대기 시간 초과.", error=True)
+                return False
+
+        self.current_angles_rad = self._convert_servo_deg_to_rad(target_angles_deg)
+        self.joint_publisher.publish(config.JOINT_NAMES, self.current_angles_rad)
         return True
 
-    def move_to_pose_ik(self, target_xyz: np.ndarray, target_orientation_matrix: np.ndarray) -> bool:
-        """IK를 계산하여 목표 3D 좌표와 방향으로 이동합니다."""
-        self._log(f"IK를 이용해 3D 좌표 {np.round(target_xyz, 3)}로 이동합니다.")
+    # [수정] move_to_pose_ik를 async def로 변경
+    async def move_to_pose_ik(self, target_xyz: np.ndarray, orientation: np.ndarray = None, blocking: bool = True) -> bool:
+        """
+        [수정됨] IK를 사용하여 목표 위치로 이동합니다.
+        orientation이 None이면 IK가 최적의 방향을 자동으로 찾습니다.
+        """
+        log_msg = f"IK 이동: 좌표 {np.round(target_xyz, 3)}, 방향: {'자동' if orientation is None else '지정됨'} (Blocking: {blocking})"
+        self._log(log_msg)
         
-        solution_rad = self.kin_solver.solve_ik(target_xyz, target_orientation_matrix, self.current_angles_rad)
+        # [수정] orientation 인자를 solver에 그대로 전달
+        solution_rad = self.kin_solver.solve_ik(target_xyz, orientation, self.current_angles_rad)
         if solution_rad is None:
             self._log("IK 해를 찾지 못했습니다.", error=True)
             return False
             
         servo_angles_deg = self._convert_rad_to_servo_deg(solution_rad)
         
-        # [개선] 헬퍼 함수 호출로 단순화
-        if not self._execute_and_update(servo_angles_deg):
-            self._log("IK 이동 후 서보 명령 실패.", error=True)
+        return await self.move_to_angles_deg(servo_angles_deg, blocking=blocking)
+    
+    # [신규] 중복 제거를 위한 내부 헬퍼 함수
+    async def _execute_and_update(self, target_angles_deg: np.ndarray) -> bool:
+        if not self.serial.send_command(target_angles_deg):
             return False
-            
-        self._log("IK 이동 성공.")
+        
+        if not await self.serial.wait_for_ack(config.SERIAL_TIMEOUT):
+            self._log("ESP32로부터 동작 완료 신호를 받지 못했습니다.", error=True)
+            return False
+
+        self.current_angles_rad = self._convert_servo_deg_to_rad(target_angles_deg)
+        self.joint_publisher.publish(config.JOINT_NAMES, self.current_angles_rad)
         return True
 
-    # ... 나머지 함수 (_get_current_transform, 변환 함수, 로그 함수 등)는 기존과 동일 ...
+
     def _get_current_transform(self) -> np.ndarray:
         full_joints = self.kin_solver._get_full_joints(self.current_angles_rad)
         return self.kin_solver.chain.forward_kinematics(full_joints)
