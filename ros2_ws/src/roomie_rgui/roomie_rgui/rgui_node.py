@@ -49,6 +49,9 @@ class RobotGuiNode(Node):
         # 엘리베이터 사용 전 화면 상태 저장
         self.screen_before_elevator = None
         
+        # 목적지(호실 번호 등) 저장
+        self.current_destination: str | None = None
+        
         # 카운트다운 시작 전 화면 상태 저장 (픽업/배송 단계 구분용)
         self.screen_before_countdown = None
 
@@ -343,13 +346,23 @@ class RobotGuiNode(Node):
             self.get_logger().info(f"🏠 호실 번호 인식 완료: {msg.detail}")
             # 인식된 호실 번호는 detail에 저장됨 (예: "101")
             # REGISTERING 화면으로 전환
+            try:
+                self.current_destination = str(msg.detail) if msg.detail is not None else None
+            except Exception:
+                self.current_destination = None
             self.screen.show_screen("REGISTERING")
         elif event_id == 10:  # 길안내 이동 시작
             self.get_logger().info("🗺️ 길안내 이동 시작")
-            # 길안내 시작 시 화면 처리
+            # 현재 화면이 REGISTERING일 때만 GUIDANCE_SCREEN으로 전환
+            current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
+            if current == "REGISTERING":
+                self.screen.show_screen("GUIDANCE_SCREEN")
+            else:
+                self.get_logger().info(f"현재 화면이 {current}이므로 화면 전환 생략")
         elif event_id == 11:  # 길안내 이동 종료
             self.get_logger().info("🗺️ 길안내 이동 종료")
-            # 길안내 완료 후 처리
+            # 도착 화면으로 전환
+            self.screen.show_screen("DESTINATION_ARRIVED")
         elif event_id == 12:  # 픽업장소 이동 시작
             self.screen.show_screen("PICKUP_MOVING")
         elif event_id == 13:  # 픽업장소 이동 종료
@@ -400,10 +413,22 @@ class RobotGuiNode(Node):
             self.screen.show_screen("THANK_YOU")
         elif event_id == 21:  # 투숙객 이탈
             self.get_logger().info("👤 투숙객 이탈 이벤트 수신")
-            # 투숙객이 화면에서 떠났을 때 처리
+            # GUIDANCE_SCREEN에서 이탈 시 RECHECKING으로 전환
+            current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
+            if current == "GUIDANCE_SCREEN":
+                self.screen.show_screen("RECHECKING")
+            else:
+                # 다른 화면에서는 별도 처리 없음
+                pass
         elif event_id == 22:  # 투숙객 이탈 후 재등록
             self.get_logger().info("👤 투숙객 이탈 후 재등록 이벤트 수신")
-            # 투숙객이 다시 돌아왔을 때 처리
+            # RECHECKING에서 재등록 시 GUIDANCE_SCREEN으로 전환
+            current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
+            if current == "RECHECKING":
+                self.screen.show_screen("GUIDANCE_SCREEN")
+            else:
+                # 다른 화면에서는 별도 처리 없음
+                pass
         elif event_id == 23:  # 투숙객 등록
             self.get_logger().info("👤 투숙객 등록 이벤트 수신")
             # 새로운 투숙객이 등록되었을 때 처리

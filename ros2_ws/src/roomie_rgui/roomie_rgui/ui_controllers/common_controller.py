@@ -28,30 +28,23 @@ class CommonController(BaseController):
         # 로봇 눈 이미지 로드
         self.load_robot_eyes()
         
-        # 사용자 점유 상태 이벤트 발행 (사용자가 화면을 터치하면)
-        success = self.setup_touch_event("touchButton", self.on_user_occupied)
-        
-        if success:
-            self.log_info("Touch Screen 준비 완료")
-        else:
-            self.log_warn("Touch Screen touchButton을 찾을 수 없음 - 전체 화면 터치로 대체")
-            try:
-                # 전체 화면 터치 대체: 루트 위젯의 마우스 릴리즈를 후킹
-                from PyQt6.QtWidgets import QWidget
-                from PyQt6.QtCore import Qt
-                original_release = getattr(self.widget, "mouseReleaseEvent", None)
-                
-                def on_root_mouse_release(event):
-                    if event.button() == Qt.MouseButton.LeftButton:
-                        self.log_info("전체 화면 터치 감지 - on_user_occupied 호출")
-                        self.on_user_occupied()
-                    if original_release:
-                        QWidget.mouseReleaseEvent(self.widget, event)
-                
-                self.widget.mouseReleaseEvent = on_root_mouse_release
-                self.log_info("전체 화면 터치(루트 위젯) 이벤트 연결 완료")
-            except Exception as e:
-                self.log_error(f"전체 화면 터치 이벤트 연결 실패: {e}")
+        # 전체 화면 터치: 루트 위젯의 마우스 릴리즈를 후킹
+        try:
+            from PyQt6.QtWidgets import QWidget
+            from PyQt6.QtCore import Qt
+            original_release = getattr(self.widget, "mouseReleaseEvent", None)
+            
+            def on_root_mouse_release(event):
+                if event.button() == Qt.MouseButton.LeftButton:
+                    self.log_info("전체 화면 터치 감지 - on_user_occupied 호출")
+                    self.on_user_occupied()
+                if original_release:
+                    QWidget.mouseReleaseEvent(self.widget, event)
+            
+            self.widget.mouseReleaseEvent = on_root_mouse_release
+            self.log_info("전체 화면 터치(루트 위젯) 이벤트 연결 완료")
+        except Exception as e:
+            self.log_error(f"전체 화면 터치 이벤트 연결 실패: {e}")
     
     def setup_countdown_events(self):
         """카운트다운 화면 이벤트 설정"""

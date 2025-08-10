@@ -1,5 +1,5 @@
 # Goal
-type: float32 duration_sec
+float32 duration_sec
 ---
 # Result
 bool success

@@ -1762,12 +1762,13 @@ class VSNode(Node):
         
         # 📹 UDP 비디오 스트리머 초기화 (후방 카메라 → RGUI)
         self.udp_streamer = UDPVideoStreamer(
-            target_ip='127.0.0.1',  # 로컬호스트로 전송
-            target_port=9999,       # RGUI에서 수신할 포트
-            max_fps=15,             # 최대 15fps로 제한 (리소스 절약)
-            quality=70              # JPEG 품질 70%
+            target_ip=os.environ.get('VS_UDP_TARGET_IP', '127.0.0.1'),
+            target_port=int(os.environ.get('VS_UDP_TARGET_PORT', os.environ.get('RGUI_UDP_PORT', 5005))),
+            max_fps=int(os.environ.get('VS_UDP_MAX_FPS', 15)),
+            quality=int(os.environ.get('VS_UDP_QUALITY', 70)),
+            logger=self.get_logger()
         )
-        self.get_logger().info("📹 UDP 비디오 스트리머 초기화 완료 (127.0.0.1:9999)")
+        self.get_logger().info(f"📹 UDP 비디오 스트리머 초기화 완료 ({self.udp_streamer.addr[0]}:{self.udp_streamer.addr[1]})")
         
         # 🔥 최적화된 DisplayOCR 초기화 (EasyOCR만 사용, GPU 리소스 절약)
         self.display_ocr = DisplayOCR(self.get_logger())
@@ -4634,11 +4635,15 @@ class VSNode(Node):
                 self.streaming_active = False
                 self.streaming_thread = None
             
-            if not self.streaming_active and self.current_rear_camera is not None:
+            # 카메라 유무와 무관하게 스트리밍 스레드를 시작하고,
+            # 루프 내에서 카메라가 준비되었을 때만 프레임을 전송한다.
+            if not self.streaming_active:
                 self.streaming_active = True
                 self.streaming_thread = threading.Thread(target=self._rear_camera_streaming_loop, daemon=True)
+                self._rear_first_send_logged = False
+                self._rear_wait_log_emitted = False
                 self.streaming_thread.start()
-                self.get_logger().info("📹 후방 카메라 UDP 스트리밍 시작")
+                self.get_logger().info("📹 후방 카메라 UDP 스트리밍 스레드 시작 (카메라 준비와 무관하게 시작)")
                 
         except Exception as e:
             self.get_logger().error(f"UDP 스트리밍 시작 실패: {e}")
@@ -4661,15 +4666,57 @@ class VSNode(Node):
             while self.streaming_active and rclpy.ok():
                 try:
                     if self.current_rear_camera is not None:
-                        # 후방 카메라에서 프레임 가져오기
-                        color_frame, _ = self.current_rear_camera.get_frames()
+                        # 후방 카메라에서 프레임 가져오기 (WebCamCamera: (depth=None, color) 반환)
+                        _, color_frame = self.current_rear_camera.get_frames()
                         
                         if color_frame is not None:
                             # UDP로 프레임 전송 (BGR 형식)
-                            self.udp_streamer.send_frame_bgr(color_frame)
+                            sent = self.udp_streamer.send_frame_bgr(color_frame)
+                            if sent and not getattr(self, '_rear_first_send_logged', False):
+                                ip, prt = self.udp_streamer.addr
+                                h, w = color_frame.shape[:2]
+                                self.get_logger().info(f"📤 후방 UDP 첫 프레임 전송: {w}x{h} → {ip}:{prt}")
+                                self._rear_first_send_logged = True
+                            self._rear_wait_log_emitted = True
+                        else:
+                            # 카메라 프레임이 없으면 1초 간격으로 테스트 프레임 송출
+                            import time as _t
+                            last_ts = getattr(self, '_rear_last_test_ts', 0.0)
+                            if _t.time() - last_ts > 1.0:
+                                import numpy as _np, cv2 as _cv2
+                                test = _np.full((360, 640, 3), 255, dtype=_np.uint8)
+                                ts = _t.strftime('%H:%M:%S')
+                                _cv2.putText(test, ts, (50, 190), _cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
+                                # 움직이는 바 추가로 갱신 가시화
+                                bar_x = int((_t.time() * 50) % 600)
+                                _cv2.rectangle(test, (bar_x, 320), (bar_x + 40, 350), (0, 128, 255), -1)
+                                self.udp_streamer.send_frame_bgr(test, quality=85)
+                                if not getattr(self, '_rear_test_send_logged', False):
+                                    self.get_logger().info("🧪 후방 UDP 테스트 프레임 전송 (카메라 프레임 없음)")
+                                    self._rear_test_send_logged = True
+                                self._rear_last_test_ts = _t.time()
+                    else:
+                        if not getattr(self, '_rear_wait_log_emitted', False):
+                            ip, prt = self.udp_streamer.addr
+                            self.get_logger().info(f"⏳ 후방 카메라 대기 중... (UDP 대상: {ip}:{prt})")
+                            self._rear_wait_log_emitted = True
+                        # 카메라가 없을 때도 1초 간격 테스트 프레임 송출
+                        import time as _t
+                        last_ts = getattr(self, '_rear_last_test_ts', 0.0)
+                        if _t.time() - last_ts > 1.0:
+                            import numpy as _np, cv2 as _cv2
+                            test = _np.full((360, 640, 3), 255, dtype=_np.uint8)
+                            _cv2.putText(test, 'NO CAMERA', (120, 190), _cv2.FONT_HERSHEY_SIMPLEX, 2.0, (0, 0, 255), 4)
+                            bar_x = int((_t.time() * 50) % 600)
+                            _cv2.rectangle(test, (bar_x, 320), (bar_x + 40, 350), (0, 128, 255), -1)
+                            self.udp_streamer.send_frame_bgr(test, quality=85)
+                            if not getattr(self, '_rear_test_send_logged', False):
+                                self.get_logger().info("🧪 후방 UDP 테스트 프레임 전송 (카메라 없음)")
+                                self._rear_test_send_logged = True
+                            self._rear_last_test_ts = _t.time()
                     
-                    # FPS 제한 (15fps = 66ms 간격)
-                    time.sleep(0.066)
+                    # FPS 제한 (15fps ~= 66.7ms) → 약간 여유를 둠
+                    time.sleep(0.070)
                     
                 except Exception as e:
                     self.get_logger().warning(f"프레임 전송 오류: {e}")

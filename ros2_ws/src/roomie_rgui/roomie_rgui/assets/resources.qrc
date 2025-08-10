@@ -4,5 +4,12 @@
         <file>rgui_caution.png</file>
         <file>rgui_elevator.png</file>
         <file>rgui_charging.png</file>
+        <!-- guide assets -->
+        <file>rgui_guide_1.png</file>
+        <file>rgui_card.png</file>
+        <file>rgui_touch.png</file>
+        <file>rgui_scan.png</file>
+        <file>rgui_guide_out.png</file>
+        <file>rgui_eye_2.png</file>
     </qresource>
 </RCC> 

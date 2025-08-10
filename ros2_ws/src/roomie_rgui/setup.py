@@ -29,6 +29,8 @@ setup(
         ('share/' + package_name + '/ui/call', glob.glob('ui/call/*.ui')),
         ('share/' + package_name + '/ui/guide', glob.glob('ui/guide/*.ui')),
         ('share/' + package_name + '/ui/elevator', glob.glob('ui/elevator/*.ui')),
+        # 테스트 클라이언트 스크립트 설치 (ros2 run roomie_rgui test_service_client.py)
+
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -40,6 +42,7 @@ setup(
     entry_points={
         'console_scripts': [
             'rgui_node = roomie_rgui.rgui_node:main',
+            'test_service_client = roomie_rgui.test_service_client:main',
         ],
     },
 ) 

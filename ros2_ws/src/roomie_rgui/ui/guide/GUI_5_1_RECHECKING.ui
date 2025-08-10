@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Registering</class>
- <widget class="QWidget" name="Registering">
+ <class>PositionRecheck</class>
+ <widget class="QWidget" name="PositionRecheck">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -16,7 +16,7 @@
    </font>
   </property>
   <property name="windowTitle">
-   <string>Registering</string>
+   <string>Rechecking</string>
   </property>
   <property name="styleSheet">
    <string>QWidget {
@@ -30,80 +30,59 @@ QLabel {
     border: none;
 }
 
-QPushButton {
-    color: white;
-    border: none;
-    font-family: &quot;Malgun Gothic&quot;, sans-serif;
-    font-weight: bold;
-}
-
-.back-button {
-    background-color: #3498db;
-    border-radius: 15px;
-    font-size: 32px;
-}
-
-.back-button:hover {
-    background-color: #2980b9;
-}
-
-.countdown-circle {
-    color: white;
-    border: 4px solid white;
-    border-radius: 80px;
+.warning-icon {
     background-color: transparent;
+}
+
+.detection-frame {
+    background-color: #434a5a;
+    border-radius: 20px;
 }
 
 .detection-area {
-    border: 3px solid #3498db;
-    border-radius: 15px;
-    background-color: transparent;
-}
-
-.person-area {
     border: 2px solid #27ae60;
     border-radius: 8px;
     background-color: transparent;
 }</string>
   </property>
-  <widget class="QLabel" name="instructionText">
+  <widget class="QLabel" name="statusText">
    <property name="geometry">
     <rect>
-     <x>110</x>
-     <y>180</y>
-     <width>600</width>
-     <height>250</height>
+     <x>90</x>
+     <y>380</y>
+     <width>400</width>
+     <height>100</height>
     </rect>
    </property>
    <property name="font">
     <font>
      <family>Malgun Gothic</family>
      <pointsize>-1</pointsize>
-     <weight>75</weight>
-     <bold>true</bold>
+     <weight>50</weight>
+     <bold>false</bold>
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">font-size: 44px; 
-font-weight: 600; 
+    <string notr="true">font-size: 28px; 
+font-weight: normal; 
 color: white;
 line-height: 1.4;</string>
    </property>
    <property name="text">
-    <string>화면 안에
-위치하여주세요!</string>
+    <string>고객님 위치를
+찾을 수 없습니다.</string>
    </property>
    <property name="alignment">
-    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
    </property>
   </widget>
-  <widget class="QFrame" name="detectionAreaFrame">
+  <widget class="QFrame" name="detectionFrame">
    <property name="geometry">
     <rect>
-     <x>800</x>
+     <x>720</x>
      <y>120</y>
      <width>1000</width>
-     <height>841</height>
+     <height>600</height>
     </rect>
    </property>
    <property name="styleSheet">

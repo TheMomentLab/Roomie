@@ -84,14 +84,14 @@ class ScreenManager(QStackedWidget):
             
             # 기타
             "RETURN_TO_BASE": "ui/voice/audio_7_복귀_장소로_이동을_시작합니다_.mp3",
-            # 가이드 관련 (초기엔 음성 없음)
-            "GUIDANCE_SCREEN": None,
+            # 가이드 관련 (voice_guide 폴더 연결)
+            "GUIDANCE_SCREEN": "ui/voice/voice_guide/audio_3_목적지로_안내를_시작합니다_.mp3",
             "INPUT_METHOD_SELECTION": None,
-            "CARD_KEY_WAITING": None,
-            "REGISTERING": None,
-            "RECHECKING": None,
+            "CARD_KEY_WAITING": "ui/voice/voice_guide/audio_0_객실_카드키를_RFID_리더기에_태깅해주세요_.mp3",
+            "REGISTERING": "ui/voice/voice_guide/audio_1_사용자를_인식중입니다__화면에_보이도록_위치해주세요_.mp3",
+            "RECHECKING": "ui/voice/voice_guide/audio_4_인식에_실패하였습니다__화면에_다시_위치해주세요_.mp3",
             "GUIDE_REQUEST": None,
-            "DESTINATION_ARRIVED": None,
+            "DESTINATION_ARRIVED": "ui/voice/voice_guide/audio_2_목적지에_도착하였습니다__완료_버튼을_눌러주세요_.mp3",
         }
         
         # 현재 화면 정보
@@ -127,13 +127,13 @@ class ScreenManager(QStackedWidget):
             "ELEVATOR_MOVING_TO_TARGET": "ui/elevator/ELE_4_MOVING_TO_TARGET.ui",
             "ELEVATOR_EXITING": "ui/elevator/ELE_5_EXITING.ui",
             # 가이드 화면들 (실제 파일명 반영)
-            "GUIDANCE_SCREEN": "ui/guide/GUIDANCE_SCREEN.ui",
+            "GUIDANCE_SCREEN": "ui/guide/GUI_5_GUIDANCE_SCREEN.ui",
             "INPUT_METHOD_SELECTION": "ui/guide/GUI_2_INPUT_METHOD_SELECTION.ui",
             "CARD_KEY_WAITING": "ui/guide/GUI_3_CARD_KEY_WAITING.ui",
             "REGISTERING": "ui/guide/GUI_4_REGISTERING.ui",
-            "RECHECKING": "ui/guide/RECHECKING.ui",
+            "RECHECKING": "ui/guide/GUI_5_1_RECHECKING.ui",
             "GUIDE_REQUEST": "ui/guide/GUI_1_GUIDE_REQUEST.ui",
-            "DESTINATION_ARRIVED": "ui/guide/DESTINATION_ARRIVED.ui",
+            "DESTINATION_ARRIVED": "ui/guide/GUI_6_DESTINATION_ARRIVED.ui",
         }
 
         # 컨트롤러 팩토리 매핑
@@ -289,15 +289,43 @@ class ScreenManager(QStackedWidget):
         # 메인 스레드인 경우 즉시 실행
         self._play_audio_file_internal(audio_file, f"개별 음성")
     
+    def _resolve_audio_relpath(self, audio_file: str) -> str:
+        """음성 파일 상대 경로를 ui/voice 또는 ui/voice/voice_delivery 내에서 해석한다."""
+        try:
+            base_dir = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui"
+            candidates = []
+            # 주어진 경로 우선
+            if audio_file:
+                candidates.append(audio_file)
+                basename = os.path.basename(audio_file)
+                # 기존 경로(prefix: ui/voice/)를 voice_delivery/voice_guide로 대체한 후보
+                if "ui/voice/" in audio_file and "ui/voice/voice_delivery/" not in audio_file:
+                    candidates.append(audio_file.replace("ui/voice/", "ui/voice/voice_delivery/"))
+                if "ui/voice/" in audio_file and "ui/voice/voice_guide/" not in audio_file:
+                    candidates.append(audio_file.replace("ui/voice/", "ui/voice/voice_guide/"))
+                # 베이스 네임만으로 세 위치 모두 확인
+                candidates.append(f"ui/voice/{basename}")
+                candidates.append(f"ui/voice/voice_delivery/{basename}")
+                candidates.append(f"ui/voice/voice_guide/{basename}")
+            
+            for rel in candidates:
+                abs_path = os.path.join(base_dir, rel)
+                if os.path.exists(abs_path):
+                    return rel
+        except Exception as e:
+            # 문제가 있어도 원래 값을 반환하여 기존 동작 유지
+            self.node.get_logger().warn(f"오디오 경로 해석 중 경고: {e}")
+        return audio_file
+    
     @pyqtSlot(str, str)
     def _play_audio_file_internal(self, audio_file, log_type):
         """내부 음성 재생 메서드 (메인 스레드에서만 호출)"""
         self.node.get_logger().info(f"🎵 _play_audio_file_internal 진입: {audio_file}")
         
-        audio_path = os.path.join(
-            "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui",
-            audio_file
-        )
+        # 새 폴더 구조(ui/voice/voice_delivery) 및 구 구조(ui/voice) 모두 지원
+        base_dir = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui"
+        resolved_rel = self._resolve_audio_relpath(audio_file)
+        audio_path = os.path.join(base_dir, resolved_rel)
         
         self.node.get_logger().info(f"🔍 음성 파일 경로 확인: {audio_path}")
         
@@ -312,7 +340,7 @@ class ScreenManager(QStackedWidget):
                 self.media_player.setSource(QUrl.fromLocalFile(audio_path))
                 self.media_player.play()
                 
-                filename = os.path.basename(audio_file)
+                filename = os.path.basename(audio_path)
                 self.node.get_logger().info(f"🔊 {log_type} 재생 시작: {filename}")
                 
                 # 재생 상태 확인 (약간의 지연 후)
