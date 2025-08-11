@@ -66,7 +66,8 @@ class ObstacleDetector:
                             'world_z': world_z,  # 디버그용 월드 좌표
                             'distance': distance_m,
                             'class_name': obj['class_name'],
-                            'confidence': obj['confidence']
+                            'confidence': obj['confidence'],
+                            'tracking_id': obj.get('tracking_id')
                         }
                         
                         obstacles.append(obstacle_info)

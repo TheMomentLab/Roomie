@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 import os
 import glob
 
@@ -13,7 +13,7 @@ def get_training_files():
 setup(
     name='roomie_vs',
     version='1.0.0',
-    packages=['roomie_vs'],
+    packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages', ['resource/roomie_vs']),
         ('share/roomie_vs', ['package.xml']),

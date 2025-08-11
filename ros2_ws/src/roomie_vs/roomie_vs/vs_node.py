@@ -33,12 +33,13 @@
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
+from rclpy.action import ActionServer
 import threading
 import time
 import os
 import numpy as np
 import cv2
-import cv2.aruco as aruco
+import cv2
 from typing import Optional, Tuple, List
 
 # CNN 버튼 분류를 위한 추가 import
@@ -58,6 +59,9 @@ from .obstacle_detector import ObstacleDetector
 
 # UDP 비디오 스트리밍 import
 from .udp_streamer import UDPVideoStreamer
+
+# 사람 추적 모듈 import
+from .person_tracking import PersonTracker
 
 # CNN 모델 아키텍처 정의 (실제 훈련된 모델과 일치)
 class BalancedButtonCNN(nn.Module):
@@ -119,24 +123,38 @@ from roomie_msgs.srv import (
     Location
 )
 from roomie_msgs.msg import Obstacle, GlassDoorStatus
+from roomie_msgs.action import Enroll
+from std_srvs.srv import Trigger
 
 # OpenNI2 환경변수 설정
 import os
 
 def setup_openni2_environment():
     """OpenNI2 실행을 위한 환경변수 설정"""
-    openni_path = os.path.expanduser("~/project_ws/Roomie/ros2_ws/src/roomie_vs/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/ros2_astra_camera/astra_camera/openni2_redist/x64")
+    # 우선 실제 Downloads 디렉토리의 OpenNI2 경로 확인
+    downloads_openni_path = os.path.expanduser("~/Downloads/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/ros2_astra_camera/astra_camera/openni2_redist/x64")
+    project_openni_path = os.path.expanduser("~/project_ws/Roomie/ros2_ws/src/roomie_vs/OpenNI_SDK_ROS2_v1.0.2_20220809_b32e47_linux/ros2_astra_camera/astra_camera/openni2_redist/x64")
     
-    if not os.path.exists(openni_path):
-        print(f"❌ OpenNI2 경로를 찾을 수 없습니다: {openni_path}")
+    # Downloads에 있는 것을 우선 확인
+    if os.path.exists(downloads_openni_path):
+        openni_path = downloads_openni_path
+        print(f"✅ OpenNI2 경로 발견 (Downloads): {openni_path}")
+    elif os.path.exists(project_openni_path):
+        openni_path = project_openni_path
+        print(f"✅ OpenNI2 경로 발견 (Project): {openni_path}")
+    else:
+        print(f"❌ OpenNI2 경로를 찾을 수 없습니다.")
+        print(f"   확인한 경로들:")
+        print(f"   - {downloads_openni_path}")
+        print(f"   - {project_openni_path}")
         return False
     
-    # # 환경변수 설정
-    # os.environ['OPENNI2_REDIST'] = openni_path
-    # if 'LD_LIBRARY_PATH' in os.environ:
-    #     os.environ['LD_LIBRARY_PATH'] += f":{openni_path}"
-    # else:
-    #     os.environ['LD_LIBRARY_PATH'] = openni_path
+    # 환경변수 설정
+    os.environ['OPENNI2_REDIST'] = openni_path
+    if 'LD_LIBRARY_PATH' in os.environ:
+        os.environ['LD_LIBRARY_PATH'] += f":{openni_path}"
+    else:
+        os.environ['LD_LIBRARY_PATH'] = openni_path
     
     # PYTHONPATH에 사용자 라이브러리 경로 추가
     user_lib_path = "/home/jinhyuk2me/.local/lib/python3.12/site-packages"
@@ -146,6 +164,8 @@ def setup_openni2_environment():
         os.environ['PYTHONPATH'] = user_lib_path
     
     print(f"✅ OpenNI2 환경변수 설정 완료: {openni_path}")
+    print(f"   OPENNI2_REDIST: {os.environ.get('OPENNI2_REDIST')}")
+    print(f"   LD_LIBRARY_PATH에 추가됨: {openni_path}")
     return True
 
 # 환경설정 먼저 실행
@@ -730,6 +750,17 @@ class MultiCameraManager:
                     return self.front_webcam, None, "Front Webcam Only"
                 else:  # mode_id == 6
                     return self.front_webcam, None, "Front Webcam Only (Standby)"
+            elif self.front_depth_initialized:
+                # 뎁스 카메라만 있는 경우 - 단독으로도 사용 가능
+                self.logger.info("웹캠 없이 뎁스 카메라만 사용")
+                if mode_id == 3:
+                    return self.front_depth, None, "Front Depth Only (Elevator Out)"
+                elif mode_id == 4:
+                    return self.front_depth, None, "Front Depth Only (Elevator In)"
+                elif mode_id == 5:
+                    return self.front_depth, None, "Front Depth Only"
+                else:  # mode_id == 6
+                    return self.front_depth, None, "Front Depth Only (Standby)"
             else:
                 self.logger.warning("전방 카메라들이 초기화되지 않았습니다")
                 return None, None, "None"
@@ -1842,20 +1873,24 @@ class VSNode(Node):
             self.get_logger().info("✅ ArUco 사전 로딩 성공")
             
             self.get_logger().info("🔍 ArUco 파라미터 설정...")
-            # OpenCV 4.6.0 안전성을 위해 파라미터를 None으로 설정 (기본값 사용)
-            self.aruco_params = None
-            self.get_logger().info("✅ ArUco 파라미터 설정 완료 (기본값 사용)")
-            
-            # ArUco 감지 시스템 활성화 (레거시 API 사용)
-            if self.aruco_dict is not None:
-                self.get_logger().info("🔍 ArUco 감지 시스템 활성화...")
-                self.aruco_detector = True  # 활성화 플래그로 사용
-                self.get_logger().info("✅ ArUco 감지 시스템 활성화 완료")
-                self.aruco_api_version = "legacy"
-            else:
-                self.get_logger().warning("ArUco 사전이 없어 감지 시스템 비활성화")
-                self.aruco_detector = False
-                self.aruco_api_version = "error"
+            # OpenCV 4.7+ 신 API 우선 사용, 가능 시 DetectorParameters 및 ArucoDetector 생성
+            try:
+                self.aruco_params = cv2.aruco.DetectorParameters()
+                if hasattr(cv2.aruco, 'ArucoDetector'):
+                    self.aruco_detector = cv2.aruco.ArucoDetector(self.aruco_dict, self.aruco_params)
+                    self.aruco_api_version = "new"
+                    self.get_logger().info("✅ ArUcoDetector 초기화 완료 (신 API)")
+                else:
+                    # 폴백: 레거시 API만 있는 경우 플래그로 활성화
+                    self.aruco_detector = True
+                    self.aruco_api_version = "legacy"
+                    self.get_logger().info("✅ ArUco 감지 시스템 활성화 (레거시 API)")
+            except Exception:
+                # 최종 폴백: 파라미터를 None으로 두고 레거시로만 시도
+                self.aruco_params = None
+                self.aruco_detector = True if self.aruco_dict is not None else False
+                self.aruco_api_version = "legacy" if self.aruco_detector else "error"
+                self.get_logger().info("✅ ArUco 파라미터 설정 완료 (기본값/레거시)")
             
         except Exception as e:
             self.get_logger().warning(f"초기화 중 오류: {e}")
@@ -1989,6 +2024,20 @@ class VSNode(Node):
             self.location_callback
         )
         
+        # 👤 추적 관련 액션 및 서비스 추가
+        self.enroll_action_server = ActionServer(
+            self,
+            Enroll,
+            '/vs/action/enroll',
+            self.enroll_action_callback
+        )
+        
+        self.stop_tracking_service = self.create_service(
+            Trigger,
+            '/vs/command/stop_tracking',
+            self.stop_tracking_callback
+        )
+        
         # ROS2 토픽 퍼블리셔들 (QoS 프로파일 명시적 설정)
         from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
         
@@ -2016,8 +2065,8 @@ class VSNode(Node):
         )
         
         self.get_logger().info("모든 VS 인터페이스 초기화 완료!")
-        self.get_logger().info("구현된 서비스 5개: set_vs_mode, button_status, elevator_status, door_status, location")
-        self.get_logger().info("구현된 토픽 2개: obstacle, glass_door_status")
+        self.get_logger().info("구현된 서비스 7개: set_vs_mode, button_status, elevator_status, door_status, location, stop_tracking, enroll(action)")
+        self.get_logger().info("구현된 토픽 3개: obstacle, glass_door_status, tracking")
         self.get_logger().info("ArUco 마커 기반 위치 감지 시스템 활성화")
         self.get_logger().info("🎯 GPU 리소스 절약형 동적 카메라 VS Node 초기화 완료!")
         self.get_logger().info(f"🚀 시작 모드: 전방 {self.mode_names[self.current_front_mode_id]} (ID: {self.current_front_mode_id}), 후방 {self.mode_names[self.current_rear_mode_id]} (ID: {self.current_rear_mode_id})")
@@ -2030,6 +2079,21 @@ class VSNode(Node):
         self.get_logger().info("전방 관련: 3(엘외부) → 전방웹캠+뎁스, 4(엘내부) → 전방웹캠+뎁스, 5(일반) → 전방웹캠+뎁스, 6(대기) → 전방웹캠+뎁스")
         self.get_logger().info("💡 모든 모드에서 카메라와 GUI가 활성화되어 실시간 영상 확인 가능합니다")
         self.get_logger().info("=" * 60)
+        
+        # 👤 사람 추적 모듈 초기화 (마지막에 추가)
+        try:
+            # MultiModelDetector에서 YOLOv8n 모델 참조
+            yolo_model = None
+            if hasattr(self.model_detector, 'model_normal') and self.model_detector.model_normal:
+                yolo_model = self.model_detector.model_normal
+            elif hasattr(self.model_detector, 'fallback_model') and self.model_detector.fallback_model:
+                yolo_model = self.model_detector.fallback_model
+            
+            self.person_tracker = PersonTracker(self, yolo_model)
+            self.get_logger().info("👤 PersonTracker 초기화 완료")
+        except Exception as e:
+            self.get_logger().error(f"👤 PersonTracker 초기화 실패: {e}")
+            self.person_tracker = None
     
     def update_camera_for_current_mode(self):
         """전방/후방 카메라 독립적 업데이트 (호환성 유지)"""
@@ -2073,12 +2137,23 @@ class VSNode(Node):
             # 그레이스케일 변환
             gray = cv2.cvtColor(processed_image, cv2.COLOR_BGR2GRAY)
             
-            # 레거시 API로 ArUco 마커 감지 (기본 파라미터 사용)
-            corners, ids, rejected = cv2.aruco.detectMarkers(
-                gray, 
-                self.aruco_dict, 
-                parameters=None
-            )
+            # 레거시/신 API 대응하여 ArUco 마커 감지
+            corners = ids = rejected = None
+            try:
+                if hasattr(cv2.aruco, 'ArucoDetector') and isinstance(self.aruco_detector, cv2.aruco.ArucoDetector):
+                    corners, ids, rejected = self.aruco_detector.detectMarkers(gray)
+                elif hasattr(cv2.aruco, 'detectMarkers'):
+                    corners, ids, rejected = cv2.aruco.detectMarkers(
+                        gray,
+                        self.aruco_dict,
+                        parameters=self.aruco_params if self.aruco_params is not None else None
+                    )
+                else:
+                    self.get_logger().error("ArUco 감지 API를 찾을 수 없습니다 (ArucoDetector/legacy detectMarkers 모두 없음)")
+                    return self.last_detected_location_id
+            except Exception as e:
+                self.get_logger().error(f"ArUco 감지 호출 실패: {e}")
+                return self.last_detected_location_id
             
             # 조용한 자동 감지 (로그 최소화)
             
@@ -2180,12 +2255,22 @@ class VSNode(Node):
                     # 테스트용 ArUco 사전 생성 (파라미터는 기본값)
                     test_dict = cv2.aruco.getPredefinedDictionary(dict_id)
                     
-                    # ArUco 마커 감지 (레거시 API, 기본 파라미터 사용)
-                    corners, ids, rejected = cv2.aruco.detectMarkers(
-                        gray, 
-                        test_dict, 
-                        parameters=None
-                    )
+                    # ArUco 마커 감지 (신 API 우선, 레거시 폴백)
+                    try:
+                        if hasattr(cv2.aruco, 'ArucoDetector'):
+                            test_detector = cv2.aruco.ArucoDetector(test_dict, cv2.aruco.DetectorParameters())
+                            corners, ids, rejected = test_detector.detectMarkers(gray)
+                        elif hasattr(cv2.aruco, 'detectMarkers'):
+                            corners, ids, rejected = cv2.aruco.detectMarkers(
+                                gray,
+                                test_dict,
+                                parameters=None
+                            )
+                        else:
+                            corners, ids, rejected = None, None, None
+                    except Exception as e:
+                        self.get_logger().warning(f"{dict_name} 감지 실패: {e}")
+                        corners, ids, rejected = None, None, None
                     
                     detected_count = len(ids) if ids is not None else 0
                     rejected_count = len(rejected) if rejected is not None else 0
@@ -2547,14 +2632,14 @@ class VSNode(Node):
 
     
     def detect_and_publish_obstacles(self, objects, depth_camera, mode_id):
-        """뎁스 카메라 기반 장애물 감지 및 발행 (1초 종합 평가)"""
+        """뎁스 카메라 기반 장애물 감지 및 발행 (보수적 유지 + 간단 트래킹)"""
         if mode_id != 5:  # 일반 주행 모드가 아니면 스킵
             return
-            
+        
         # 뎁스 카메라가 없으면 스킵
         if depth_camera is None or not hasattr(depth_camera, 'pixel_to_3d'):
             return
-            
+        
         try:
             current_time = self.get_clock().now()
             
@@ -2563,83 +2648,95 @@ class VSNode(Node):
                 objects, depth_camera
             )
             
-            # 감지 히스토리 업데이트
-            detected_classes = set()
-            for obstacle_info in current_obstacles:
-                class_name = obstacle_info['class_name']
-                detected_classes.add(class_name)
-                
-                if class_name not in self.obstacle_detection_history:
-                    self.obstacle_detection_history[class_name] = [0, 0]  # [detection_count, total_frames]
-                
-                self.obstacle_detection_history[class_name][0] += 1  # 감지 횟수 증가
+            # 내부 트래킹 상태 초기화
+            if not hasattr(self, 'obstacle_tracks'):
+                self.obstacle_tracks = {}  # tracking_id(or pseudo id) -> track dict
+            if not hasattr(self, 'next_obstacle_track_id'):
+                self.next_obstacle_track_id = 0
             
-            # 모든 클래스의 총 프레임 수 증가
-            for class_name in self.obstacle_detection_history:
-                self.obstacle_detection_history[class_name][1] += 1
+            # 매칭을 위한 헬퍼 (좌표 근접 기반)
+            def match_track(obs, tracks, pos_tol=0.08):
+                tid = obs.get('tracking_id')
+                if tid is not None and tid in tracks:
+                    return tid
+                best_id = None
+                best_dist = 1e9
+                for track_id, tr in tracks.items():
+                    if tr.get('class_name') != obs.get('class_name'):
+                        continue
+                    dx = (tr['x'] - obs['x'])
+                    dy = (tr['y'] - obs['y'])
+                    dist = (dx*dx + dy*dy) ** 0.5
+                    if dist < best_dist and dist <= pos_tol:
+                        best_dist = dist
+                        best_id = track_id
+                return best_id
             
-            # 즉시 평가 및 발행 (민감한 감지, 보수적 소멸)
-            if True:  # 항상 즉시 처리
+            # 기존 트랙 업데이트 플래그 초기화
+            for tr in getattr(self, 'obstacle_tracks', {}).values():
+                tr['updated'] = False
+            
+            # 현재 장애물들을 트랙에 매칭/업데이트 및 즉시 발행
+            for obs in current_obstacles:
+                obs.setdefault('x', obs.get('normalized_x', 0.0))
+                obs.setdefault('y', obs.get('normalized_y', 0.0))
                 
-                confirmed_obstacles = []
+                track_id = match_track(obs, self.obstacle_tracks)
+                if track_id is None:
+                    track_id = f"trk_{self.next_obstacle_track_id}"
+                    self.next_obstacle_track_id += 1
+                    self.obstacle_tracks[track_id] = {
+                        'class_name': obs['class_name'],
+                        'dynamic': obs['dynamic'],
+                        'x': obs['x'],
+                        'y': obs['y'],
+                        'depth': obs['depth'],
+                        'last_seen': current_time,
+                        'missing_frames': 0,
+                        'started': True
+                    }
+                else:
+                    tr = self.obstacle_tracks[track_id]
+                    tr['x'] = obs['x']
+                    tr['y'] = obs['y']
+                    tr['depth'] = obs['depth']
+                    tr['last_seen'] = current_time
+                    tr['missing_frames'] = 0
+                    tr['dynamic'] = obs['dynamic']
+                    tr['class_name'] = obs['class_name']
+                    tr['updated'] = True
+                    tr.setdefault('started', True)
                 
-                # 1. 현재 프레임에서 새로 감지된 장애물 즉시 추가 (민감한 감지)
-                for obstacle_info in current_obstacles:
-                    confirmed_obstacles.append(obstacle_info)
-                
-                # 2. 이전에 감지되었지만 현재 미감지된 장애물의 보수적 처리
-                for class_name, (detection_count, total_frames) in self.obstacle_detection_history.items():
-                    if class_name not in detected_classes and total_frames > 0:
-                        # 최근 5프레임 중 3프레임 이상 감지되었다면 계속 유지
-                        recent_detection_ratio = detection_count / min(total_frames, 5)
-                        if recent_detection_ratio >= 0.6:  # 60% 이상 감지율
-                            # 마지막으로 감지된 위치 정보로 계속 발행
-                            last_obstacle = None
-                            for prev_obstacle in getattr(self, 'previous_obstacles', []):
-                                if prev_obstacle['class_name'] == class_name:
-                                    last_obstacle = prev_obstacle
-                                    break
-                            if last_obstacle:
-                                confirmed_obstacles.append(last_obstacle)
-                            
-                            self.get_logger().debug(f"장애물 발행: {class_name}")
-                        else:
-                            self.get_logger().debug(f"장애물 무시: {class_name} (낮은 감지율)")
-                
-                # 확정된 장애물들 발행
-                for obstacle_info in confirmed_obstacles:
+                obstacle_msg = Obstacle()
+                obstacle_msg.robot_id = obs['robot_id']
+                obstacle_msg.dynamic = obs['dynamic']
+                obstacle_msg.x = obs['x']
+                obstacle_msg.y = obs['y']
+                obstacle_msg.depth = obs['depth']
+                self.obstacle_pub.publish(obstacle_msg)
+            
+            # 누락된 트랙 보수적 유지/종료
+            HOLD_FRAMES = 5  # 잠깐 끊길 때 유지할 프레임 수
+            to_delete = []
+            for track_id, tr in self.obstacle_tracks.items():
+                if tr.get('updated'):
+                    continue
+                tr['missing_frames'] = tr.get('missing_frames', 0) + 1
+                if tr['missing_frames'] <= HOLD_FRAMES:
                     obstacle_msg = Obstacle()
-                    obstacle_msg.robot_id = obstacle_info['robot_id']
-                    obstacle_msg.dynamic = obstacle_info['dynamic']
-                    obstacle_msg.x = obstacle_info['x']  # 화면 상 정규화된 좌표 (0~1)
-                    obstacle_msg.y = obstacle_info['y']  # 화면 상 정규화된 좌표 (0~1)
-                    obstacle_msg.depth = obstacle_info['depth']  # 미터(m) - 뎁스 카메라가 인식하는 depth
-                    
+                    obstacle_msg.robot_id = 0
+                    obstacle_msg.dynamic = tr['dynamic']
+                    obstacle_msg.x = tr['x']
+                    obstacle_msg.y = tr['y']
+                    obstacle_msg.depth = tr['depth']
                     self.obstacle_pub.publish(obstacle_msg)
-                    
-                    # 로그 출력 (디버그 레벨로 변경하여 스팸 방지)
-                    obstacle_type = "동적" if obstacle_info['dynamic'] else "정적"
-                    self.get_logger().debug(
-                        f"장애물 발행: {obstacle_type} ({obstacle_info['class_name']}) "
-                        f"화면좌표: ({obstacle_info['x']:.3f}, {obstacle_info['y']:.3f}) "
-                        f"거리: {obstacle_info['depth']:.2f}m"
-                    )
-                
-                # 이전 장애물 정보 저장 (보수적 소멸을 위해)
-                self.previous_obstacles = current_obstacles.copy()
-                
-                # 히스토리 부분 초기화 (완전 삭제하지 않고 카운트만 리셋)
-                for class_name in list(self.obstacle_detection_history.keys()):
-                    detection_count, total_frames = self.obstacle_detection_history[class_name]
-                    if class_name not in detected_classes and total_frames > 10:
-                        # 10프레임 이상 미감지시 완전 제거
-                        del self.obstacle_detection_history[class_name]
-                    else:
-                        # 감지 카운트만 리셋 (히스토리 유지)
-                        self.obstacle_detection_history[class_name] = [0, 0]
-                
-                self.last_obstacle_publish_time = current_time
-                
+                else:
+                    to_delete.append(track_id)
+            for tid in to_delete:
+                del self.obstacle_tracks[tid]
+            
+            self.last_obstacle_publish_time = current_time
+            
         except Exception as e:
             self.get_logger().error(f"❌ 장애물 감지 및 발행 실패: {e}")
     
@@ -2681,6 +2778,10 @@ class VSNode(Node):
                 
                 # 후방 카메라만 업데이트
                 self.update_rear_camera()
+                
+                # 👤 PersonTracker 모드 연동 (후방 모드 변경시)
+                if hasattr(self, 'person_tracker') and self.person_tracker:
+                    self.person_tracker.set_mode(request.mode_id)
             
             response.robot_id = request.robot_id
             response.success = True
@@ -2716,11 +2817,14 @@ class VSNode(Node):
         """현재 활성화된 카메라들을 반환 (전방/후방 모두 포함)"""
         active_cameras = []
         
-        # 전방 카메라 체크
-        if hasattr(self, 'current_camera') and self.current_camera is not None:
-            # 모든 전방 모드에서 웹캠과 뎁스를 별도 창으로 분리 (카메라는 항상 켜두기)
-            if self.current_front_mode_id in [3, 4, 5, 6]:
-                # 웹캠 창
+        # 전방 카메라 체크 - 웹캠과 뎁스를 분리해서 처리
+        if self.current_front_mode_id in [3, 4, 5, 6]:
+            # 웹캠이 실제로 있고 뎁스와 다른 경우만 웹캠 창 추가
+            front_webcam = getattr(self.camera_manager, 'front_webcam', None)
+            front_depth = getattr(self.camera_manager, 'front_depth', None)
+            
+            # 웹캠이 초기화되어 있으면 웹캠 창 추가
+            if front_webcam and getattr(self.camera_manager, 'front_webcam_initialized', False):
                 if self.current_front_mode_id == 3:
                     webcam_name = 'Front USB Webcam (Elevator Out)'
                 elif self.current_front_mode_id == 4:
@@ -2731,40 +2835,40 @@ class VSNode(Node):
                     webcam_name = 'Front USB Webcam (Standby)'
                     
                 active_cameras.append({
-                    'camera': self.current_camera,
+                    'camera': front_webcam,
                     'depth_camera': None,
                     'name': webcam_name,
                     'mode_id': self.current_front_mode_id,
                     'type': 'front_webcam'
                 })
-                
-                # 뎁스 카메라 창
-                if hasattr(self, 'current_depth_camera') and self.current_depth_camera is not None:
-                    if self.current_front_mode_id == 3:
-                        depth_name = 'Front Depth Camera (Elevator Out)'
-                    elif self.current_front_mode_id == 4:
-                        depth_name = 'Front Depth Camera (Elevator In)'
-                    elif self.current_front_mode_id == 5:
-                        depth_name = 'Front Depth Camera (YOLO)'
-                    else:  # mode_id == 6
-                        depth_name = 'Front Depth Camera (Standby)'
-                        
-                    active_cameras.append({
-                        'camera': self.current_depth_camera,
-                        'depth_camera': self.current_depth_camera,
-                        'name': depth_name,
-                        'mode_id': self.current_front_mode_id,
-                        'type': 'front_depth'
-                    })
-            else:
-                # 다른 전방 모드들은 기존 방식 (혹시 있다면)
+            
+            # 뎁스 카메라가 초기화되어 있으면 뎁스 창 추가
+            if front_depth and getattr(self.camera_manager, 'front_depth_initialized', False):
+                if self.current_front_mode_id == 3:
+                    depth_name = 'Front Depth Camera (Elevator Out)'
+                elif self.current_front_mode_id == 4:
+                    depth_name = 'Front Depth Camera (Elevator In)'
+                elif self.current_front_mode_id == 5:
+                    depth_name = 'Front Depth Camera (YOLO)'
+                else:  # mode_id == 6
+                    depth_name = 'Front Depth Camera (Standby)'
+                    
                 active_cameras.append({
-                    'camera': self.current_camera,
-                    'depth_camera': getattr(self, 'current_depth_camera', None),
-                    'name': getattr(self, 'current_camera_name', 'Front Camera'),
+                    'camera': front_depth,
+                    'depth_camera': front_depth,
+                    'name': depth_name,
                     'mode_id': self.current_front_mode_id,
-                    'type': 'front'
+                    'type': 'front_depth'
                 })
+        elif hasattr(self, 'current_camera') and self.current_camera is not None:
+            # 다른 전방 모드들은 기존 방식 (혹시 있다면)
+            active_cameras.append({
+                'camera': self.current_camera,
+                'depth_camera': getattr(self, 'current_depth_camera', None),
+                'name': getattr(self, 'current_camera_name', 'Front Camera'),
+                'mode_id': self.current_front_mode_id,
+                'type': 'front'
+            })
         
         # 후방 카메라 체크
         if hasattr(self, 'current_rear_camera') and self.current_rear_camera is not None:
@@ -3898,6 +4002,98 @@ class VSNode(Node):
         except Exception as e:
             self.get_logger().error(f"❌ GPU 오류 대응 실패: {e}")
 
+    # 👤 추적 관련 액션 및 서비스 콜백 메소드들
+    def enroll_action_callback(self, goal_handle):
+        """등록 액션 서버 콜백 - PersonTracker를 통해 처리"""
+        self.get_logger().info(f"👤 등록 액션 요청: duration={goal_handle.request.duration_sec}초")
+        
+        try:
+            # PersonTracker가 없거나 등록모드가 아니면 실패
+            if not hasattr(self, 'person_tracker') or not self.person_tracker:
+                goal_handle.abort()
+                result = Enroll.Result()
+                result.success = False
+                self.get_logger().error("👤 PersonTracker가 초기화되지 않았습니다")
+                return result
+            
+            if self.person_tracker.current_mode != 1:
+                goal_handle.abort()
+                result = Enroll.Result()
+                result.success = False
+                self.get_logger().error("👤 등록모드가 아닙니다 (현재 모드: {})".format(self.person_tracker.current_mode))
+                return result
+            
+            # 등록 시작
+            register_result = self.person_tracker.register_target(goal_handle.request.duration_sec)
+            if not register_result["success"]:
+                goal_handle.abort()
+                result = Enroll.Result()
+                result.success = False
+                self.get_logger().error(f"👤 등록 시작 실패: {register_result['message']}")
+                return result
+            
+            goal_handle.succeed()
+            
+            # 주기적으로 피드백 전송
+            duration = goal_handle.request.duration_sec
+            start_time = time.time()
+            
+            while time.time() - start_time < duration:
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    result = Enroll.Result()
+                    result.success = False
+                    self.get_logger().info("👤 등록 액션이 취소되었습니다")
+                    return result
+                
+                # 진행률 피드백
+                progress = self.person_tracker.get_registration_progress()
+                feedback = Enroll.Feedback()
+                feedback.progress = progress
+                goal_handle.publish_feedback(feedback)
+                
+                time.sleep(0.1)  # 10Hz 피드백
+            
+            # 등록 완료
+            result = Enroll.Result()
+            result.success = self.person_tracker.target_registered
+            
+            if result.success:
+                self.get_logger().info(f"👤 등록 완료: target_id={self.person_tracker.target_id}")
+            else:
+                self.get_logger().warning("👤 등록 실패: 적합한 후보를 찾지 못했습니다")
+            
+            return result
+            
+        except Exception as e:
+            self.get_logger().error(f"👤 등록 액션 처리 중 오류: {e}")
+            goal_handle.abort()
+            result = Enroll.Result()
+            result.success = False
+            return result
+    
+    def stop_tracking_callback(self, request, response):
+        """추적 중지 서비스 콜백"""
+        self.get_logger().info("👤 추적 중지 요청")
+        
+        try:
+            if hasattr(self, 'person_tracker') and self.person_tracker:
+                stop_result = self.person_tracker.stop_tracking()
+                response.success = stop_result["success"]
+                response.message = stop_result["message"]
+                self.get_logger().info(f"👤 추적 중지 완료: {response.message}")
+            else:
+                response.success = False
+                response.message = "PersonTracker가 초기화되지 않았습니다"
+                self.get_logger().error("👤 PersonTracker가 없어 추적 중지 실패")
+        
+        except Exception as e:
+            response.success = False
+            response.message = f"추적 중지 중 오류: {e}"
+            self.get_logger().error(f"👤 추적 중지 처리 중 오류: {e}")
+        
+        return response
+
     def __del__(self):
         """소멸자 - 멀티 카메라 시스템 정리"""
         # GPU 모니터링 정리
@@ -4670,8 +4866,17 @@ class VSNode(Node):
                         _, color_frame = self.current_rear_camera.get_frames()
                         
                         if color_frame is not None:
+                            # 👤 PersonTracker에 프레임 전달
+                            if hasattr(self, 'person_tracker') and self.person_tracker:
+                                self.person_tracker.push_frame(color_frame)
+                            
+                            # PersonTracker 오버레이 적용 (선택적)
+                            display_frame = color_frame
+                            if hasattr(self, 'person_tracker') and self.person_tracker:
+                                display_frame = self.person_tracker.get_overlay_frame(color_frame)
+                            
                             # UDP로 프레임 전송 (BGR 형식)
-                            sent = self.udp_streamer.send_frame_bgr(color_frame)
+                            sent = self.udp_streamer.send_frame_bgr(display_frame)
                             if sent and not getattr(self, '_rear_first_send_logged', False):
                                 ip, prt = self.udp_streamer.addr
                                 h, w = color_frame.shape[:2]
@@ -4754,6 +4959,10 @@ def main(args=None):
                         camera_name = camera_info['name']
                         camera_type = camera_info['type']
                         mode_id = camera_info['mode_id']
+                        
+                        # 디버그: 카메라 정보 출력
+                        if frame_count % 100 == 1:
+                            node.get_logger().info(f"🔍 GUI 카메라: name={camera_name}, type={camera_type}")
                         
                         depth_image, color_image = None, None
                         
