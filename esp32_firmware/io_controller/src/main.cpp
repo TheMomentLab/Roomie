@@ -112,6 +112,9 @@ void loop() {
 
 // ==================== micro-ROS 태스크 ====================
 void micro_ros_task(void * pvParameters) {
+  Serial.println("micro-ROS agent 연결 대기중...");
+  delay(2000);  // 2초 대기
+
   if (!init_micro_ros()) {
     Serial.println("micro-ROS 초기화 실패! 태스크 종료.");
     vTaskDelete(NULL);
