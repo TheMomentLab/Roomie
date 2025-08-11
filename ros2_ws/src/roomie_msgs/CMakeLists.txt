@@ -58,6 +58,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/PerformTask.action"
   "action/PerformReturn.action"
   "action/StartCountdown.action"
+  "action/ReadCardInfo.action"
   "action/ReturnCountdown.action"
   "action/SetPose.action"
   "action/ClickButton.action"
