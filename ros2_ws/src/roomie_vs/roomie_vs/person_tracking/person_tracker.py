@@ -298,23 +298,7 @@ class PersonTracker:
         msg.id = self.target_id if self.target_id else -1
         
         if target_track and hasattr(target_track, 'to_tlbr'):
-            # 추적 성공
-            bbox = target_track.to_tlbr()
-            h, w = frame_shape[:2]
-            
-            # 정규화된 중심좌표
-            cx = (bbox[0] + bbox[2]) / 2 / w
-            cy = (bbox[1] + bbox[3]) / 2 / h
-            
-            # scale (bbox 높이 / 이미지 높이)
-            scale = (bbox[3] - bbox[1]) / h
-            
-            msg.tracking = True
-            msg.cx = float(cx)
-            msg.cy = float(cy)
-            msg.scale = float(scale)
-            
-            # 이벤트 처리
+            # 추적 성공 → 좌표/스케일 제거, 이벤트만 유지
             if self.lost_count > 0:
                 msg.event = 2  # REACQUIRED
                 self.reacquired_count += 1
@@ -324,14 +308,9 @@ class PersonTracker:
             
             self.lost_count = 0
             self.last_seen_time = timestamp
-            
+        
         else:
-            # 추적 실패
-            msg.tracking = False
-            msg.cx = 0.0
-            msg.cy = 0.0
-            msg.scale = 0.0
-            
+            # 추적 실패 → 이벤트만 발행
             self.lost_count += 1
             
             # 처음 잃었을 때만 LOST 이벤트

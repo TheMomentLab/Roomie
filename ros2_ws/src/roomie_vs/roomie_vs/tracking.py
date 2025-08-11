@@ -44,13 +44,9 @@ class PersonTracker:
     def process_frame(self, color_frame) -> Optional[Tracking]:
         if not self.is_tracking:
             return None
-        # Placeholder: no model yet. Emit lost message
+        # Placeholder: no model yet. Emit minimal event-only message
         msg = Tracking()
         msg.id = int(self.target_id)
-        msg.tracking = False
-        msg.cx = 0.0
-        msg.cy = 0.0
-        msg.scale = 0.0
         msg.event = 1  # LOST
         return msg
 
@@ -114,7 +110,7 @@ class TrackingInterface:
     def _on_stop_tracking(self, request, response):
         self.tracker.stop()
         response.success = True
-        response.message = 'tracking stopped'
+        response.message = ''
         return response
 
     # Timer loop

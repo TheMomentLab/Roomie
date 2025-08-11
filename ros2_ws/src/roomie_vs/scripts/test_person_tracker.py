@@ -38,8 +38,7 @@ class PersonTrackerTester(Node):
         self.latest_tracking = msg
         event_name = {0: "NONE", 1: "LOST", 2: "REACQUIRED"}.get(msg.event, "UNKNOWN")
         self.get_logger().info(
-            f"📍 추적 상태: id={msg.id}, tracking={msg.tracking}, "
-            f"cx={msg.cx:.3f}, cy={msg.cy:.3f}, scale={msg.scale:.3f}, event={event_name}"
+            f"📍 추적 상태: id={msg.id}, event={event_name}"
         )
 
     def wait_for_services(self):

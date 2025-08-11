@@ -4080,11 +4080,11 @@ class VSNode(Node):
             if hasattr(self, 'person_tracker') and self.person_tracker:
                 stop_result = self.person_tracker.stop_tracking()
                 response.success = stop_result["success"]
-                response.message = stop_result["message"]
-                self.get_logger().info(f"👤 추적 중지 완료: {response.message}")
+                response.message = ""
+                self.get_logger().info("👤 추적 중지 완료")
             else:
                 response.success = False
-                response.message = "PersonTracker가 초기화되지 않았습니다"
+                response.message = ""
                 self.get_logger().error("👤 PersonTracker가 없어 추적 중지 실패")
         
         except Exception as e:
