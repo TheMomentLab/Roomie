@@ -11,6 +11,8 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RobotState.msg"
+  "msg/rfid/ReadCardRequest.msg"
+  "msg/rfid/ReadCardResponse.msg"
   "srv/ControlLock.srv"
   "srv/CheckDoorState.srv"
   "srv/CheckItemLoaded.srv"
