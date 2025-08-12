@@ -2172,18 +2172,40 @@ class VSNode(Node):
         
         # 👤 사람 추적 모듈 초기화 (마지막에 추가)
         try:
-            # MultiModelDetector에서 YOLOv8n 모델 참조
+            # MultiModelDetector가 로드한 모델 중 'normal'을 최우선 사용,
+            # 없으면 'elevator'를 시도, 둘 다 없으면 COCO(yolov8n.pt)로 폴백
             yolo_model = None
-            if hasattr(self.model_detector, 'model_normal') and self.model_detector.model_normal:
-                yolo_model = self.model_detector.model_normal
-            elif hasattr(self.model_detector, 'fallback_model') and self.model_detector.fallback_model:
-                yolo_model = self.model_detector.fallback_model
-            
+            try:
+                if hasattr(self.model_detector, 'models') and isinstance(self.model_detector.models, dict):
+                    if 'normal' in self.model_detector.models and self.model_detector.models['normal'] is not None:
+                        yolo_model = self.model_detector.models['normal']
+                    elif 'elevator' in self.model_detector.models and self.model_detector.models['elevator'] is not None:
+                        yolo_model = self.model_detector.models['elevator']
+                    else:
+                        from ultralytics import YOLO  # 지연 임포트: 필요할 때만
+                        yolo_model = YOLO('yolov8n.pt')
+                else:
+                    from ultralytics import YOLO
+                    yolo_model = YOLO('yolov8n.pt')
+            except Exception as model_err:
+                self.get_logger().warning(f"YOLO 모델 참조/로딩 폴백 중 경고: {model_err}")
+                try:
+                    from ultralytics import YOLO
+                    yolo_model = YOLO('yolov8n.pt')
+                except Exception as coco_err:
+                    self.get_logger().error(f"COCO(yolov8n.pt) 폴백 로딩 실패: {coco_err}")
+                    yolo_model = None
+
             self.person_tracker = PersonTracker(self, yolo_model)
             self.get_logger().info("👤 PersonTracker 초기화 완료")
         except Exception as e:
             self.get_logger().error(f"👤 PersonTracker 초기화 실패: {e}")
             self.person_tracker = None
+        
+        # 📷 카메라 업데이트 및 후방 스트리밍 시작
+        self.get_logger().info("📷 초기 카메라 업데이트 시작...")
+        self.update_camera_for_current_mode()
+        self.get_logger().info("✅ 초기 카메라 업데이트 완료")
     
     def update_camera_for_current_mode(self):
         """전방/후방 카메라 독립적 업데이트 (호환성 유지)"""
@@ -4144,7 +4166,9 @@ class VSNode(Node):
                 
                 time.sleep(0.1)  # 10Hz 피드백
             
-            # 등록 완료
+            # 등록 완료 - PersonTracker에서 최종 처리 대기
+            time.sleep(0.2)  # PersonTracker의 _finalize_registration 처리 대기
+            
             result = Enroll.Result()
             result.success = self.person_tracker.target_registered
             
@@ -4956,15 +4980,57 @@ class VSNode(Node):
                         _, color_frame = self.current_rear_camera.get_frames()
                         
                         if color_frame is not None:
-                            # 👤 PersonTracker에 프레임 전달
+                            # 👤 PersonTracker에 프레임 전달 (상태 유지)
                             if hasattr(self, 'person_tracker') and self.person_tracker:
                                 self.person_tracker.push_frame(color_frame)
-                            
-                            # PersonTracker 오버레이 적용 (선택적)
+
+                            # 전방과 동일 모델로 전체 객체 감지 및 오버레이 표시
                             display_frame = color_frame
+                            try:
+                                # 후방 모드에 맞는 모델로 설정 후 감지
+                                if hasattr(self, 'model_detector') and self.model_detector:
+                                    # 후방 모드가 0(대기)이면 normal 모델, 1,2(등록/추적)이면 normal 모델 사용
+                                    detection_mode = 5 if self.current_rear_mode_id in [0, 1, 2] else self.current_rear_mode_id
+                                    
+                                    # 디버깅: 모델 상태 확인
+                                    current_model_info = getattr(self.model_detector, 'current_model_name', 'None')
+                                    if not hasattr(self, '_rear_debug_logged') or not self._rear_debug_logged:
+                                        self.get_logger().info(f"🔍 후방 감지 디버깅: 후방모드={self.current_rear_mode_id}, 감지모드={detection_mode}, 모델={current_model_info}")
+                                        self._rear_debug_logged = True
+                                    
+                                    self.model_detector.set_model_for_mode(detection_mode)
+                                    objects = self.model_detector.detect_objects(
+                                        color_frame, None, conf_threshold=0.25, mode_id=detection_mode
+                                    )
+                                    
+                                    # 디버깅: 감지 결과 확인
+                                    if objects:
+                                        if not hasattr(self, '_rear_objects_logged') or not self._rear_objects_logged:
+                                            self.get_logger().info(f"🎯 후방 감지됨: {len(objects)}개 객체")
+                                            for i, obj in enumerate(objects[:3]):  # 최대 3개만 로그
+                                                self.get_logger().info(f"  객체{i}: {obj.get('class_name', 'unknown')} conf={obj.get('confidence', 0):.2f}")
+                                            self._rear_objects_logged = True
+                                    else:
+                                        if not hasattr(self, '_rear_no_objects_logged') or not self._rear_no_objects_logged:
+                                            self.get_logger().warning("⚠️ 후방 감지 결과 없음 (모델/임계치 문제 가능)")
+                                            self._rear_no_objects_logged = True
+                                    
+                                    display_frame = self._draw_objects_on_image(color_frame.copy(), objects, mode_id=self.current_front_mode_id)
+                            except Exception as e:
+                                self.get_logger().error(f"🚨 후방 감지/오버레이 오류: {e}")
+                                import traceback
+                                self.get_logger().error(f"스택트레이스: {traceback.format_exc()}")
+
+                            # 선택적으로 PersonTracker 오버레이 추가
                             if hasattr(self, 'person_tracker') and self.person_tracker:
-                                display_frame = self.person_tracker.get_overlay_frame(color_frame)
-                            
+                                try:
+                                    display_frame = self.person_tracker.get_overlay_frame(display_frame)
+                                except Exception as e:
+                                    import traceback
+                                    self.get_logger().error(f"🚨 PersonTracker 오버레이 오류: {e}")
+                                    self.get_logger().error(f"스택트레이스: {traceback.format_exc()}")
+                                    # 오버레이 실패 시 원본 프레임 사용
+
                             # UDP로 프레임 전송 (BGR 형식)
                             sent = self.udp_streamer.send_frame_bgr(display_frame)
                             if sent and not getattr(self, '_rear_first_send_logged', False):
@@ -4976,7 +5042,7 @@ class VSNode(Node):
                         else:
                             # 카메라 프레임이 없으면 1초 간격으로 테스트 프레임 송출
                             import time as _t
-                            last_ts = getattr(self, '_rear_last_test_ts', 0.0)
+                            last_ts = getattr(self, '_rear_last_test_ts', 0.0) or 0.0
                             if _t.time() - last_ts > 1.0:
                                 import numpy as _np, cv2 as _cv2
                                 test = _np.full((360, 640, 3), 255, dtype=_np.uint8)
@@ -4997,7 +5063,7 @@ class VSNode(Node):
                             self._rear_wait_log_emitted = True
                         # 카메라가 없을 때도 1초 간격 테스트 프레임 송출
                         import time as _t
-                        last_ts = getattr(self, '_rear_last_test_ts', 0.0)
+                        last_ts = getattr(self, '_rear_last_test_ts', 0.0) or 0.0
                         if _t.time() - last_ts > 1.0:
                             import numpy as _np, cv2 as _cv2
                             test = _np.full((360, 640, 3), 255, dtype=_np.uint8)
@@ -5014,7 +5080,9 @@ class VSNode(Node):
                     time.sleep(0.070)
                     
                 except Exception as e:
+                    import traceback
                     self.get_logger().warning(f"프레임 전송 오류: {e}")
+                    self.get_logger().warning(f"스택트레이스: {traceback.format_exc()}")
                     time.sleep(0.1)  # 에러 시 잠시 대기
                     
         except Exception as e:
@@ -5294,6 +5362,10 @@ def main(args=None):
                             if objects:
                                 display_image = node._draw_objects_on_image(display_image, objects, mode_id)
                             node._add_info_text(display_image, objects, camera_name)
+                            
+                            # 👤 후방 카메라인 경우 PersonTracker 오버레이 추가
+                            if 'Rear' in camera_name and hasattr(node, 'person_tracker') and node.person_tracker:
+                                display_image = node.person_tracker.get_overlay_frame(display_image)
                             
                             # GUI 표시 (헤드리스 모드가 아닐 때만)
                             if not node.headless_mode:

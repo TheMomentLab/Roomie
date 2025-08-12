@@ -18,8 +18,9 @@ from roomie_msgs.srv import (
     DoorStatus,
     Location
 )
-from roomie_msgs.msg import Obstacle, GlassDoorStatus
+from roomie_msgs.msg import Obstacle, GlassDoorStatus, Tracking
 from roomie_msgs.action import Enroll
+from std_srvs.srv import Trigger
 
 
 
@@ -33,7 +34,8 @@ class VSInterfaceTestClient(Node):
             'button_status': self.create_client(ButtonStatus, '/vs/command/button_status'),
             'elevator_status': self.create_client(ElevatorStatus, '/vs/command/elevator_status'),
             'door_status': self.create_client(DoorStatus, '/vs/command/door_status'),
-            'location': self.create_client(Location, '/vs/command/location')
+            'location': self.create_client(Location, '/vs/command/location'),
+            'stop_tracking': self.create_client(Trigger, '/vs/command/stop_tracking')
         }
         
         # 🎯 Action Clients
@@ -44,12 +46,16 @@ class VSInterfaceTestClient(Node):
             Obstacle, '/vs/obstacle', self.on_obstacle_detected, 10)
         self.glass_door_sub = self.create_subscription(
             GlassDoorStatus, '/vs/glass_door_status', self.on_glass_door_status, 10)
+        self.tracking_sub = self.create_subscription(
+            Tracking, '/vs/tracking', self.on_tracking_status, 10)
         
         # 📊 모니터링 상태
         self.obstacle_monitoring = False
         self.glass_door_monitoring = False
+        self.tracking_monitoring = False
         self.last_obstacle_time = None
         self.last_glass_door_time = None
+        self.last_tracking_time = None
         
         self.get_logger().info("🧪 VS 인터페이스 테스트 클라이언트 시작")
         self.show_menu()
@@ -69,6 +75,19 @@ class VSInterfaceTestClient(Node):
         if self.glass_door_monitoring:
             door_status = "열림" if msg.opened else "닫힘"
             self.get_logger().info(f"🚪 유리문 상태: {door_status}")
+    
+    def on_tracking_status(self, msg):
+        """추적 상태 콜백"""
+        self.last_tracking_time = time.time()
+        if self.tracking_monitoring:
+            event_names = {0: "정상상태복귀", 1: "멀어짐", 2: "LOST", 3: "REACQUIRED"}
+            event_name = event_names.get(msg.event, f"UNKNOWN({msg.event})")
+            self.get_logger().info(f"👤 추적 상태: id={msg.id}, event={msg.event} ({event_name})")
+            
+            # 디버그: 실제 받은 값 확인
+            self.get_logger().info(f"🔍 DEBUG: 받은 메시지 - id={msg.id}, event={msg.event}")
+            
+            # 참고: Tracking.msg에는 위치 정보가 없음 (id, event만 포함)
     
     def check_service_availability(self):
         """모든 서비스 가용성 확인"""
@@ -159,6 +178,31 @@ class VSInterfaceTestClient(Node):
                 self.get_logger().error(f"❌ Enroll 호출 중 에러: {e}")
         
         threading.Thread(target=_run, daemon=True).start()
+    
+    def test_stop_tracking(self):
+        """추적 중지 서비스 테스트"""
+        client = self.service_clients['stop_tracking']
+        if not client.wait_for_service(timeout_sec=2.0):
+            self.get_logger().error("❌ StopTracking 서비스 없음")
+            return
+            
+        request = Trigger.Request()
+        
+        self.get_logger().info("📞 추적 중지 호출")
+        future = client.call_async(request)
+        
+        def handle_response():
+            rclpy.spin_until_future_complete(self, future)
+            if future.result():
+                response = future.result()
+                success_str = "성공" if response.success else "실패"
+                self.get_logger().info(f"✅ 추적 중지 응답: {success_str}")
+                if response.message:
+                    self.get_logger().info(f"   메시지: {response.message}")
+            else:
+                self.get_logger().error("❌ 추적 중지 호출 실패")
+        
+        threading.Thread(target=handle_response, daemon=True).start()
     
     def test_button_status(self, button_id=0):
         """버튼 상태 테스트 - 단일 버튼"""
@@ -319,6 +363,7 @@ class VSInterfaceTestClient(Node):
                 ("엘리베이터 상태", self.test_elevator_status),
                 ("문 상태", self.test_door_status),
                 ("위치 감지", self.test_location),
+                ("추적 중지", self.test_stop_tracking),
             ]
             
             for i, (test_name, test_func) in enumerate(tests):
@@ -335,7 +380,7 @@ class VSInterfaceTestClient(Node):
         print("\n" + "="*70)
         print("🧪 VS 인터페이스 테스트 클라이언트 (업데이트됨)")
         print("="*70)
-        print("📋 rms_vs_interface.md 기준 전체 인터페이스 (5개 서비스 + 1개 액션):")
+        print("📋 rms_vs_interface.md 기준 전체 인터페이스 (6개 서비스 + 1개 액션 + 3개 토픽):")
         print()
         print("🔍 상태 확인:")
         print("  check : 모든 서비스/액션 가용성 확인")
@@ -354,6 +399,7 @@ class VSInterfaceTestClient(Node):
         print("🎯 액션 인터페이스 테스트:")
         print("  en      : Enroll 액션 (기본 3초)")
         print("  en:5    : Enroll 액션 (5초 수집 예)")
+        print("  stop    : 추적 중지 서비스")
         print()
         print("📡 토픽 인터페이스 테스트 (VS → RC):")
         print("  topics : 모든 토픽 테스트 (60초)")
@@ -361,6 +407,9 @@ class VSInterfaceTestClient(Node):
         print("  obs_off: 장애물 모니터링 중지")
         print("  door_on : 유리문 모니터링 시작")
         print("  door_off: 유리문 모니터링 중지")
+        print("  track_on: 추적 모니터링 시작")
+        print("  track_off: 추적 모니터링 중지")
+        print("  track_only: 추적 전용 모니터링 (다른 토픽 차단)")
         print()
         print("🎯 통합 테스트:")
         print("  all    : 모든 서비스 순차 테스트")
@@ -371,8 +420,9 @@ class VSInterfaceTestClient(Node):
         print("  menu   : 이 메뉴 다시 표시")
         print("  quit   : 종료")
         print("="*70)
-        print("💡 실시간 모니터링: 장애물/유리문 토픽 활성화됨")
+        print("💡 실시간 모니터링: 장애물/유리문/추적 토픽 활성화됨")
         print("💡 VS 노드 키보드 제어: 일반 주행모드에서 장애물 감지 가능")
+        print("💡 추적 플로우: 1r(등록모드) → en(등록액션) → 1t(추적모드) 순서")
         print("="*70)
         print("명령어를 입력하세요: ", end="")
     
@@ -412,16 +462,22 @@ class VSInterfaceTestClient(Node):
         
         def run_topic_tests():
             # 1. 장애물 모니터링 시작
-            self.get_logger().info("🧪 [1/2] 장애물 토픽 모니터링 시작 (30초)")
+            self.get_logger().info("🧪 [1/3] 장애물 토픽 모니터링 시작 (20초)")
             self.obstacle_monitoring = True
-            time.sleep(30)
+            time.sleep(20)
             self.obstacle_monitoring = False
             
             # 2. 유리문 모니터링 시작
-            self.get_logger().info("🧪 [2/2] 유리문 토픽 모니터링 시작 (30초)")
+            self.get_logger().info("🧪 [2/3] 유리문 토픽 모니터링 시작 (20초)")
             self.glass_door_monitoring = True
-            time.sleep(30)
+            time.sleep(20)
             self.glass_door_monitoring = False
+            
+            # 3. 추적 모니터링 시작
+            self.get_logger().info("🧪 [3/3] 추적 토픽 모니터링 시작 (20초)")
+            self.tracking_monitoring = True
+            time.sleep(20)
+            self.tracking_monitoring = False
             
             self.get_logger().info("🎉 토픽 테스트 완료!")
             self.get_logger().info("💡 VS 노드에서 해당 토픽을 발행하면 실시간으로 확인됩니다.")
@@ -450,6 +506,36 @@ class VSInterfaceTestClient(Node):
         self.glass_door_monitoring = False
         self.get_logger().info("🚪 유리문 모니터링 중지")
     
+    def start_tracking_monitoring(self):
+        """추적 모니터링 시작"""
+        self.tracking_monitoring = True
+        self.get_logger().info("👤 추적 모니터링 시작 (종료하려면 'track_off' 입력)")
+        self.get_logger().info("💡 VS 노드가 추적모드(mode_id=2)에서 추적 이벤트를 발행하면 실시간으로 표시됩니다.")
+    
+    def stop_tracking_monitoring(self):
+        """추적 모니터링 중지"""
+        self.tracking_monitoring = False
+        self.get_logger().info("👤 추적 모니터링 중지")
+    
+    def start_tracking_only_monitoring(self):
+        """추적 전용 모니터링 (다른 토픽 차단)"""
+        # 다른 모니터링 모두 차단
+        self.obstacle_monitoring = False
+        self.glass_door_monitoring = False
+        # 추적만 활성화
+        self.tracking_monitoring = True
+        
+        self.get_logger().info("🎯 추적 전용 모니터링 시작!")
+        self.get_logger().info("   ✅ 추적 토픽: 활성화")
+        self.get_logger().info("   ❌ 장애물 토픽: 차단")
+        self.get_logger().info("   ❌ 유리문 토픽: 차단")
+        self.get_logger().info("💡 이제 추적 이벤트만 표시됩니다:")
+        self.get_logger().info("   - 0: 정상상태복귀 (bbox 너비 >= 0.2, 연속 5프레임)")
+        self.get_logger().info("   - 1: 멀어짐 (bbox 너비 < 0.2, 연속 5프레임)")
+        self.get_logger().info("   - 2: LOST (추적 실패)")
+        self.get_logger().info("   - 3: REACQUIRED (재획득)")
+        self.get_logger().info("🛑 중지하려면 'track_off' 입력")
+    
     def check_topic_status(self):
         """토픽 상태 확인"""
         current_time = time.time()
@@ -474,9 +560,18 @@ class VSInterfaceTestClient(Node):
         else:
             print("🚪 유리문 토픽: 미수신")
         
+        # 추적 토픽 상태
+        if self.last_tracking_time:
+            time_diff = current_time - self.last_tracking_time
+            status = "활성" if time_diff < 10 else "비활성"
+            print(f"👤 추적 토픽: {status} (마지막 수신: {time_diff:.1f}초 전)")
+        else:
+            print("👤 추적 토픽: 미수신")
+        
         # 모니터링 상태
         print(f"📊 장애물 모니터링: {'켜짐' if self.obstacle_monitoring else '꺼짐'}")
         print(f"📊 유리문 모니터링: {'켜짐' if self.glass_door_monitoring else '꺼짐'}")
+        print(f"📊 추적 모니터링: {'켜짐' if self.tracking_monitoring else '꺼짐'}")
         
         print("="*70)
         print("명령어를 입력하세요: ", end="")
@@ -501,9 +596,10 @@ class VSInterfaceTestClient(Node):
             
             self.get_logger().info("🎉 전체 인터페이스 테스트 완료!")
             self.get_logger().info("📋 인터페이스 요약:")
-            self.get_logger().info("   ✅ 서비스 5개 타입: SetVSMode(7가지모드), ButtonStatus(단일값), ElevatorStatus, DoorStatus, Location")
-            self.get_logger().info("   ✅ 토픽 2개: Obstacle, GlassDoorStatus")
-            self.get_logger().info("   ✅ 총 테스트 케이스: 13개 서비스")
+            self.get_logger().info("   ✅ 서비스 6개: SetVSMode(7가지모드), ButtonStatus, ElevatorStatus, DoorStatus, Location, StopTracking")
+            self.get_logger().info("   ✅ 액션 1개: Enroll")
+            self.get_logger().info("   ✅ 토픽 3개: Obstacle, GlassDoorStatus, Tracking")
+            self.get_logger().info("   ✅ 총 테스트 케이스: 14개 서비스")
             self.get_logger().info("   📋 모드: 후방 3개(대기,등록,추적) + 전방 4개(엘리베이터외부,엘리베이터내부,일반주행,대기)")
         
         threading.Thread(target=run_full_tests, daemon=True).start()
@@ -537,6 +633,14 @@ class VSInterfaceTestClient(Node):
                     self.start_glass_door_monitoring()
                 elif cmd == "door_off":
                     self.stop_glass_door_monitoring()
+                elif cmd == "track_on":
+                    self.start_tracking_monitoring()
+                elif cmd == "track_off":
+                    self.stop_tracking_monitoring()
+                elif cmd == "track_only":
+                    self.start_tracking_only_monitoring()
+                elif cmd == "stop":
+                    self.test_stop_tracking()
                 elif cmd == "full":
                     self.test_full_interface()
                 elif cmd == "1":

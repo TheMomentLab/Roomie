@@ -25,7 +25,6 @@ setup(
     maintainer_email='mac@todo.todo',
     description='TODO: Package description',
     license='TODO: License declaration',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'ac_node = roomie_ac.ac_node:main',

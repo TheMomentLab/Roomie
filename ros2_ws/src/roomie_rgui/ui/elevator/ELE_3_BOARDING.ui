@@ -28,10 +28,10 @@ QLabel {
   <widget class="QLabel" name="cautionImage">
    <property name="geometry">
     <rect>
-     <x>660</x>
-     <y>120</y>
-     <width>591</width>
-     <height>591</height>
+     <x>680</x>
+     <y>190</y>
+     <width>451</width>
+     <height>441</height>
     </rect>
    </property>
    <property name="text">

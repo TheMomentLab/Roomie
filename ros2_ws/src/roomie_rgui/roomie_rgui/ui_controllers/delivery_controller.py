@@ -101,7 +101,7 @@ class DeliveryController(BaseController):
         
         # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
         self.publish_event(event_id=104, detail="")
-    
+        
         # 서랍 열기 후 추가 음성 재생
         self.screen_manager.play_audio_file("audio_2_음식을_넣은_후_문을_닫고_적재_완료_버튼을_클릭하여_주세요.mp3")
     
