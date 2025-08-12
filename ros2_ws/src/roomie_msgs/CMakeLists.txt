@@ -36,6 +36,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
+
+  # Messages - rfid
+  "msg/rfid/ReadCardRequest.msg"
+  "msg/rfid/ReadCardResponse.msg"
   
   # Services - Robot Control
   "srv/robot_control/SetVSMode.srv"
