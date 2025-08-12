@@ -1,31 +1,36 @@
-# test_server.py (종료 문제 해결된 최종본)
-
 import asyncio
 import json
 import random
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
-from fastapi import APIRouter, FastAPI, WebSocket
+from fastapi import APIRouter, FastAPI, WebSocket, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from starlette.websockets import WebSocketDisconnect
 
 import config
 import services
 from models import RequestModel
 
-# --- ✅ 1. 백그라운드 작업을 관리할 변수 ---
+# === 경로 설정 (절대 경로 안전화) ==========================================
+# test_server.py가 gui/guest_gui/test/test_server.py에 있을 때
+# guest_gui_dir = .../gui/guest_gui
+BASE_DIR = Path(__file__).resolve().parent.parent       # .../gui/guest_gui
+ASSETS_DIR = BASE_DIR / "assets"                        # .../gui/guest_gui/assets
+# ========================================================================
+
+# --- 백그라운드 작업 관리 변수 ---
 notification_task = None
 
-# --- ✅ 2. startup/shutdown 이벤트를 관리하는 lifespan 컨텍스트 매니저 ---
+# --- lifespan 컨텍스트 매니저 ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global notification_task
-    # 서버 시작 시 실행될 로직
     print("서버 시작: 주기적 알림 작업을 시작합니다.")
     notification_task = asyncio.create_task(send_periodic_notifications())
     yield
-    # 서버 종료 시 실행될 로직
     print("서버 종료: 주기적 알림 작업을 중단합니다.")
     notification_task.cancel()
     try:
@@ -33,13 +38,16 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         print("알림 작업이 성공적으로 취소되었습니다.")
 
+# --- FastAPI 앱 생성 ---
+app = FastAPI(lifespan=lifespan)
 
-# --- 앱 및 라우터 설정 (lifespan 추가) ---
-app = FastAPI(lifespan=lifespan) # ⬅️ FastAPI 앱 생성 시 lifespan 등록
-router = APIRouter(prefix="/api/gui")
+# ✅ 정적 파일 서빙(절대 경로 사용)
+#   - /assets → 이미지 등 정적 리소스
+#   - /front  → 프론트 전체( index.html, js, css )를 동일 오리진으로 서빙
+app.mount("/assets", StaticFiles(directory=str(ASSETS_DIR)), name="assets")
+app.mount("/front", StaticFiles(directory=str(BASE_DIR), html=True), name="front")
 
-# ... (기존 CORS, WebSocket, 서비스 매핑, API 엔드포인트 코드는 모두 동일) ...
-# --- CORS 미들웨어 설정 ---
+# --- CORS 설정 (이미지 태그에는 영향 적지만 일단 허용) ---
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -48,10 +56,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# --- WebSocket 연결 관리 ---
-room_connections: dict[str, list[WebSocket]] = {}
+# --- API 라우터 ---
+router = APIRouter(prefix="/api/gui")
 
-# --- 서비스 매핑 ---
 service_map = {
     "get_food_menu": services.get_food_menu,
     "get_supply_menu": services.get_supply_menu,
@@ -62,24 +69,47 @@ service_map = {
     "get_call_history": services.get_call_history,
 }
 
-# --- API 동적 엔드포인트 ---
 @router.post("/{action}")
-async def handle_dynamic_request(action: str, request: RequestModel):
-    if action in service_map:
-        service_function = service_map[action]
-        response = service_function(request.payload)
-        return response
-    return {"error": "Unknown action", "status_code": 404}
+async def handle_dynamic_request(action: str, req_model: RequestModel, http_req: Request):
+    """
+    동적 API 액션 처리 + (중요) 이미지 URL 절대화
+    - 프론트가 다른 포트에서 열려 있어도 이미지가 항상 8000으로 가도록 만듦
+    """
+    if action not in service_map:
+        return {"error": "Unknown action", "status_code": 404}
+
+    response = service_map[action](req_model.payload)
+
+    # 이미지가 포함된 응답에 대해 절대 URL로 변환
+    base_url = f"{http_req.url.scheme}://{http_req.headers.get('host')}"  # e.g., http://localhost:8000
+    if action == "get_food_menu" and "payload" in response:
+        items = response["payload"].get("food_items", [])
+        for it in items:
+            img = it.get("image")
+            if isinstance(img, str):
+                # '/assets/...' 형태면 절대 URL로 바꿔줌
+                if img.startswith("/"):
+                    it["image"] = base_url + img
+
+    if action == "get_supply_menu" and "payload" in response:
+        items = response["payload"].get("supply_items", [])
+        for it in items:
+            img = it.get("image")
+            if isinstance(img, str) and img.startswith("/"):
+                it["image"] = base_url + img
+
+    return response
 
 app.include_router(router)
 
-# --- WebSocket 엔드포인트 ---
+# --- WebSocket 연결 관리 ---
+room_connections: dict[str, list[WebSocket]] = {}
+
 @app.websocket("/ws/guest/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    """WebSocket 연결 관리"""
     await websocket.accept()
-    if room_id not in room_connections:
-        room_connections[room_id] = []
-    room_connections[room_id].append(websocket)
+    room_connections.setdefault(room_id, []).append(websocket)
     print(f"새로운 WebSocket 연결: {room_id}")
     try:
         while True:
@@ -87,19 +117,19 @@ async def websocket_endpoint(websocket: WebSocket, room_id: str):
     except WebSocketDisconnect:
         print(f"WebSocket 연결 해제됨: {room_id}")
     finally:
-        if room_id in room_connections:
-            room_connections[room_id].remove(websocket)
-            if not room_connections[room_id]:
-                del room_connections[room_id]
+        lst = room_connections.get(room_id, [])
+        if websocket in lst:
+            lst.remove(websocket)
+        if not lst and room_id in room_connections:
+            del room_connections[room_id]
 
 async def broadcast_event_to_room(room_id: str, event_data: dict):
-    if room_id in room_connections:
-        connections = room_connections.get(room_id, [])
-        for connection in connections:
-            await connection.send_text(json.dumps(event_data))
+    """특정 Room에 이벤트 전송"""
+    for ws in room_connections.get(room_id, []):
+        await ws.send_text(json.dumps(event_data))
 
-# --- 주기적 알림 전송 (테스트용) ---
 async def send_periodic_notifications():
+    """테스트용 주기적 WebSocket 이벤트"""
     event_options = [
         {"type": "event", "action": "call_request_acceptance", "payload": {"task_name": "TASK_WEBSCKT", "estimated_wait_time": 15}},
         {"type": "event", "action": "robot_arrival_completion", "payload": {"task_name": "TASK_WEBSCKT", "location_name": "ROOM_102"}},
@@ -114,9 +144,6 @@ async def send_periodic_notifications():
             print(f"WebSocket 이벤트 전송 to ROOM_102: {event_data['action']}")
         except asyncio.CancelledError:
             break
-
-# --- ✅ 3. 기존 @app.on_event("startup") 데코레이터 제거 ---
-# 위 lifespan이 이 역할을 대체합니다.
 
 if __name__ == "__main__":
     uvicorn.run(app, host=config.SERVER_HOST, port=config.SERVER_PORT)

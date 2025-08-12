@@ -5,13 +5,13 @@
 
 #define MAX_MOTORS 4
 #define SERIAL_BAUD_RATE 460800
-#define MOTION_UPDATE_MS 20
+#define MOTION_UPDATE_MS 6
 
 // --- 하드웨어 및 모션 설정 ---damuya07@gmail.com
 const int servoPins[MAX_MOTORS] = {23, 22, 21, 19};
 const int servoMinPulsewidthUs = 500;
 const int servoMaxPulsewidthUs = 2500;
-const float DEGREES_PER_SECOND = 32.0;
+const float DEGREES_PER_SECOND = 30.0;
 const int DEAD_BAND = 1;
 
 // 안전한 시작을 위한 자세 정의
@@ -60,7 +60,7 @@ namespace MotionController {
 
     float easeInOutGaussian(float t) {
         t = 2 * t - 1;
-        const float sigma = 0.3;
+        const float sigma = 0.4;
         return (1 + erf(t / (sigma * sqrt(2)))) / 2;
     }
 
