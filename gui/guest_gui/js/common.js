@@ -16,11 +16,10 @@ export function sendApiRequest(url, data) {
  * @param {string} imageSrc - 표시할 이미지의 경로
  */
 
-
-export function showToast(imageSrc) { // 두 번째 인자로 메시지를 받도록 수정
+export function showToast(imageSrc, message = '') { 
     const globalToast = document.getElementById('global-toast');
     const toastImage = document.getElementById('toast-full-image');
-    const toastMessage = document.getElementById('toast-message'); // 메시지를 표시할 요소 추가 (HTML에도 추가 필요)
+    const toastMessage = document.getElementById('toast-message');
 
     if (!globalToast || !toastImage || !toastMessage) {
         console.error("알림창을 위한 HTML 요소를 찾을 수 없습니다.");
@@ -32,13 +31,13 @@ export function showToast(imageSrc) { // 두 번째 인자로 메시지를 받�
     }
 
     toastImage.src = imageSrc;
+    toastMessage.textContent = message; // ⬅️ 메시지 설정 로직 추가
     globalToast.classList.remove('hidden');
 
     toastTimer = setTimeout(() => {
         globalToast.classList.add('hidden');
-    }, 2000);
+    }, 3000); // 사용자가 인지할 수 있도록 시간 1초 증가 (2000 -> 3000)
 }
-
 
 // --- 웹소켓 초기화 함수 (이미지 경로만 전달하도록 수정) ---
 export function initWebSocket() {

@@ -105,7 +105,7 @@ app.include_router(router)
 # --- WebSocket 연결 관리 ---
 room_connections: dict[str, list[WebSocket]] = {}
 
-@app.websocket("/ws/guest/{room_id}")
+@router.websocket("/ws/guest/{room_id}")
 async def websocket_endpoint(websocket: WebSocket, room_id: str):
     """WebSocket 연결 관리"""
     await websocket.accept()
@@ -132,16 +132,16 @@ async def send_periodic_notifications():
     """테스트용 주기적 WebSocket 이벤트"""
     event_options = [
         {"type": "event", "action": "call_request_acceptance", "payload": {"task_name": "TASK_WEBSCKT", "estimated_wait_time": 15}},
-        {"type": "event", "action": "robot_arrival_completion", "payload": {"task_name": "TASK_WEBSCKT", "location_name": "ROOM_102"}},
-        {"type": "event", "action": "delivery_completion", "payload": {"task_name": "TASK_DELIVERY", "request_location": "ROOM_102"}},
-        {"type": "event", "action": "task_timeout_return", "payload": {"task_name": "TASK_TIMEOUT", "location_name": "ROOM_102"}}
+        {"type": "event", "action": "robot_arrival_completion", "payload": {"task_name": "TASK_WEBSCKT", "location_name": "ROOM_101"}},
+        {"type": "event", "action": "delivery_completion", "payload": {"task_name": "TASK_DELIVERY", "request_location": "ROOM_101"}},
+        {"type": "event", "action": "task_timeout_return", "payload": {"task_name": "TASK_TIMEOUT", "location_name": "ROOM_101"}}
     ]
     while True:
         try:
             await asyncio.sleep(20)
             event_data = random.choice(event_options)
-            await broadcast_event_to_room("ROOM_102", event_data)
-            print(f"WebSocket 이벤트 전송 to ROOM_102: {event_data['action']}")
+            await broadcast_event_to_room("ROOM_101", event_data)
+            print(f"WebSocket 이벤트 전송 to ROOM_101: {event_data['action']}")
         except asyncio.CancelledError:
             break
 
