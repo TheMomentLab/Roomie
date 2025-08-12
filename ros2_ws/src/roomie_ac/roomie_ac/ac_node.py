@@ -60,19 +60,28 @@ class StandbyPressStrategy(BaseStrategy):
         forward_vector = np.array([1., 0., 0.])
         standby_pose = target_pose - forward_vector * config.SERVOING_STANDBY_DISTANCE_M
 
+         # 1. 대기 위치로 이동 (IK 사용)
         self.logger.info(">> 전략 2: 대기 위치로 이동")
         if not await self.motion_controller.move_to_pose_ik(standby_pose, orientation=None, blocking=True):
             raise RuntimeError("대기 위치 이동 실패")
 
+        # 2. 이때의 서보 각도를 '기억'합니다.
+        # motion_controller는 마지막으로 명령한 각도를 가지고 있습니다.
+        standby_angles_deg = self.motion_controller._convert_rad_to_servo_deg(self.motion_controller.current_angles_rad)
+        self.logger.info(f"💾 대기 위치의 서보 각도를 저장했습니다: {standby_angles_deg}")
+
+        # 3. 누르기 위치로 이동 (IK 사용)
         self.logger.info(">> 누르기 위치로 이동")
         if not await self.motion_controller.move_to_pose_ik(target_pose, orientation=None, blocking=True):
             raise RuntimeError("누르기 동작 실패")
 
-        await asyncio.sleep(1.0)
+        await asyncio.sleep(1.0) # 버튼을 누르고 잠시 유지
 
-        self.logger.info(">> 대기 위치로 후퇴")
-        if not await self.motion_controller.move_to_pose_ik(standby_pose, orientation=None, blocking=True):
-            raise RuntimeError("후퇴 동작 실패")
+        # 4. '기억'해둔 각도를 사용하여 후퇴합니다 (IK를 다시 계산하지 않음).
+        self.logger.info(">> 저장된 각도를 사용하여 대기 위치로 후퇴")
+        if not await self.motion_controller.move_to_angles_deg(standby_angles_deg, blocking=True):
+            raise RuntimeError("저장된 각도로 후퇴하는 데 실패했습니다.")
+
 
 class PBVSPressStrategy(BaseStrategy):
     """카메라로 계산된 버튼의 정면 방향으로 누르는 전략입니다."""

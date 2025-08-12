@@ -16,7 +16,7 @@ class Pose(IntEnum):
     UP= 5
     UPUP = 6
 
-# 버튼 피드백 상태
+# 버튼 피드백 상태PBVS_PRESS
 class ButtonActionStatus:
     MOVING_TO_TARGET = "MOVING_TO_TARGET"
     ALIGNING_TO_TARGET = "ALIGNING_TO_TARGET"
@@ -42,7 +42,10 @@ class ControlStrategy(IntEnum):
 # ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
 CONTROL_STRATEGY = ControlStrategy.MODEL_STANDBY_PRESS
 
-
+# --- [추가] 좌표 계산 모드 설정 ---
+# 'corner': ArUco 마커의 4개 모서리점을 이용한 PnP 계산 (정확도 높음)
+# 'normal': 중심점과 크기만을 이용한 거리 추정 계산 (정확도 낮음, fallback용)
+POSE_ESTIMATION_MODE = 'normal' # 'corner' 또는 'normal'로 변경하여 테스트 가능
 
 # 기본 설정 (DEBUG 등)
 DEBUG = True
@@ -62,7 +65,7 @@ URDF_FILE = os.path.join(get_package_share_directory('roomie_ac'), 'urdf', 'room
 CAMERA_PARAMS_FILE = os.path.join(DATA_DIR, 'camera_params.npz')  
 HAND_EYE_MATRIX_FILE = os.path.join(DATA_DIR, 'hand_eye_matrix.npy')
 # 시리얼 통신 설정
-SERIAL_PORT = "/dev/ttyUSB0"
+SERIAL_PORT = "/dev/ttyUSB0" 
 SERIAL_BAUD_RATE = 460800
 SERIAL_TIMEOUT = 10.0 # 시리얼 연결 및 응답 대기 타임아웃
 
@@ -74,20 +77,20 @@ YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/room
 
 # 서보 모터 및 관절 설정
 SERVO_ZERO_OFFSET_DEG = np.array([90, 90, 90, 90])
-SERVO_DIRECTION_MULTIPLIER = np.array([1, -1, -1, -1])
+SERVO_DIRECTION_MULTIPLIER = np.array([1, 1, 1, 1])
 JOINT_LIMIT_DEG = np.array([[-90, 90], [-90, 90], [-90, 90], [-90, 90]])
 JOINT_LIMIT_RAD = np.deg2rad(JOINT_LIMIT_DEG) # 라디안 변환
 JOINT_NAMES = ['joint_1', 'joint_2', 'joint_3', 'joint_4'] # RViz2 퍼블리싱을 위한 관절 이름
 
 # IK (Inverse Kinematics) 설정
 ACTIVE_LINKS_MASK = [False, True, True, True, True, False] # ikpy 체인에서 활성화할 링크 마스크
-IK_MAX_ITERATIONS = 20000 # IK 최대 반복 횟수
+IK_MAX_ITERATIONS = 20000 # IK 최대MODEL_DIRECT_PRESS 반복 횟수
 IK_TOLERANCE_M = 1e-3 # IK 오차 허용 범위 (m)
 
 
 
 # 워크스페이스 (작업 공간) 설정
-WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)
+WORKSPACE_R_MIN_M = -0.45 # 로봇 중심으로부터 최소/최대 반경 (m)PBVS_PRESS
 WORKSPACE_R_MAX_M = 0.45
 WORKSPACE_Z_MIN_M = -0.40 # 로봇팔 끝점의 최소/최대 높이 (m)
 WORKSPACE_Z_MAX_M = 0.402
@@ -119,13 +122,13 @@ ROBOT_ID = 0
 # 사전 정의된 버튼 위치 (미터 단위, MODEL_ONLY 모드용)
 PREDEFINED_BUTTON_POSES_M = {
     0: np.array([0.235, 0.0, 0.305]),  # 예시 좌표 (button_id: 2)
-    1: np.array([0.235, 0.05, 0.195]),  
-    2: np.array([0.235, 0.0, 0.235]), 
-    3: np.array([0.235, 0.0, 0.235]),  
-    4: np.array([0.235, 0.0, 0.235]),  
+    1: np.array([0.135, 0.10, 0.15]),  
+    2: np.array([0.135, -0.10, 0.15]), 
+    3: np.array([-0.135, 0.0, 0.15]),  
+    4: np.array([0.135, 0.0, 0.15]),  
     5: np.array([0.235, 0.0, 0.235]), 
-    6: np.array([0.235, 0.0, 0.19]),  
-    101: np.array([0.235, 0.0, 0.30]), 
+    6: np.array([0.245, 0.0, 0.215]),  
+    101: np.array([0.25, 0.0, 0.29]), 
     102: np.array([0.235, 0.0,0.095]),  
     # 다른 버튼 ID와 좌표를 여기에 추가할 수 있습니다.
     # 3: np.array([0.25, -0.1, 0.15]),
@@ -151,8 +154,8 @@ PNPR_REPROJ_ERROR_THRESHOLD_PX = 8.0
 PNPR_MIN_INLIERS = 3
 
 # --- 이미지 서보잉 ---
-SERVOING_POSITION_TOLERANCE_M = 0.001
-SERVOING_STANDBY_DISTANCE_M = 0.05 #  목표 조준을 위한 안전거리
-PRESS_FORWARD_DISTANCE_M = 0.053 # 실제 버튼을 누르는 이동 거리
-SERVOING_MAX_STEP_M = 0.01 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
-IK_MIN_STEP_M = 0.004 # 5mm   이 거리보다 짧은 이동은 무시
+SERVOING_POSITION_TOLERANCE_M = 0.002
+SERVOING_STANDBY_DISTANCE_M = 0.08 #  목표 조준을 위한 안전거리
+PRESS_FORWARD_DISTANCE_M = 0.1 # 실제 버튼을 누르는 이동 거리
+SERVOING_MAX_STEP_M = 0.03 # 멀리서 버튼에 접근할 때의 최대 이동 스텝 (2cm)
+IK_MIN_STEP_M = 0.005 # 5mm   이 거리보다 짧은 이동은 무시
