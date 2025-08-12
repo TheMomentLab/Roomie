@@ -217,6 +217,7 @@ float32 progress
 bool success
 string message
 ```
+message는 항상 빈 string
 
 ---
 
@@ -273,11 +274,7 @@ bool opened
 ```msg
 # Tracking.msg
 int32 id
-bool tracking
-float32 cx   # [0..1], 좌상단 원점, 표시 영상 기준
-float32 cy   # [0..1]
-float32 scale  # bbox_height / image_height
-uint8 event   # 0=NONE, 1=LOST, 2=REACQUIRED
+int32 event   # 0=NONE, 1=LOST, 2=REACQUIRED
 ```
 
 **규약:**

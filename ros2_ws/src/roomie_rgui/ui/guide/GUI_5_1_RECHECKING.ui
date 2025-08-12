@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PositionRecheck</class>
+ <widget class="QWidget" name="PositionRecheck">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Rechecking</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+.warning-icon {
+    background-color: transparent;
+}
+
+.detection-frame {
+    background-color: #434a5a;
+    border-radius: 20px;
+}
+
+.detection-area {
+    border: 2px solid #27ae60;
+    border-radius: 8px;
+    background-color: transparent;
+}</string>
+  </property>
+  <widget class="QLabel" name="statusText">
+   <property name="geometry">
+    <rect>
+     <x>90</x>
+     <y>380</y>
+     <width>400</width>
+     <height>100</height>
+    </rect>
+   </property>
+   <property name="font">
+    <font>
+     <family>Malgun Gothic</family>
+     <pointsize>-1</pointsize>
+     <weight>50</weight>
+     <bold>false</bold>
+    </font>
+   </property>
+   <property name="styleSheet">
+    <string notr="true">font-size: 28px; 
+font-weight: normal; 
+color: white;
+line-height: 1.4;</string>
+   </property>
+   <property name="text">
+    <string>고객님 위치를
+찾을 수 없습니다.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QFrame" name="detectionFrame">
+   <property name="geometry">
+    <rect>
+     <x>800</x>
+     <y>120</y>
+     <width>1000</width>
+     <height>841</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>border: 3px solid #3498db;
+border-radius: 15px;
+background-color: transparent;</string>
+   </property>
+  </widget>
+ </widget>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

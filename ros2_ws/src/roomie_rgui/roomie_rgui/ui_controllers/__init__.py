@@ -7,10 +7,12 @@ from .base_controller import BaseController
 from .common_controller import CommonController
 from .delivery_controller import DeliveryController
 from .elevator_controller import ElevatorController
+from .guide_controller import GuideController
 
 __all__ = [
     'BaseController',
     'CommonController', 
     'DeliveryController',
-    'ElevatorController'
+    'ElevatorController',
+    'GuideController'
 ] 

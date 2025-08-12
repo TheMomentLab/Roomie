@@ -146,9 +146,13 @@ class TestServiceClient(Node):
         print("  105 : [적재 완료] 클릭")
         print("  106 : 인식모드 전환 요청")
         print()
+        print("🧪 수동 발행:")
+        print("  ev <id> [detail] : 지정 이벤트 발행 (예: 'ev 9 202', 'ev 106 2')")
+        print()
         print("🎯 시나리오 자동 실행:")
         print("  auto     : 전체 배송 시나리오 자동 실행")
         print("  elevator : 엘리베이터 시나리오 자동 실행")
+        print("  guide    : 길안내 시나리오 자동 실행")
         print("  menu     : 이 메뉴 다시 표시")
         print("  quit     : 종료")
         print("="*60)
@@ -201,6 +205,24 @@ class TestServiceClient(Node):
             self.get_logger().info("🎉 엘리베이터 시나리오 완료!")
         
         threading.Thread(target=elevator_runner, daemon=True).start()
+
+    def run_guide_scenario(self):
+        """길안내 시나리오 자동 실행"""
+        self.get_logger().info("🧭 길안내 시나리오 시작!")
+        scenarios = [
+            (9,  "호실 번호 인식 완료", "202"),   # REGISTERING으로 전환됨 (자동으로 106:"1" 발행)
+            (10, "길안내 이동 시작", ""),         # GUIDANCE_SCREEN으로 전환됨 (자동으로 106:"2" 발행)
+            (21, "투숙객 이탈", ""),             # GUIDANCE_SCREEN에서 RECHECKING으로 전환
+            (22, "투숙객 이탈 후 재등록", ""),     # RECHECKING에서 GUIDANCE_SCREEN으로 복귀
+            (11, "길안내 이동 종료", ""),         # DESTINATION_ARRIVED로 전환
+        ]
+        def guide_runner():
+            for i, (event_id, desc, detail) in enumerate(scenarios):
+                time.sleep(2)
+                self.get_logger().info(f"🧭 [{i+1}/{len(scenarios)}] {desc}")
+                self.publish_event(event_id, detail=detail)
+            self.get_logger().info("🎉 길안내 시나리오 완료!")
+        threading.Thread(target=guide_runner, daemon=True).start()
     
     def run_interactive(self):
         """대화형 모드 실행"""
@@ -217,6 +239,19 @@ class TestServiceClient(Node):
                     self.run_auto_scenario()
                 elif cmd == "elevator":
                     self.run_elevator_scenario()
+                elif cmd == "guide":
+                    self.run_guide_scenario()
+                elif cmd.startswith("ev "):
+                    parts = cmd.split(" ", 2)
+                    if len(parts) >= 2:
+                        try:
+                            event_id = int(parts[1])
+                            detail = parts[2] if len(parts) == 3 else ""
+                            self.publish_event(event_id, detail=detail)
+                        except ValueError:
+                            print("❌ 잘못된 ID입니다. 예: ev 9 202, ev 106 2")
+                    else:
+                        print("사용법: ev <id> [detail]")
                 elif cmd == "start0":
                     self.call_departure_countdown(task_type_id=0)  # 음식배송
                 elif cmd == "start1":

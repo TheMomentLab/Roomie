@@ -1,7 +1,0 @@
-{
-    "files.associations": {
-        "compare": "cpp",
-        "cstdint": "cpp"
-    },
-    "idf.pythonInstallPath": "/usr/bin/python3"
-}
