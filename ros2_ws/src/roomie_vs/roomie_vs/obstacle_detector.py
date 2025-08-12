@@ -11,7 +11,7 @@ class ObstacleDetector:
         self.robot_id = 0
         
         # 장애물 감지 설정
-        self.min_distance_m = 0.5  # 최소 감지 거리 (0.5m)
+        self.min_distance_m = 0.0  # 최소 감지 거리 (해제)
         self.max_distance_m = 3.0  # 최대 감지 거리 (3m)
         self.confidence_threshold = 0.5
         

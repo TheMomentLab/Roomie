@@ -378,6 +378,11 @@ class WebCamCamera:
                 if self._try_camera_id(self.preferred_camera_id):
                     return True
             
+            # 후방 ABKO 카메라인 경우: 기본 시도 없이 바로 ABKO 전용 로직
+            if "ABKO" in self.camera_name:
+                self.logger.info(f"{self.camera_name} 전용 연결: 일반 시도 건너뛰고 ABKO 전용 로직")
+                return self._try_abko_camera_directly()
+
             # 모든 카메라 스캔해서 백엔드 정보 고려하여 선택
             self.logger.info(f"{self.camera_name} 자동 탐지 시작... (시도할 ID: {self.camera_ids_to_try})")
             
@@ -408,6 +413,11 @@ class WebCamCamera:
         for camera_id in self.camera_ids_to_try:
             if self.preferred_camera_id is not None and camera_id == self.preferred_camera_id:
                 continue  # 이미 시도했으므로 스킵
+                
+            # 후방 ABKO가 점유 중인 ID=0 제외 (전방 스캔 시)
+            if "Front" in self.camera_name and camera_id == 0:
+                self.logger.debug(f"ID={camera_id} 스킵: 후방 ABKO 점유 중")
+                continue
                 
             try:
                 cap = cv2.VideoCapture(camera_id)
@@ -480,9 +490,9 @@ class WebCamCamera:
         if not available_cameras:
             return None
         
-        # 전방 USB 웹캠인 경우 (오직 HCA 카메라와 ABKO 카메라만)
+        # 전방 USB 웹캠인 경우 (오직 HCAM01N만, ABKO는 후방 전용)
         if "USB" in self.camera_name:
-            self.logger.info("🎯 전방 USB 웹캠 선택 로직 시작 (HCA/ABKO만)")
+            self.logger.info("🎯 전방 USB 웹캠 선택 로직 시작 (HCAM01N만)")
             
             # 1순위: HCAM01N 찾기
             for camera in available_cameras:
@@ -491,18 +501,22 @@ class WebCamCamera:
                     self.logger.info(f"✅ HCAM01N 전방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
             
-            # 2순위: ABKO 등 허용된 외부 USB 웹캠만 찾기
+            # 2순위: 기타 허용된 외부 USB 웹캠 (ABKO 제외, HD Webcam 제외)
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                # 허용된 전방 카메라만 (HD Webcam 완전 제외)
-                allowed_keywords = ['abko apc930', 'abko ap', 'apc930', 'abko', 'c920', 'c922', 'c930', 'logitech']
+                # 허용된 전방 카메라만 (ABKO와 HD Webcam 완전 제외)
+                allowed_keywords = ['c920', 'c922', 'c930', 'logitech']
                 
                 # 디버그: 각 카메라 확인
                 self.logger.info(f"🔍 전방 카메라 검사: {device_name}")
                 
-                # HD Webcam 완전 제외 (정확한 매칭)
+                # HD Webcam과 ABKO 완전 제외 (정확한 매칭)
                 if device_name.startswith('hd webcam') or device_name == 'hd webcam: hd webcam':
                     self.logger.info(f"❌ HD Webcam 제외됨: {device_name}")
+                    continue
+                
+                if 'abko' in device_name:
+                    self.logger.info(f"❌ ABKO는 후방 전용으로 제외됨: {device_name}")
                     continue
                 
                 if any(keyword in device_name for keyword in allowed_keywords):
@@ -510,23 +524,20 @@ class WebCamCamera:
                     return camera
             
             # 전방용 카메라가 없으면 에러
-            self.logger.error("❌ 전방용 카메라(HCA/ABKO)를 찾을 수 없습니다!")
-            raise RuntimeError("전방용 카메라(HCA 또는 ABKO)를 찾을 수 없습니다.")
+            self.logger.error("❌ 전방용 카메라(HCAM01N)를 찾을 수 없습니다! (ABKO는 후방 전용)")
+            raise RuntimeError("전방용 카메라(HCAM01N)를 찾을 수 없습니다.")
         
-        # 후방 내장 카메라인 경우 (HD Webcam 무조건 선택)
-        elif "Built-in" in self.camera_name:
-            self.logger.info("🎯 후방 내장 카메라 선택 로직 시작 (HD Webcam 무조건)")
-            
-            # 1순위: 정확한 HD Webcam 무조건 찾기
+        # 후방 카메라 - ABKO 고정 선택
+        elif "ABKO" in self.camera_name:
+            self.logger.info("🎯 후방 ABKO 카메라 선택 로직 시작 (ABKO 고정)")
+            abko_keywords = ['abko apc930', 'abko ap', 'apc930', 'abko']
             for camera in available_cameras:
                 device_name = camera['device_name'].lower()
-                if 'hd webcam: hd webcam' in device_name:
-                    self.logger.info(f"✅ 정확한 HD Webcam 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
+                if any(keyword in device_name for keyword in abko_keywords):
+                    self.logger.info(f"✅ ABKO 후방카메라 선택: ID={camera['id']}, device='{camera['device_name']}'")
                     return camera
-            
-            # HD Webcam이 없으면 에러 발생
-            self.logger.error("❌ HD Webcam을 찾을 수 없습니다! 후방 카메라는 반드시 HD Webcam이어야 합니다.")
-            raise RuntimeError("후방 카메라용 HD Webcam을 찾을 수 없습니다.")
+            self.logger.error("❌ ABKO 카메라를 찾을 수 없습니다! 후방 카메라는 반드시 ABKO여야 합니다.")
+            raise RuntimeError("후방 카메라용 ABKO를 찾을 수 없습니다.")
         
         # 기본적으로 첫 번째 사용 가능한 카메라 선택
         return available_cameras[0]
@@ -594,6 +605,75 @@ class WebCamCamera:
             self.logger.debug(f"camera_id={camera_id} 시도 중 에러: {e}")
             return False
     
+    def _try_camera_id_with_formats(self, camera_id: int) -> bool:
+        """ABKO 전용: 다양한 포맷과 해상도로 강제 연결 시도"""
+        formats_to_try = [
+            (640, 480),   # 기본
+            (1280, 720),  # HD
+            (800, 600),   # SVGA
+        ]
+        
+        for width, height in formats_to_try:
+            try:
+                self.logger.info(f"🔧 ABKO ID={camera_id} 시도: {width}x{height}")
+                
+                cap = cv2.VideoCapture(camera_id)
+                if not cap.isOpened():
+                    self.logger.debug(f"camera_id={camera_id} 열기 실패")
+                    cap.release()
+                    continue
+                
+                # 포맷 강제 설정 (MJPG 우선)
+                cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc('M','J','P','G'))
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+                
+                # 설정 후 잠시 대기
+                import time
+                time.sleep(0.1)
+                
+                # 여러번 프레임 읽기 시도
+                for attempt in range(3):
+                    ret, frame = cap.read()
+                    if ret and frame is not None:
+                        # 성공!
+                        self.cap = cap
+                        self.actual_camera_id = camera_id
+                        self.is_running = True
+                        actual_height, actual_width = frame.shape[:2]
+                        backend = cap.getBackendName()
+                        
+                        self.logger.info(f"✅ ABKO 강제 연결 성공: ID={camera_id}, {actual_width}x{actual_height}, backend={backend}")
+                        return True
+                    time.sleep(0.05)
+                
+                cap.release()
+                
+            except Exception as e:
+                self.logger.debug(f"ABKO ID={camera_id} {width}x{height} 시도 에러: {e}")
+                continue
+        
+        self.logger.warning(f"❌ ABKO ID={camera_id} 모든 포맷 시도 실패")
+        return False
+    
+    def _try_abko_camera_directly(self) -> bool:
+        """ABKO 카메라 직접 연결 시도 (ID=0 고정, 최소 스캔)"""
+        self.logger.info("🔧 ABKO 카메라 직접 연결: ID=0 고정 시도")
+        
+        # ABKO는 항상 ID=0이므로 바로 시도 (다른 카메라 스캔 최소화)
+        if self._try_camera_id_with_formats(0):
+            self.logger.info("✅ ABKO 후방 카메라 연결 성공: ID=0")
+            return True
+        
+        # ID=0 실패시 ID=1도 시도 (ABKO의 보조 노드)
+        self.logger.info("🔧 ABKO ID=1 보조 노드 시도...")
+        if self._try_camera_id_with_formats(1):
+            self.logger.info("✅ ABKO 후방 카메라 연결 성공: ID=1")
+            return True
+        
+        self.logger.error("❌ ABKO ID=0,1 모두 연결 실패")
+        return False
+    
     def get_frames(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """웹캠에서 프레임 획득 (depth는 None 반환)"""
         if not self.is_running or self.cap is None:
@@ -644,21 +724,21 @@ class MultiCameraManager:
         front_preferred_id = int(front_cam_id_env) if front_cam_id_env else None
         rear_preferred_id = int(rear_cam_id_env) if rear_cam_id_env else None
         
-        # 전방 카메라들 - 고정 설정: 뎁스 + USB 웹캠
+        # 전방 카메라들 - HCAM01N 고정 설정
         self.front_webcam = WebCamCamera(
             logger, 
-            camera_id=front_preferred_id,  # 환경변수 우선 또는 None
-            camera_ids_to_try=[0, 1, 2, 3],  # 디바이스 이름으로 구분
-            camera_name="Front USB Webcam"
+            camera_id=front_preferred_id or 2,  # 환경변수 우선, 없으면 HCAM01N ID=2 고정
+            camera_ids_to_try=[2, 3],  # HCAM01N만 시도 (스캔 최소화)
+            camera_name="Front HCAM01N Webcam"
         )
         self.front_depth = OpenNI2Camera(logger)  # 뎁스 카메라
         
-        # 후방 카메라 - 고정 설정: 노트북 내장캠
+        # 후방 카메라 - 고정 설정: ABKO 웹캠 (전방보다 먼저 초기화)
         self.rear_webcam = WebCamCamera(
             logger, 
-            camera_id=rear_preferred_id,  # 환경변수 우선 또는 None
-            camera_ids_to_try=[0, 1, 2, 3],  # 모든 ID 시도하되 백엔드로 내장캠 선택
-            camera_name="Rear Built-in Camera"
+            camera_id=rear_preferred_id or 0,  # 환경변수 우선, 없으면 ABKO ID=0 강제
+            camera_ids_to_try=[0, 1, 2, 3, 4, 5],  # 더 넓은 범위 스캔
+            camera_name="Rear ABKO Camera"
         )
         
         # 초기화 상태
@@ -1097,13 +1177,24 @@ class CNNButtonClassifier:
             config_path = os.path.join(model_dir, 'best_smart_balanced_model_32px_with_metadata_config.yaml')
             
             if not os.path.exists(model_path):
-                # 소스 경로도 시도
+                # 소스 경로 시도 1: 상대 경로
                 source_model_dir = os.path.join(current_dir, '..', 'training', 'button_cnn')
                 model_path = os.path.join(source_model_dir, 'best_smart_balanced_model_32px_with_metadata.pth')
                 config_path = os.path.join(source_model_dir, 'best_smart_balanced_model_32px_with_metadata_config.yaml')
                 
                 if not os.path.exists(model_path):
+                    # 소스 경로 시도 2: roomie_vs 패키지 소스 직접 탐색
+                    workspace_root = '/home/jinhyuk2me/project_ws/Roomie/ros2_ws'
+                    source_model_dir = os.path.join(workspace_root, 'src', 'roomie_vs', 'training', 'button_cnn')
+                    model_path = os.path.join(source_model_dir, 'best_smart_balanced_model_32px_with_metadata.pth')
+                    config_path = os.path.join(source_model_dir, 'best_smart_balanced_model_32px_with_metadata_config.yaml')
+                
+                if not os.path.exists(model_path):
                     self.logger.warning(f"⚠️ CNN 모델 파일을 찾을 수 없습니다: {model_path}")
+                    self.logger.warning(f"🔍 시도한 경로들:")
+                    self.logger.warning(f"  1. {os.path.join(model_dir, 'best_smart_balanced_model_32px_with_metadata.pth')}")
+                    self.logger.warning(f"  2. {os.path.join(current_dir, '..', 'training', 'button_cnn', 'best_smart_balanced_model_32px_with_metadata.pth')}")
+                    self.logger.warning(f"  3. {model_path}")
                     return False
                 
             if not os.path.exists(config_path):
@@ -1983,9 +2074,8 @@ class VSNode(Node):
         self.get_logger().info("📌 대기모드에서도 카메라와 GUI가 항상 활성화됩니다")
         self.get_logger().info("💡 실시간 영상 확인 가능 - 리소스 소모 증가")
             
-        # 전방/후방 카메라 모두 활성화
-        self.update_front_camera()  # 전방 카메라 초기화 (대기모드 6번)
-        self.update_rear_camera()   # 후방 카메라 초기화 (대기모드 0번)
+        # 모든 카메라 동시 스캔 후 동시 초기화 (스캔 중복 방지)
+        self.initialize_all_cameras_simultaneously()
         
         # ROS2 서비스들 (/vs/command/*)
         self.get_logger().info("VS 서비스 인터페이스 초기화 중...")
@@ -2098,9 +2188,9 @@ class VSNode(Node):
     def update_camera_for_current_mode(self):
         """전방/후방 카메라 독립적 업데이트 (호환성 유지)"""
         try:
-            # 전방과 후방 카메라를 각각 초기화 (독립적 관리)
-            self.update_front_camera()
+            # 후방과 전방 카메라를 각각 초기화 (후방 우선, 독립적 관리)
             self.update_rear_camera()
+            self.update_front_camera()
                 
         except Exception as e:
             self.get_logger().error(f"카메라 업데이트 에러: {e}")
@@ -4932,6 +5022,103 @@ class VSNode(Node):
         finally:
             self.streaming_active = False
 
+    def initialize_all_cameras_simultaneously(self):
+        """모든 카메라를 한 번에 스캔하고 동시 초기화"""
+        self.get_logger().info("🔍 전체 카메라 통합 스캔 시작...")
+        
+        # 1. 한 번의 스캔으로 모든 카메라 정보 수집
+        camera_assignments = self._scan_and_assign_cameras()
+        
+        # 2. 할당된 카메라들을 동시에 초기화
+        self.get_logger().info("🔧 할당된 카메라들 동시 초기화 시작...")
+        
+        # 후방 ABKO 초기화
+        if camera_assignments['rear_abko_id'] is not None:
+            self.get_logger().info(f"🎯 후방 ABKO ID={camera_assignments['rear_abko_id']} 초기화 중...")
+            if self.camera_manager.rear_webcam._try_camera_id_with_formats(camera_assignments['rear_abko_id']):
+                self.camera_manager.rear_webcam_initialized = True
+                self.get_logger().info("✅ 후방 ABKO 카메라 초기화 성공")
+            else:
+                self.get_logger().warning("⚠️ 후방 ABKO 카메라 초기화 실패")
+        
+        # 전방 HCAM01N 초기화 (MJPG 포맷 강제 적용)
+        if camera_assignments['front_hcam_id'] is not None:
+            self.get_logger().info(f"🎯 전방 HCAM01N ID={camera_assignments['front_hcam_id']} 초기화 중...")
+            if self.camera_manager.front_webcam._try_camera_id_with_formats(camera_assignments['front_hcam_id']):
+                self.camera_manager.front_webcam_initialized = True
+                self.get_logger().info("✅ 전방 HCAM01N 카메라 초기화 성공")
+            else:
+                self.get_logger().warning("⚠️ 전방 HCAM01N 카메라 초기화 실패")
+        
+        # 전방 뎁스 카메라 초기화
+        self.get_logger().info("🎯 전방 뎁스 카메라 초기화 중...")
+        if self.camera_manager.front_depth.initialize():
+            self.camera_manager.front_depth_initialized = True
+            self.get_logger().info("✅ 전방 뎁스 카메라 초기화 성공")
+        else:
+            self.get_logger().warning("⚠️ 전방 뎁스 카메라 초기화 실패")
+        
+        # 결과 보고
+        self._report_camera_initialization_status()
+        
+        # 동시 초기화 후 GUI용 카메라 변수들 설정
+        self._setup_gui_camera_references()
+    
+    def _scan_and_assign_cameras(self) -> dict:
+        """한 번의 스캔으로 모든 카메라 할당"""
+        assignments = {
+            'rear_abko_id': None,
+            'front_hcam_id': None
+        }
+        
+        self.get_logger().info("📋 카메라 할당 스캔 중...")
+        
+        # v4l2-ctl로 한 번에 모든 디바이스 확인
+        for camera_id in range(6):
+            try:
+                device_name = self.camera_manager.front_webcam._get_camera_device_name(camera_id).lower()
+                self.get_logger().info(f"🔍 ID={camera_id}: {device_name}")
+                
+                # ABKO 감지 (후방용)
+                if 'abko' in device_name and assignments['rear_abko_id'] is None:
+                    assignments['rear_abko_id'] = camera_id
+                    self.get_logger().info(f"🎯 후방 ABKO 할당: ID={camera_id}")
+                
+                # HCAM01N 감지 (전방용)
+                elif 'hcam01n' in device_name and assignments['front_hcam_id'] is None:
+                    assignments['front_hcam_id'] = camera_id
+                    self.get_logger().info(f"🎯 전방 HCAM01N 할당: ID={camera_id}")
+                    
+            except Exception as e:
+                self.get_logger().debug(f"ID={camera_id} 스캔 에러: {e}")
+                continue
+        
+        return assignments
+    
+    def _report_camera_initialization_status(self):
+        """카메라 초기화 상태 보고"""
+        self.get_logger().info("📊 카메라 초기화 결과:")
+        self.get_logger().info(f"  후방 ABKO: {'✅' if self.camera_manager.rear_webcam_initialized else '❌'}")
+        self.get_logger().info(f"  전방 HCAM01N: {'✅' if self.camera_manager.front_webcam_initialized else '❌'}")  
+        self.get_logger().info(f"  전방 뎁스: {'✅' if self.camera_manager.front_depth_initialized else '❌'}")
+    
+    def _setup_gui_camera_references(self):
+        """동시 초기화 후 GUI용 카메라 변수들 설정"""
+        self.get_logger().info("🔧 GUI 카메라 참조 설정 중...")
+        
+        # 후방 카메라 GUI 참조 설정
+        if self.camera_manager.rear_webcam_initialized:
+            self.current_rear_camera = self.camera_manager.rear_webcam
+            self.current_rear_camera_name = "Rear ABKO Camera (Standby)"
+            self.get_logger().info("✅ 후방 GUI 카메라 참조 설정 완료")
+        else:
+            self.current_rear_camera = None
+            self.current_rear_camera_name = "None"
+            self.get_logger().warning("⚠️ 후방 카메라 GUI 참조 설정 실패")
+        
+        # 전방 카메라는 이미 camera_manager 통해 처리되므로 별도 설정 불필요
+        self.get_logger().info("🎨 모든 GUI 카메라 참조 설정 완료")
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -4944,6 +5131,12 @@ def main(args=None):
         
         import cv2
         frame_count = 0
+        # GUI 로그 간격(프레임 단위). 0 또는 1 이하면 비활성화
+        import os as _os
+        try:
+            gui_log_interval = int(_os.environ.get('VS_GUI_CAMERA_LOG_INTERVAL', '0'))
+        except Exception:
+            gui_log_interval = 0
         
         try:
             while rclpy.ok():
@@ -4960,9 +5153,10 @@ def main(args=None):
                         camera_type = camera_info['type']
                         mode_id = camera_info['mode_id']
                         
-                        # 디버그: 카메라 정보 출력
-                        if frame_count % 100 == 1:
-                            node.get_logger().info(f"🔍 GUI 카메라: name={camera_name}, type={camera_type}")
+                        # 디버그: 카메라 정보 출력 (환경변수로 간격 제어, 기본 비활성화)
+                        if gui_log_interval and gui_log_interval > 1:
+                            if frame_count % gui_log_interval == 1:
+                                node.get_logger().info(f"🔍 GUI 카메라: name={camera_name}, type={camera_type}")
                         
                         depth_image, color_image = None, None
                         
@@ -4971,7 +5165,7 @@ def main(args=None):
                             try:
                                 depth_image, color_image = camera.get_frames()
                             except Exception as e:
-                                if frame_count % 100 == 1:
+                                if gui_log_interval and gui_log_interval > 1 and (frame_count % gui_log_interval == 1):
                                     node.get_logger().warning(f"{camera_name} 프레임 획득 실패: {e}")
                         
                         # 추가 뎁스 카메라가 있으면 뎁스만 다시 획득
@@ -4986,7 +5180,7 @@ def main(args=None):
                         
                         # 이미지가 없으면 다음 카메라로
                         if color_image is None:
-                            if frame_count % 100 == 1:
+                            if gui_log_interval and gui_log_interval > 1 and (frame_count % gui_log_interval == 1):
                                 node.get_logger().warning(f"❌ {camera_name}: color_image가 None입니다")
                             continue
                         
@@ -5017,7 +5211,7 @@ def main(args=None):
                                         objects = node._apply_enhanced_button_recognition(enhanced_objects, color_image, mode_id)
                                         node.last_ocr_objects = objects  # 결과 캐싱
                                         node.ocr_counter = 0  # 카운터 리셋
-                                        if frame_count % 100 == 1:
+                                        if gui_log_interval and gui_log_interval > 1 and (frame_count % gui_log_interval == 1):
                                             node.get_logger().debug(f"🔄 OCR 수행됨 (매 {node.ocr_skip_frames}프레임마다)")
                                     else:
                                         # OCR 건너뛰고 이전 결과 재사용 (객체 감지는 계속)
