@@ -68,13 +68,34 @@ class ArmClient:
             
     def _handle_set_pose_response(self, future, callback):
         """팔 회전 응답 처리"""
-        goal_handle = future.result()
-        if not goal_handle.accepted:
-            self.node.get_logger().warn('팔 회전 명령이 거부됨')
-            callback(None)
-            return
+        try:
+            goal_handle = future.result()
+            if not goal_handle.accepted:
+                self.node.get_logger().warn('팔 회전 명령이 거부됨')
+                if callback:
+                    callback(None)
+                return
 
-        result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(
-            lambda future: callback(future.result())
-        )
+            self.node.get_logger().info('팔 회전 명령 수락됨, 결과 대기 중...')
+            
+            result_future = goal_handle.get_result_async()
+            result_future.add_done_callback(
+                lambda future: self._handle_set_pose_result(future, callback)
+            )
+            
+        except Exception as e:
+            self.node.get_logger().error(f'팔 회전 응답 처리 중 오류: {e}')
+            if callback:
+                callback(None)
+    
+    def _handle_set_pose_result(self, future, callback):
+        """팔 회전 결과 처리"""
+        try:
+            result = future.result()
+            self.node.get_logger().info(f'팔 회전 결과 수신: success={result.result.success}')
+            if callback:
+                callback(result)
+        except Exception as e:
+            self.node.get_logger().error(f'팔 회전 결과 처리 중 오류: {e}')
+            if callback:
+                callback(None)
