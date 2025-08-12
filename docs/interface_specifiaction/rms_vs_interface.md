@@ -274,13 +274,16 @@ bool opened
 ```msg
 # Tracking.msg
 int32 id
-int32 event   # 0=NONE, 1=LOST, 2=REACQUIRED
+int32 event   # 0=정상상태복귀, 1=멀어짐, 2=LOST, 3=REACQUIRED (히스테리시스 적용)
 ```
 
 **규약:**
-- `cx, cy`: 정규화 중심 좌표 (영상 좌우반전 후 기준)
-- `scale`: 거리 대용치 (값이 클수록 대상이 가까움)
-- `event`: 상태 전이 프레임에서만 비-0 값 발행
+- `id`: 추적 대상 ID
+- `event`: 상태 전이 시에만 발행
+  - 0=정상상태복귀: 멀어졌던 타겟이 다시 가까워짐 (bbox 너비 >= 화면 너비의 20%, 연속 5프레임)
+  - 1=멀어짐: 타겟이 멀어짐 (bbox 너비 < 화면 너비의 20%, 연속 5프레임)
+  - 2=LOST: 추적 실패
+  - 3=REACQUIRED: 추적 재획득
 
 ---
 

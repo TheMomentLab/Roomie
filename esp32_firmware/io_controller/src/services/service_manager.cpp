@@ -19,7 +19,6 @@ bool ServiceManager::init(rcl_node_t* node, rclc_executor_t* executor,
   Serial.println("서비스 초기화 시작...");
   
   // Agent 연결 안정화를 위한 초기 대기
-  Serial.println("micro-ROS agent 연결 안정화 대기중...");
   delay(1000);
   
   rcl_ret_t ret;

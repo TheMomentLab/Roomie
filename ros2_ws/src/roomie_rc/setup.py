@@ -24,7 +24,6 @@ setup(
     entry_points={
         'console_scripts': [
             'rc_node = roomie_rc.rc_node:main',
-            'rc_node_v2 = roomie_rc.rc_node_v2:main',
         ],
     },
 )

@@ -97,7 +97,7 @@ void setup() {
   xTaskCreate(
     micro_ros_task,
     "micro_ros_task",
-    20480,
+    65536,  // 스택 크기를 32768에서 65536으로 늘림
     NULL,
     5,
     NULL
@@ -107,6 +107,7 @@ void setup() {
 void loop() {
   network.update();
   controller.update();
+  topics.update();  // 카드 읽기 상태 업데이트
   delay(10);
 }
 
@@ -120,7 +121,6 @@ void micro_ros_task(void * pvParameters) {
     vTaskDelete(NULL);
     return;
   }
-  Serial.printf("micro-ROS 초기화 완료\n\n");
 
   if (!services.init(&node, &executor, &support, &controller)) {
     error_loop();
@@ -130,7 +130,7 @@ void micro_ros_task(void * pvParameters) {
     error_loop();
   }
 
-  Serial.println("IOC System Initialized!");
+  Serial.println("✅ IOC System 초기화 완료");
   controller.setRobotState(RobotState::WAITING);
 
   while (1) {
@@ -142,37 +142,57 @@ void micro_ros_task(void * pvParameters) {
 
 // ==================== 유틸리티 함수 ====================
 bool init_micro_ros() {
-  set_microros_wifi_transports(const_cast<char*>(WIFI_SSID), const_cast<char*>(WIFI_PASSWORD), 
-                               network.getAgentIP(), network.getAgentPort());
-
+  Serial.println("WiFi micro-ROS 초기화 시도...");
+  
+  // WiFi transport 설정
+  IPAddress agent_ip = network.getAgentIP();
+  uint16_t agent_port = network.getAgentPort();
+  Serial.printf("Agent 연결 설정: %s:%d\n", agent_ip.toString().c_str(), agent_port);
+  
+  set_microros_wifi_transports(const_cast<char*>(WIFI_SSID), 
+                                const_cast<char*>(WIFI_PASSWORD), 
+                                agent_ip, agent_port);
+  Serial.println("WiFi transport 설정 완료");
+  
   allocator = rcl_get_default_allocator();
+  Serial.println("allocator 초기화 완료");
 
+  // init_options 객체 생성 및 초기화
   rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
   if (rcl_init_options_init(&init_options, allocator) != RCL_RET_OK) {
     Serial.println("❌ rcl_init_options_init 실패!");
     return false;
   }
+  
+  // init_options에 도메인 ID 설정
   if (rcl_init_options_set_domain_id(&init_options, 200) != RCL_RET_OK) {
     Serial.println("❌ 도메인 ID 설정 실패!");
     return false;
   }
   Serial.println("도메인 ID 200으로 설정 완료");
 
+  // argc/argv 방식 대신 init_options를 사용하여 support 초기화
   if (rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator) != RCL_RET_OK) {
     Serial.println("❌ micro-ROS 지원 구조체 초기화 실패!");
     return false;
   }
-
-  if (rclc_node_init_default(&node, NODE_NAME, "", &support) != RCL_RET_OK) {
-    Serial.println("❌ 노드 초기화 실패!");
-    return false;
-  }
-
-  if (rclc_executor_init(&executor, &support.context, 16, &allocator) != RCL_RET_OK) {
-    Serial.println("❌ Executor 초기화 실패!");
-    return false;
-  }
+  Serial.println("support 초기화 완료");
   
+  rcl_ret_t ret = rclc_node_init_default(&node, NODE_NAME, "", &support);
+  if (ret != RCL_RET_OK) {
+    Serial.printf("❌ 노드 초기화 실패: %d\n", ret);
+    return false;
+  }
+  Serial.println("노드 초기화 완료");
+  
+  ret = rclc_executor_init(&executor, &support.context, 24, &allocator);
+  if (ret != RCL_RET_OK) {
+    Serial.printf("❌ Executor 초기화 실패: %d\n", ret);
+    return false;
+  }
+  Serial.println("Executor 초기화 완료");
+  
+  Serial.println("✅ micro-ROS 초기화 완료");
   return true;
 }
 

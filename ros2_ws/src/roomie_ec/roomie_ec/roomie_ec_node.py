@@ -472,7 +472,7 @@ class RoomieECNode(Node):
             
         elif self.current_state == "ELEVATOR_CENTER_ALIGNED":
             self.current_state = "SCENARIO_4_READY"
-            # self.current_state = "COMPLETED"  # 강제 완료 (사용자 의도)
+            self.current_state = "COMPLETED"  # 강제 완료 (사용자 의도)
             self.get_logger().info("🚗 엘리베이터 내부 중앙으로 이동 완료")
             self.get_logger().info("🎉 시나리오 3 완료 - 시나리오 4 준비")
 
@@ -1321,7 +1321,7 @@ class RoomieECNode(Node):
 
     def set_arm_upward(self):
         """팔 상향 설정 액션 실행 - 도우미 메서드 사용"""
-        self.call_set_pose_action(5, "ARM_UPWARD_SET", "팔 상향 설정")
+        self.call_set_pose_action(6, "ARM_UPWARD_SET", "팔 상향 설정")
     
     def send_interior_movement_event(self):
         """GUI에 엘리베이터 내부 이동 시작 이벤트 발송 - 공통 함수 사용"""
@@ -1366,7 +1366,7 @@ class RoomieECNode(Node):
         elapsed_time = time.time() - self.elevator_center_start_time
         
         if self.elevator_center_step == 1:  # 각도 조정 단계 (4초간)
-            if elapsed_time >= 4.0:
+            if elapsed_time >= 5.0:
                 self.elevator_center_step = 2
                 self.elevator_center_start_time = time.time()
                 
@@ -1379,7 +1379,7 @@ class RoomieECNode(Node):
                 self.get_logger().info("⬅️ 2단계: 후진으로 중앙 이동")
                 
         elif self.elevator_center_step == 2:  # 후진 이동 단계 (5초간)
-            if elapsed_time >= 5.0:
+            if elapsed_time >= 4.5:
                 self.elevator_center_step = 3
                 self.elevator_center_start_time = time.time()
                 
@@ -1405,7 +1405,7 @@ class RoomieECNode(Node):
                 self.get_logger().info("🔄 4단계: 제자리 회전으로 최종 정렬")
                 
         elif self.elevator_center_step == 4:  # 최종 회전 단계 (3.2초간)
-            if elapsed_time >= 3.2:
+            if elapsed_time >= 4.1:
                 # 완전 정지
                 cmd_vel = Twist()
                 cmd_vel.linear.x = 0.0

@@ -27,12 +27,12 @@ QLabel {
   </property>
   <widget class="QLabel" name="elevatorImage">
    <property name="geometry">
-    <rect>
-     <x>560</x>
-     <y>20</y>
-     <width>741</width>
-     <height>771</height>
-    </rect>
+     <rect>
+      <x>660</x>
+      <y>90</y>
+      <width>551</width>
+      <height>601</height>
+     </rect>
    </property>
    <property name="text">
     <string/>
