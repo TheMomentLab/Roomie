@@ -64,9 +64,12 @@ class GuideController(BaseController):
             if dest_label is not None:
                 dest = getattr(self.node, "current_destination", None)
                 if dest:
-                    dest_label.setText(f"목적지 : 객실{dest}호")
+                    dest_label.setText(f"객실 {dest}호")
         except Exception as e:
             self.log_warn(f"목적지 라벨 갱신 중 경고: {e}")
+        # UI 파일에서 이미 guideImage로 설정되어 있으므로 폴백만 제공
+        base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_guide_1.png"
+        self._set_label_pixmap_with_fallback("guideImage", ":/roomie_rgui/assets/rgui_guide_1.png", base)
         # 영상 표시 시작 (guidanceFrame 내부)
         self._start_udp_video(target_frame_name="guidanceFrame")
         # 전체 화면 터치 영역이 있다면 연결
@@ -88,6 +91,8 @@ class GuideController(BaseController):
 
     def on_select_card_key(self):
         self.log_info("카드키 입력 방식 선택")
+        # 카드키 입력 방식 선택 이벤트 발행 (rgui_event_id: 103)
+        self.publish_event(event_id=103, detail="")
         # 다음 화면으로 전환 (예: 카드키 대기)
         self.screen_manager.show_screen("CARD_KEY_WAITING")
 
@@ -172,6 +177,9 @@ class GuideController(BaseController):
         self.publish_event(event_id=106, detail="1")
         # UI에 backButton만 정의되어 있음
         self.setup_button_event("backButton", self.on_cancel_registering)
+        # UI 파일에서 이미 guideImage로 설정되어 있으므로 폴백만 제공
+        base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_guide_1.png"
+        self._set_label_pixmap_with_fallback("guideImage", ":/roomie_rgui/assets/rgui_guide_1.png", base)
         # 영상 수신 시작
         self._start_registering_video()
 
@@ -345,42 +353,10 @@ class GuideController(BaseController):
         self.screen_manager.show_screen("GUIDE_REQUEST")
 
     def _load_rechecking_image(self):
-        """RECHECKING 화면에 rgui_guide_out.png 이미지를 표시 (qrc 사용)"""
-        try:
-            from PyQt6.QtWidgets import QLabel
-            from PyQt6.QtGui import QPixmap
-            # 부모 프레임: 우선 detectionFrame 안에 배치, 없으면 루트 위젯 사용
-            parent = self.find_widget("detectionFrame")
-            if parent is None:
-                parent = self.widget
-            # 기존 라벨이 있으면 재사용, 없으면 생성
-            image_label = parent.findChild(QLabel, "recheckImage") if hasattr(parent, 'findChild') else None
-            if image_label is None:
-                image_label = QLabel(parent)
-                image_label.setObjectName("recheckImage")
-            # qrc 이미지 로드
-            qrc_path = ":/roomie_rgui/assets/rgui_guide_out.png"
-            pix = QPixmap(qrc_path)
-            if pix.isNull():
-                self.log_warn(f"RECHECKING qrc 이미지 로드 실패: {qrc_path}")
-                return
-            image_label.setPixmap(pix)
-            image_label.setScaledContents(True)
-            # 부모 크기에 맞춰 중앙 배치
-            try:
-                w = parent.width() if hasattr(parent, 'width') else 600
-                h = parent.height() if hasattr(parent, 'height') else 400
-                target_w = int(min(w * 0.6, h * 0.6))
-                target_h = target_w
-                x = int((w - target_w) / 2)
-                y = int((h - target_h) / 2)
-                image_label.setGeometry(x, y, target_w, target_h)
-            except Exception:
-                image_label.setGeometry(50, 50, 400, 400)
-            image_label.show()
-            self.log_info("RECHECKING qrc 이미지 로드 성공")
-        except Exception as e:
-            self.log_warn(f"RECHECKING 이미지 설정 중 경고: {e}")
+        """RECHECKING 화면에 rgui_guide_out.png 이미지를 표시 (UI 파일 설정 보강)"""
+        # UI 파일에서 이미 guideImage로 설정되어 있으므로 폴백만 제공
+        base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_guide_out.png"
+        self._set_label_pixmap_with_fallback("guideImage", ":/roomie_rgui/assets/rgui_guide_out.png", base)
 
     # GUIDE_REQUEST
     def setup_guide_request_events(self):
@@ -443,7 +419,9 @@ class GuideController(BaseController):
     def setup_destination_arrived_events(self):
         self.log_info("DESTINATION_ARRIVED 준비")
         self.setup_button_event("okButton", self.on_destination_confirm)
-        # .ui에서 qrc 픽스맵을 이미 설정하므로 별도 이미지 로드는 생략
+        # UI 파일에서 이미 robotEyes로 설정되어 있으므로 폴백만 제공
+        base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_eye_2.png"
+        self._set_label_pixmap_with_fallback("robotEyes", ":/roomie_rgui/assets/rgui_eye_2.png", base)
 
     def on_destination_confirm(self):
         self.log_info("도착 확인")

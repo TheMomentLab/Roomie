@@ -25,7 +25,7 @@
 
 QLabel {
     color: white;
-    font-family: "Malgun Gothic", "Arial", sans-serif;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
     background-color: transparent;
     border: none;
 }
@@ -33,7 +33,7 @@ QLabel {
 QPushButton {
     color: white;
     border: none;
-    font-family: "Malgun Gothic", sans-serif;
+    font-family: &quot;Malgun Gothic&quot;, sans-serif;
     font-weight: bold;
 }
 
@@ -56,40 +56,6 @@ QPushButton {
     background-color: #4a5266;
 }</string>
   </property>
-  
-  <!-- 뒤로가기 버튼 -->
-  <widget class="QPushButton" name="backButton">
-   <property name="geometry">
-    <rect>
-     <x>60</x>
-     <y>50</y>
-     <width>80</width>
-     <height>80</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <family>Malgun Gothic</family>
-     <pointsize>-1</pointsize>
-     <weight>75</weight>
-     <bold>true</bold>
-    </font>
-   </property>
-   <property name="styleSheet">
-    <string notr="true">background-color: #3498db; 
-border-radius: 15px;
-font-size: 32px; 
-font-weight: bold;</string>
-   </property>
-   <property name="text">
-    <string>‹</string>
-   </property>
-   <property name="cursor">
-    <cursorShape>PointingHandCursor</cursorShape>
-   </property>
-  </widget>
-  
-  <!-- 메인 카드 프레임 -->
   <widget class="QFrame" name="guideCardFrame">
    <property name="geometry">
     <rect>
@@ -103,8 +69,6 @@ font-weight: bold;</string>
     <string>background-color: #434a5a; 
 border-radius: 20px;</string>
    </property>
-   
-   <!-- 도로 이미지 영역 (사용자가 삽입할 공간) -->
    <widget class="QLabel" name="roadImage">
     <property name="geometry">
      <rect>
@@ -127,8 +91,6 @@ border-radius: 20px;</string>
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   
-   <!-- 길안내 요청 텍스트 -->
    <widget class="QLabel" name="guideText">
     <property name="geometry">
      <rect>
@@ -159,8 +121,6 @@ color: white;</string>
     </property>
    </widget>
   </widget>
-  
-  <!-- 전체 카드 터치 영역 (복원) -->
   <widget class="QPushButton" name="touchButton">
    <property name="geometry">
     <rect>
@@ -170,40 +130,38 @@ color: white;</string>
      <height>680</height>
     </rect>
    </property>
-   <property name="text">
-    <string></string>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
    </property>
    <property name="styleSheet">
     <string>background-color: transparent;</string>
    </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="touchButton">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>200</y>
+     <width>1200</width>
+     <height>680</height>
+    </rect>
+   </property>
    <property name="cursor">
     <cursorShape>PointingHandCursor</cursorShape>
    </property>
-     </widget>
-   
-   <!-- 전체 카드 터치 영역 -->
-   <widget class="QPushButton" name="touchButton">
-    <property name="geometry">
-     <rect>
-      <x>360</x>
-      <y>200</y>
-      <width>1200</width>
-      <height>680</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string></string>
-    </property>
-    <property name="styleSheet">
-     <string>background-color: transparent;</string>
-    </property>
-    <property name="cursor">
-     <cursorShape>PointingHandCursor</cursorShape>
-    </property>
-   </widget>
+   <property name="styleSheet">
+    <string>background-color: transparent;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
   </widget>
-  <resources>
-   <include location="../../roomie_rgui/assets/resources.qrc"/>
-  </resources>
-  <connections/>
- </ui>
+ </widget>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

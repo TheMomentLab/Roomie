@@ -69,8 +69,8 @@ QPushButton {
   <widget class="QLabel" name="instructionText">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>160</y>
+     <x>100</x>
+     <y>240</y>
      <width>621</width>
      <height>161</height>
     </rect>
@@ -90,10 +90,32 @@ color: white;
 line-height: 1.4;</string>
    </property>
    <property name="text">
-    <string>화면 안에 위치해 주세요!</string>
+    <string>화면 안에 보이도록 위치해 주세요</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="guideImage">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>380</y>
+     <width>371</width>
+     <height>421</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_guide_1.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QFrame" name="detectionAreaFrame">

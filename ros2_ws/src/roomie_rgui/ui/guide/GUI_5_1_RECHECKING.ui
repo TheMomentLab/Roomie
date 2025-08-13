@@ -48,32 +48,53 @@ QLabel {
   <widget class="QLabel" name="statusText">
    <property name="geometry">
     <rect>
-     <x>90</x>
-     <y>380</y>
-     <width>400</width>
-     <height>100</height>
+     <x>100</x>
+     <y>260</y>
+     <width>621</width>
+     <height>161</height>
     </rect>
    </property>
    <property name="font">
     <font>
      <family>Malgun Gothic</family>
      <pointsize>-1</pointsize>
-     <weight>50</weight>
-     <bold>false</bold>
+     <weight>75</weight>
+     <bold>true</bold>
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">font-size: 28px; 
-font-weight: normal; 
+    <string notr="true">font-size: 44px; 
+font-weight: 600; 
 color: white;
 line-height: 1.4;</string>
    </property>
    <property name="text">
-    <string>고객님 위치를
-찾을 수 없습니다.</string>
+    <string>화면 안에 보이도록 위치해주세요.</string>
    </property>
    <property name="alignment">
-    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="guideImage">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>420</y>
+     <width>381</width>
+     <height>391</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_guide_out.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QFrame" name="detectionFrame">

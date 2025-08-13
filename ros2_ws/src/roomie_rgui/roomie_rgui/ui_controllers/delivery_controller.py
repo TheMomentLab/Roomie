@@ -249,31 +249,32 @@ class DeliveryController(BaseController):
         
         # 이 화면에서는 사용자 입력 없음, 외부에서 복귀 카운트다운 서비스 요청시 카운트다운 시작
     
-    def load_robot_eyes(self):
-        """로봇 눈 이미지 로드"""
+    def _set_label_pixmap_with_fallback(self, label_name: str, qrc_path: str, abs_path: str):
+        """QRC 이미지 로드, 실패 시 절대경로 폴백"""
         try:
-            # 이미지 파일 경로 (소스 폴더 기준)
-            image_path = os.path.join(
-                "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets",
-                "rgui_roomie_eyes.png"
-            )
-            
-            # 이미지 라벨 찾기
-            robot_eyes_label = self.find_widget("robotEyes")
-            if robot_eyes_label:
-                # 이미지 로드
-                pixmap = QPixmap(image_path)
-                if not pixmap.isNull():
-                    robot_eyes_label.setPixmap(pixmap)
-                    robot_eyes_label.setScaledContents(True)
-                    self.log_info(f"✅ 로봇 눈 이미지 로드 성공: {image_path}")
-                else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
-            else:
-                self.log_error("❌ robotEyes 라벨을 찾을 수 없음")
-                
+            from PyQt6.QtWidgets import QLabel
+            from PyQt6.QtGui import QPixmap
+            label = self.widget.findChild(QLabel, label_name)
+            if label is None:
+                self.log_warn(f"라벨을 찾을 수 없음: {label_name}")
+                return
+            pix = QPixmap(qrc_path)
+            if pix.isNull() and abs_path:
+                pix = QPixmap(abs_path)
+            if pix.isNull():
+                self.log_warn(f"이미지 로드 실패(qrc/abs): {qrc_path} | {abs_path}")
+                return
+            label.setPixmap(pix)
+            label.setScaledContents(True)
+            self.log_info(f"이미지 로드 성공: {qrc_path if abs_path is None else (qrc_path + ' | ' + abs_path)}")
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+            self.log_warn(f"이미지 설정 중 경고({label_name}): {e}")
+
+    def load_robot_eyes(self):
+        """로봇 눈 이미지 로드 (UI 파일 설정 보강)"""
+        # UI 파일에서 이미 robotEyes로 설정되어 있으므로 폴백만 제공
+        base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_eye_2.png"
+        self._set_label_pixmap_with_fallback("robotEyes", ":/roomie_rgui/assets/rgui_eye_2.png", base)
     
     def load_pickup_image(self):
         """픽업 이미지 로드"""

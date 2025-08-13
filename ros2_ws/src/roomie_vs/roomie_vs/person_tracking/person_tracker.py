@@ -602,8 +602,8 @@ class PersonTracker:
                 frame_width = frame_shape[1]    # width (cols)
                 width_ratio = bbox_width / frame_width
                 
-                # 프레임 기반 보수적 판단: 연속 5프레임 조건 만족 시에만 상태 변경 (히스테리시스 제거, 0.2 기준)
-                if width_ratio < 0.2:
+                # 프레임 기반 보수적 판단: 연속 5프레임 조건 만족 시에만 상태 변경 (히스테리시스 제거, 0.3 기준)
+                if width_ratio < 0.3:
                     # 멀어짐 조건 만족
                     self.distant_frame_count += 1
                     self.normal_frame_count = 0  # 리셋
@@ -612,9 +612,9 @@ class PersonTracker:
                         # 연속 5프레임 멀어짐 → 상태 변경
                         distance_event = 1  # 멀어짐
                         self.is_target_distant = True
-                        self.logger.info(f"📏 타겟 멀어짐 감지! 너비 비율: {width_ratio:.3f} < 0.2 ({self.distant_frame_count}프레임 연속)")
+                        self.logger.info(f"📏 타겟 멀어짐 감지! 너비 비율: {width_ratio:.3f} < 0.3 ({self.distant_frame_count}프레임 연속)")
                         
-                elif width_ratio >= 0.2:
+                elif width_ratio >= 0.3:
                     # 정상 조건 만족
                     self.normal_frame_count += 1
                     self.distant_frame_count = 0  # 리셋
@@ -623,7 +623,7 @@ class PersonTracker:
                         # 연속 5프레임 정상 → 상태 변경
                         distance_event = 0  # 정상상태 복귀
                         self.is_target_distant = False
-                        self.logger.info(f"📏 타겟 정상상태 복귀! 너비 비율: {width_ratio:.3f} >= 0.2 ({self.normal_frame_count}프레임 연속)")
+                        self.logger.info(f"📏 타겟 정상상태 복귀! 너비 비율: {width_ratio:.3f} >= 0.3 ({self.normal_frame_count}프레임 연속)")
             
             # 각 이벤트를 독립적으로 처리 (우선순위 없음)
             # REACQUIRED 이벤트 발행 (2,3)

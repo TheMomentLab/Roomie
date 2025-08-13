@@ -50,9 +50,9 @@ QLabel {
    <property name="geometry">
     <rect>
      <x>160</x>
-     <y>200</y>
-     <width>400</width>
-     <height>80</height>
+     <y>180</y>
+     <width>621</width>
+     <height>161</height>
     </rect>
    </property>
    <property name="font">
@@ -64,22 +64,23 @@ QLabel {
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">font-size: 48px; 
+    <string notr="true">font-size: 72px; 
 font-weight: 600; 
-color: white;</string>
+color: white;
+line-height: 1.4;</string>
    </property>
    <property name="text">
     <string>안내중입니다.</string>
    </property>
    <property name="alignment">
-    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
    </property>
   </widget>
   <widget class="QLabel" name="destinationText">
    <property name="geometry">
     <rect>
-     <x>160</x>
-     <y>300</y>
+     <x>170</x>
+     <y>290</y>
      <width>400</width>
      <height>60</height>
     </rect>
@@ -88,20 +89,45 @@ color: white;</string>
     <font>
      <family>Malgun Gothic</family>
      <pointsize>-1</pointsize>
-     <weight>50</weight>
-     <bold>false</bold>
+     <weight>75</weight>
+     <bold>true</bold>
     </font>
    </property>
    <property name="styleSheet">
-    <string notr="true">font-size: 28px; 
-font-weight: normal; 
-color: white;</string>
+    <string notr="true">QLabel#destinationText {
+    font-size: 28px; 
+    color: #1abc9c !important;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
+    font-weight: bold;
+}</string>
    </property>
    <property name="text">
-    <string>목적지 : 객실202호</string>
+    <string>객실 202호</string>
    </property>
    <property name="alignment">
     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="guideImage">
+   <property name="geometry">
+    <rect>
+     <x>210</x>
+     <y>380</y>
+     <width>371</width>
+     <height>421</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_guide_1.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
    </property>
   </widget>
   <widget class="QFrame" name="guidanceFrame">
