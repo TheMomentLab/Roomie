@@ -6,6 +6,7 @@ rms_vs_interface.md에 정의된 모든 서비스 및 토픽 인터페이스를 
 
 import rclpy
 from rclpy.node import Node
+from rclpy.action import ActionClient
 import threading
 import time
 
@@ -18,6 +19,7 @@ from roomie_msgs.srv import (
     Location
 )
 from roomie_msgs.msg import Obstacle, GlassDoorStatus
+from roomie_msgs.action import Enroll
 
 
 
@@ -33,6 +35,9 @@ class VSInterfaceTestClient(Node):
             'door_status': self.create_client(DoorStatus, '/vs/command/door_status'),
             'location': self.create_client(Location, '/vs/command/location')
         }
+        
+        # 🎯 Action Clients
+        self.enroll_client = ActionClient(self, Enroll, '/vs/action/enroll')
         
         # 🔧 Topic Subscribers (VS → RC)
         self.obstacle_sub = self.create_subscription(
@@ -56,13 +61,13 @@ class VSInterfaceTestClient(Node):
         self.last_obstacle_time = time.time()
         if self.obstacle_monitoring:
             obstacle_type = "동적" if msg.dynamic else "정적"
-            self.get_logger().info(f"🚧 장애물 감지: {obstacle_type} 장애물 (x={msg.x:.3f}, y={msg.y:.3f})")
-    
+            self.get_logger().info(f"🚧 장애물 감지: {obstacle_type} 장애물 (x={msg.x:.3f}, y={msg.y:.3f}, depth={msg.depth:.2f}m)")
+ 
     def on_glass_door_status(self, msg):
         """유리문 상태 콜백"""
         self.last_glass_door_time = time.time()
         if self.glass_door_monitoring:
-            door_status = "열림" if msg.door_opened else "닫힘"
+            door_status = "열림" if msg.opened else "닫힘"
             self.get_logger().info(f"🚪 유리문 상태: {door_status}")
     
     def check_service_availability(self):
@@ -80,6 +85,13 @@ class VSInterfaceTestClient(Node):
                     print(f"❌ {service_name:20} | 미구현 또는 VS 노드 미실행")
             except Exception as e:
                 print(f"❌ {service_name:20} | 에러: {e}")
+        
+        # 액션 서버도 확인
+        try:
+            available = self.enroll_client.wait_for_server(timeout_sec=2.0)
+            print(f"✅ enroll action         | {'구현됨' if available else '미구현/노드 미실행'}")
+        except Exception as e:
+            print(f"❌ enroll action         | 에러: {e}")
         
         print("="*70)
         print("명령어를 입력하세요: ", end="")
@@ -107,6 +119,46 @@ class VSInterfaceTestClient(Node):
                 self.get_logger().error("❌ VS 모드 설정 실패")
         
         threading.Thread(target=handle_response, daemon=True).start()
+    
+    def test_enroll(self, duration_sec: float = 3.0, auto_set_mode: bool = True):
+        """등록 액션 테스트: 등록모드 전환(옵션) 후 duration_sec 동안 등록 수행"""
+        def _run():
+            try:
+                if auto_set_mode:
+                    # 등록모드(1)로 전환 후 잠시 대기
+                    self.test_set_vs_mode(1)
+                    time.sleep(0.8)
+                
+                self.get_logger().info(f"📞 Enroll 액션 호출: duration_sec={duration_sec}")
+                if not self.enroll_client.wait_for_server(timeout_sec=3.0):
+                    self.get_logger().error("❌ Enroll 액션 서버 없음")
+                    return
+                
+                goal_msg = Enroll.Goal()
+                goal_msg.duration_sec = float(duration_sec)
+                
+                def feedback_cb(feedback):
+                    prog = getattr(feedback.feedback, 'progress', 0.0)
+                    self.get_logger().info(f"📤 Enroll 진행률: {prog:.1%}")
+                
+                send_future = self.enroll_client.send_goal_async(goal_msg, feedback_callback=feedback_cb)
+                rclpy.spin_until_future_complete(self, send_future)
+                goal_handle = send_future.result()
+                if not goal_handle.accepted:
+                    self.get_logger().error("❌ Enroll goal 거부됨")
+                    return
+                
+                result_future = goal_handle.get_result_async()
+                rclpy.spin_until_future_complete(self, result_future)
+                result = result_future.result().result if result_future.result() else None
+                if result and getattr(result, 'success', False):
+                    self.get_logger().info("✅ Enroll 성공")
+                else:
+                    self.get_logger().error("❌ Enroll 실패")
+            except Exception as e:
+                self.get_logger().error(f"❌ Enroll 호출 중 에러: {e}")
+        
+        threading.Thread(target=_run, daemon=True).start()
     
     def test_button_status(self, button_id=0):
         """버튼 상태 테스트 - 단일 버튼"""
@@ -171,8 +223,6 @@ class VSInterfaceTestClient(Node):
         
         threading.Thread(target=run_button_tests, daemon=True).start()
     
-
-    
     def test_elevator_status(self):
         """엘리베이터 상태 테스트"""
         client = self.service_clients['elevator_status']
@@ -220,8 +270,6 @@ class VSInterfaceTestClient(Node):
                 self.get_logger().error("❌ 문 상태 호출 실패")
         
         threading.Thread(target=handle_response, daemon=True).start()
-    
-
     
     def test_location(self):
         """위치 감지 테스트"""
@@ -287,10 +335,10 @@ class VSInterfaceTestClient(Node):
         print("\n" + "="*70)
         print("🧪 VS 인터페이스 테스트 클라이언트 (업데이트됨)")
         print("="*70)
-        print("📋 rms_vs_interface.md 기준 전체 인터페이스 (5개 서비스):")
+        print("📋 rms_vs_interface.md 기준 전체 인터페이스 (5개 서비스 + 1개 액션):")
         print()
         print("🔍 상태 확인:")
-        print("  check : 모든 서비스 가용성 확인")
+        print("  check : 모든 서비스/액션 가용성 확인")
         print("  info  : 현재 노드 및 토픽 상태 확인")
         print("  status: 토픽 상태 확인")
         print()
@@ -301,15 +349,11 @@ class VSInterfaceTestClient(Node):
         print("  1e : SetVSMode - 엘리베이터 외부 (전방 전용, mode_id=3)")
         print("  1i : SetVSMode - 엘리베이터 내부 (전방 전용, mode_id=4)")
         print("  1n : SetVSMode - 일반 주행모드 (전방 전용, mode_id=5)")
-        print("  1f : SetVSMode - 대기모드 (전방 전용, mode_id=6)")
-        print("  2  : ButtonStatus - 유일 버튼 감지 (button_id=0)")
-        print("  2d : ButtonStatus - 하행버튼 감지 (button_id=100)")
-        print("  2u : ButtonStatus - 상행버튼 감지 (button_id=101)")
-        print("  2f : ButtonStatus - 1층버튼 감지 (button_id=1)")
-        print("  2s : ButtonStatus - 주요 버튼들 순차 테스트")
-        print("  3  : ElevatorStatus - 엘리베이터 상태 감지")
-        print("  4  : DoorStatus - 문 상태 감지")
-        print("  5  : Location - 위치 감지")
+        print("  1f : SetVSMode - 전방 대기모드 (전방 전용, mode_id=6)")
+        print()
+        print("🎯 액션 인터페이스 테스트:")
+        print("  en      : Enroll 액션 (기본 3초)")
+        print("  en:5    : Enroll 액션 (5초 수집 예)")
         print()
         print("📡 토픽 인터페이스 테스트 (VS → RC):")
         print("  topics : 모든 토픽 테스트 (60초)")
@@ -509,6 +553,14 @@ class VSInterfaceTestClient(Node):
                     self.test_set_vs_mode(5)  # 일반모드
                 elif cmd == "1f":
                     self.test_set_vs_mode(6)  # 전방 대기모드
+                elif cmd == "en":
+                    self.test_enroll(3.0, auto_set_mode=True)
+                elif cmd.startswith("en:"):
+                    try:
+                        sec = float(cmd.split(":", 1)[1])
+                    except Exception:
+                        sec = 3.0
+                    self.test_enroll(sec, auto_set_mode=True)
                 elif cmd == "2":
                     self.test_button_status(0)  # 유일 버튼
                 elif cmd == "2d":

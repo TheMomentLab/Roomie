@@ -17,7 +17,6 @@ setup(
     maintainer_email='admin@roomie.com',
     description='Admin GUI for Roomie service robot system',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'agui_node = roomie_agui.agui_node:main',

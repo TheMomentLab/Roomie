@@ -1,171 +1,99 @@
-// common.js
+// common.js app.js와 중복되는 초기화 로직을 제거하고, 순수한 유틸리티와 WebSocket 모듈
+// API 요청을 보내는 범용 함수
 
-// -----------------------------------------------------------
-// 💡 getLocationName 함수 (DOMContentLoaded 외부에서 정의하여 전역 접근 가능하게 함)
-// -----------------------------------------------------------
-window.common = {
-    getLocationName: function(locationCode) {
-        if (locationCode === "ROOM_201") {
-            return "201호";
-        }
-        if (locationCode === "ROOM_102") { // 예시: ROOM_102 추가
-            return "102호";
-        }
-        // 필요한 모든 위치 코드에 대해 매핑을 추가하거나 서버 응답을 직접 활용하세요.
-        return locationCode; // 매핑된 이름이 없으면 코드 그대로 반환
-    }
-};
+let toastTimer; // 타이머 ID를 저장할 변수
 
 export function sendApiRequest(url, data) {
   return fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   }).then((res) => res.json());
 }
 
-// -----------------------------------------------------------
-// 💡 showToast 함수 (전역으로 바로 사용 가능하도록 정의)
-// -----------------------------------------------------------
-window.showToast = function(imagePath, type = 'default') {
-    const toast = document.getElementById('global-toast');
-    const fullImageElement = document.getElementById('toast-full-image');
+/**
+ * 이미지 경로를 받아 화면에 알림창(토스트)을 표시하는 함수
+ * @param {string} imageSrc - 표시할 이미지의 경로
+ */
 
-    if (!toast || !fullImageElement) return;
+export function showToast(imageSrc, message = '') { 
+    const globalToast = document.getElementById('global-toast');
+    const toastImage = document.getElementById('toast-full-image');
+    const toastMessage = document.getElementById('toast-message');
 
-    fullImageElement.src = imagePath;
-    fullImageElement.alt = '';
+    if (!globalToast || !toastImage || !toastMessage) {
+        console.error("알림창을 위한 HTML 요소를 찾을 수 없습니다.");
+        return;
+    }
 
-    toast.className = 'global-toast';
-    toast.classList.add(type);     // 'success', 'error' 등
-    toast.classList.remove('hidden');
+    if (toastTimer) {
+        clearTimeout(toastTimer);
+    }
 
-    setTimeout(() => {
-        toast.classList.add('hidden');
-        fullImageElement.src = '';
-    }, 3000);
+    toastImage.src = imageSrc;
+    toastMessage.textContent = message; // ⬅️ 메시지 설정 로직 추가
+    globalToast.classList.remove('hidden');
+
+    toastTimer = setTimeout(() => {
+        globalToast.classList.add('hidden');
+    }, 3000); // 사용자가 인지할 수 있도록 시간 1초 증가 (2000 -> 3000)
 }
 
-// -----------------------------------------------------------
-// 💡 DOMContentLoaded: 페이지 로드 후 실행될 공통 로직
-// -----------------------------------------------------------
-document.addEventListener('DOMContentLoaded', () => {
+// --- 웹소켓 초기화 함수 (이미지 경로만 전달하도록 수정) ---
+export function initWebSocket() {
+    const ws = new WebSocket(window.WS_URL);
 
-    // 1. 헤더의 방 번호 동적 설정 (모든 페이지의 .room-number에 적용)
-    const roomNumberElements = document.querySelectorAll('.room-number'); // querySelectorAll로 변경
-    if (roomNumberElements.length > 0 && typeof CONFIG !== 'undefined' && CONFIG.DEFAULT_ROOM_ID) {
-        roomNumberElements.forEach(element => {
-            element.textContent = CONFIG.DEFAULT_ROOM_ID;
-        });
-    }
+    ws.onopen = () => {
+        console.log("WebSocket 연결 성공");
+    };
 
-    // 2. 뒤로가기 버튼 기능 (back_button_1 ID를 사용하는 모든 요소에 적용)
-    const backButtonGlobal = document.getElementById('back_button_1');
-    if (backButtonGlobal && !backButtonGlobal._hasListener) { // 중복 리스너 방지
-        backButtonGlobal.addEventListener('click', () => {
-            window.history.back();
-        });
-        backButtonGlobal._hasListener = true;
-    }
+    ws.onmessage = (event) => {
+        try {
+            const eventData = JSON.parse(event.data);
+            if (eventData.type !== "event") return; // 이벤트가 아니면 무시
 
-    // 3. 전역 토스트 알림 DOM 요소 확인 (HTML에 직접 삽입되어 있다면 이 코드는 제거)
-    // 현재 모든 HTML 파일에 <div id="global-toast">...</div>가 직접 추가되어 있으므로 이 블록은 제거해야 합니다.
-    // if (!document.getElementById('global-toast')) {
-    //     const globalToastHtml = `
-    //         <div id="global-toast" class="global-toast hidden">
-    //             <img id="toast-full-image" class="toast-image" src="" alt="Notification">
-    //         </div>
-    //     `;
-    //     document.body.insertAdjacentHTML('beforeend', globalToastHtml);
-    // }
+            // API 명세서(message.md)와 app.js의 라우팅 로직을 기반으로 수정
+            switch (eventData.action) {
+                case "call_request_acceptance":
+                    // 호출 수락 시, '로봇 호출 접수' 페이지로 이동
+                    const { task_name, estimated_wait_time } = eventData.payload;
+                    location.hash = `robot-accepted&task=${task_name}&wait=${estimated_wait_time}`;
+                    break;
 
+                case "robot_arrival_completion":
+                    // 로봇 도착 시, 알림 표시
+                    showToast("../assets/images/robot_arrived_pickup.png");
+                    // 필요 시, 특정 페이지로 강제 이동시킬 수 있습니다.
+                    // 예: if(location.hash.includes('history-detail')) location.hash = 'robot-success';
+                    break;
+                    
+                case "delivery_completion":
+                    // 배송 완료 시, 알림 표시
+                    showToast("../assets/images/delivery_completed_notification.png");
+                    break;
 
-    // -----------------------------------------------------------
-    // 💡 WebSocket 연결 로직 (DOMContentLoaded 내부에서 정의하여 CONFIG 객체에 접근 가능하게 함)
-    // -----------------------------------------------------------
-    // 이 WebSocket 로직은 common.js에서 한 번만 초기화되어야 합니다.
-    // 중복 연결을 피하기 위해 `window.webSocketInitialized`와 같은 플래그를 사용할 수 있습니다.
-    if (typeof CONFIG !== 'undefined' && CONFIG.WS_BASE_URL && !window.webSocketInitialized) {
-        let socket;
-        let reconnectInterval = null; // null로 초기화
-        const RECONNECT_DELAY = 5000; // 5초 후 재연결 시도
+                case "task_timeout_return":
+                    // 타임아웃 시, 알림 표시
+                    showToast("../assets/images/timeout_return_notification.png");
+                    break;
 
-        function connectWebSocket() {
-            if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
-                console.log("WebSocket이 이미 열려 있거나 연결 중입니다. 새로운 연결 시도를 건너뜝니다.");
-                return;
+                default:
+                    console.warn("알 수 없는 WebSocket 이벤트 액션:", eventData.action);
+                    return; 
             }
 
-            console.log(`WebSocket 연결 시도 중: ${CONFIG.WS_BASE_URL}`); // 연결 시도 시 URL 로깅
-            socket = new WebSocket(CONFIG.WS_BASE_URL);
-
-            socket.addEventListener("open", (event) => {
-                console.log("WebSocket 연결됨:", event);
-                if (reconnectInterval) { // reconnectInterval이 설정되어 있을 경우에만 클리어
-                    clearInterval(reconnectInterval);
-                    reconnectInterval = null;
-                    console.log("재연결 인터벌이 제거되었습니다.");
-                }
-            });
-
-            socket.addEventListener("message", (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log("WebSocket 메시지 수신:", data);
-
-                    if (data.type === "event") {
-                        switch (data.action) {
-                            case "task_timeout_return":
-                                showToast('asset/timeout_return_notification.png');
-                                break;
-                            case "delivery_completion":
-                                showToast('asset/delivery_completed_notification.png');
-                                break;
-                            case "robot_arrival_completion":
-                                showToast('asset/robot_arrived_pickup.png');
-                                break;
-                            case "call_request_acceptance":
-                                showToast('asset/call_accepted.png');
-                                break;
-                            default:
-                                console.warn("알 수 없는 이벤트 액션:", data.action);
-                        }
-                    } else if (data.type === "response") {
-                        console.log("응답 메시지 (WebSocket):", data);
-                    }
-                } catch (e) {
-                    console.error("WebSocket 메시지 파싱 오류:", e, "원본 데이터:", event.data); // 원본 데이터 추가
-                    showToast('asset/error_toast.png', 'error'); // WebSocket 메시지 파싱 오류 토스트
-                }
-            });
-
-            socket.addEventListener("close", (event) => {
-                console.warn(`WebSocket 연결 끊김. 코드: ${event.code}, 이유: ${event.reason}`); // 상세한 종료 메시지
-                showToast('asset/error_toast.png', 'error'); // WebSocket 연결 끊김 토스트
-                if (!reconnectInterval) {
-                    console.log(`${RECONNECT_DELAY / 1000}초 후에 재연결을 시도합니다...`); // 재연결 시도 메시지
-                    reconnectInterval = setInterval(connectWebSocket, RECONNECT_DELAY);
-                }
-            });
-
-            socket.addEventListener("error", (event) => {
-                console.error("WebSocket 오류 발생:", event);
-                showToast('asset/error_toast.png', 'error'); // WebSocket 오류 토스트
-                // 오류 발생 시 소켓이 이미 닫히고 있을 수 있지만, 명시적으로 닫아 close 이벤트가 발생하도록 보장
-                if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-                    socket.close();
-                }
-            });
+        } catch (error) {
+            console.error("WebSocket 메시지 처리 중 오류 발생:", error);
         }
+    };
 
-        connectWebSocket();
-        window.webSocketInitialized = true;
-        window.socket = socket; // socket 객체를 전역으로 노출하여 다른 페이지에서 접근 가능하게 함
-    }
-    else
-        {
-        console.warn("CONFIG에 WebSocket URL이 정의되지 않았거나 WebSocket이 이미 초기화되었습니다. WS 기능이 비활성화됩니다.");
-    }
-});
+    ws.onclose = () => {
+        console.log("WebSocket 연결이 종료되었습니다. 5초 후 재연결을 시도합니다.");
+        // 안정성을 위해 재연결 로직 추가를 고려할 수 있습니다.
+        // setTimeout(initWebSocket, 5000);
+    };
+
+    ws.onerror = (error) => {
+        console.error("WebSocket 오류 발생:", error);
+    };
+}

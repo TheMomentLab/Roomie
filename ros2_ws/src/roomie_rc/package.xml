@@ -12,6 +12,7 @@
   <depend>geometry_msgs</depend>
   <depend>roomie_msgs</depend>
   <depend>tf2_ros</depend>
+  <depend>tf_transformations</depend>
   <depend>nav2_simple_commander</depend>
   <depend>action_msgs</depend>
 

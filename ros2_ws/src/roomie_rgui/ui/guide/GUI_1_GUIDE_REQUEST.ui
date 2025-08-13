@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>GuideRequest</class>
+ <widget class="QWidget" name="GuideRequest">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Guide Request</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+QPushButton {
+    color: white;
+    border: none;
+    font-family: &quot;Malgun Gothic&quot;, sans-serif;
+    font-weight: bold;
+}
+
+.back-button {
+    background-color: #3498db;
+    border-radius: 15px;
+    font-size: 32px;
+}
+
+.back-button:hover {
+    background-color: #2980b9;
+}
+
+.guide-card {
+    background-color: #434a5a;
+    border-radius: 20px;
+}
+
+.guide-card:hover {
+    background-color: #4a5266;
+}</string>
+  </property>
+  <widget class="QFrame" name="guideCardFrame">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>200</y>
+     <width>1200</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: #434a5a; 
+border-radius: 20px;</string>
+   </property>
+   <widget class="QLabel" name="roadImage">
+    <property name="geometry">
+     <rect>
+      <x>150</x>
+      <y>120</y>
+      <width>400</width>
+      <height>440</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="pixmap">
+     <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_guide_1.png</pixmap>
+    </property>
+    <property name="scaledContents">
+     <bool>true</bool>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="guideText">
+    <property name="geometry">
+     <rect>
+      <x>600</x>
+      <y>250</y>
+      <width>500</width>
+      <height>180</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <family>Malgun Gothic</family>
+      <pointsize>-1</pointsize>
+      <weight>75</weight>
+      <bold>true</bold>
+     </font>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">font-size: 48px; 
+font-weight: 600; 
+color: white;</string>
+    </property>
+    <property name="text">
+     <string>길안내 요청</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+  </widget>
+  <widget class="QPushButton" name="touchButton">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>200</y>
+     <width>1200</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: transparent;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+  <widget class="QPushButton" name="touchButton">
+   <property name="geometry">
+    <rect>
+     <x>360</x>
+     <y>200</y>
+     <width>1200</width>
+     <height>680</height>
+    </rect>
+   </property>
+   <property name="cursor">
+    <cursorShape>PointingHandCursor</cursorShape>
+   </property>
+   <property name="styleSheet">
+    <string>background-color: transparent;</string>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+  </widget>
+ </widget>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

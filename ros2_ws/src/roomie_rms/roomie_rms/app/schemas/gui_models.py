@@ -45,6 +45,16 @@ class FoodPickupArrivalEvent(BaseModel):
     action: str = "food_pickup_arrival"
     payload: FoodPickupArrivalEventPayload
 
+# SGUI 음식 배송 장소 도착 알림
+class FoodDeliveryArrivalEventPayload(BaseModel):
+    task_id: int
+    robot_id: int
+
+class FoodDeliveryArrivalEvent(BaseModel):
+    type: str = "event"
+    action: str = "food_pickup_arrival"
+    payload: FoodDeliveryArrivalEventPayload
+
 # SGUI 비품 픽업 장소 도착 알림
 class SupplyPickupArrivalEventPayload(BaseModel):
     task_id: int
@@ -201,7 +211,7 @@ class CreateCallTaskResponse(BaseModel):
 
 # 호출 내역 조회 요청/응답
 class GetCallHistoryRequestPayload(BasePayload):
-    location_name: str
+    request_location: str
     task_name: str
 
 class GetCallHistoryRequest(BaseModel):
@@ -326,7 +336,7 @@ class GetOrderHistoryResponse(BaseModel):
 
 # 특정 위치의 작업 목록 조회 요청/응답
 class GetTaskListRequestPayload(BasePayload):
-    location_name: str
+    request_location: str
 
 class GetTaskListRequest(BaseModel):
     type: str = "request"
@@ -340,7 +350,7 @@ class TaskListItem(BaseModel):
 
 class GetTaskListResponsePayload(BasePayload):
     location_name: str
-    tasks: List[TaskListItem]
+    order_details: Dict[str, List[TaskListItem]]
 
 class GetTaskListResponse(BaseModel):
     type: str = "response"

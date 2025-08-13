@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DestinationArrived</class>
+ <widget class="QWidget" name="DestinationArrived">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1920</width>
+    <height>1080</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>Destination Arrived</string>
+  </property>
+  <property name="styleSheet">
+   <string>QWidget {
+    background-color: #171E26;
+}
+
+QLabel {
+    color: white;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
+    background-color: transparent;
+    border: none;
+}
+
+QPushButton {
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-family: &quot;Malgun Gothic&quot;, sans-serif;
+    font-weight: bold;
+}
+
+.confirm-button {
+    background-color: #3498db;
+    font-size: 24px;
+}
+
+.confirm-button:hover {
+    background-color: #2980b9;
+}
+
+.confirm-button:pressed {
+    background-color: #21618c;
+}
+
+.robot-eye {
+    background-color: #1abc9c;
+}</string>
+  </property>
+  <widget class="QLabel" name="robotEyes">
+   <property name="geometry">
+    <rect>
+     <x>570</x>
+     <y>330</y>
+     <width>750</width>
+     <height>161</height>
+    </rect>
+   </property>
+   <property name="text">
+    <string/>
+   </property>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_eye_2.png</pixmap>
+   </property>
+   <property name="scaledContents">
+    <bool>true</bool>
+   </property>
+  </widget>
+  <widget class="QLabel" name="mainMessage">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>650</y>
+     <width>1921</width>
+     <height>80</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>font-size: 72px; 
+font-weight: bold; 
+color: white; 
+letter-spacing: 2px;</string>
+   </property>
+   <property name="text">
+    <string>목적지에 도착하였습니다!</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+  <widget class="QLabel" name="subMessage">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>760</y>
+     <width>1921</width>
+     <height>80</height>
+    </rect>
+   </property>
+   <property name="styleSheet">
+    <string>font-size: 60px; 
+font-weight: normal; 
+color: white; 
+letter-spacing: 1px;</string>
+   </property>
+   <property name="text">
+    <string>행복한 하루 되세요!</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
+ </widget>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
+ <connections/>
+</ui>

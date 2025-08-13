@@ -28,7 +28,6 @@ setup(
     maintainer_email='admin@roomie.com',
     description='Robot Main Server for Roomie service robot system',
     license='MIT',
-    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'rms_node = roomie_rms.rms_node:main',

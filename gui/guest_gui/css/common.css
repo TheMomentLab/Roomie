@@ -1,10 +1,8 @@
-/* Google Fonts Noto Sans KR 불러오기 */
+/* common.css (중복 제거된 최종 완성본) */
+
+/* 1. 전역 변수 및 기본 리셋 */
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
 
-/* ==============================================
-  1. 전역 변수 및 기본 리셋 (Variables & Reset)
-==============================================
-*/
 :root {
     --accent-color: #3B5E72;
     --primary-text-color: #2F2F2F;
@@ -16,307 +14,268 @@
     --main-font: 'Noto Sans KR', sans-serif;
 }
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--main-font); background-color: #333; }
 
-body {
-    font-family: var(--main-font);
-    background-color: #333; /* 이미지 로딩 전 배경 */
-}
+/* 2. 공통 레이아웃 */
+#app-container { width: 100%; height: 100vh; display: flex; justify-content: center; align-items: center; }
+.app-layout { width: 100%; height: 100%; max-height: 100vh; display: flex; flex-direction: column; color: var(--light-text-color); background-size: cover; background-position: center; background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png'); padding: 30px; position: relative; overflow-y: auto; }
 
-#app-container {
-    width: 100%;
-    height: 100vh;
-    display: flex;
+.app-layout .main-content { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.main-content.main-content-sub {
     justify-content: center;
     align-items: center;
 }
 
-.app-layout {
+/* 흰색 박스 자체 */
+.sub-page-box {
+    background-color: white;
+    color: var(--primary-text-color);
+    border-radius: 19px;
+    padding: 20px;
+    position: relative;
     width: 100%;
-    /* max-width: 486px; <-- 너비 고정의 원인이었던 이 줄을 삭제 또는 주석 처리합니다. */
-    height: 100%;
-    max-height: 100vh;
+    max-width: 480px; 
+    height: 85%; 
+    max-height: 850px;
     display: flex;
     flex-direction: column;
-    color: var(--light-text-color);
-    background-size: cover;
-    background-position: center;
-    background-image: linear-gradient(rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.3)), url('../assets/images/background_1.png');
-    padding: 30px;
-    position: relative;   
-    overflow-y: auto;
+}
+.sub-header { display: flex; justify-content: space-between; align-items: center; color: white; font-size: 27px; position: absolute; top: 14px; left: 30px; right: 30px; height: 70px; pointer-events: none; }
+.sub-header .logo { font-weight: 500; }
+.sub-header .room-number { font-weight: 500; }
+
+
+.content-area {
+    flex-grow: 1; 
+    overflow-y: auto; 
+    width: 100%;
 }
 
-/* [추가] 모든 뒤로가기 버튼 스타일 통합 */
-.back-button {
-    position: absolute;
-    top: 20px;
-    left: 20px;
-    width: 39px;
-    height: 39px;
-    background-image: url('../assets/images/back_button.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    cursor: pointer;
-    border: none;
-    background-color: transparent;
-    z-index: 10;
+.history-items {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+/* 3. 뷰(View)별 스타일 */
+
+/* --- 메인 홈 --- */
+.header { text-align: right; font-size: 27px; font-weight: 500; width: 100%; }
+.main-content-home h1 { font-size: 80px; font-weight: 600; margin-bottom:  100px; }
+.button-grid { width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin: 40px auto 0; }
+.grid-button { background-color: var(--accent-color); color: var(--light-text-color); border: none; border-radius: 12px; padding: 25px 10px; font-family: var(--main-font); font-size: 24px; font-weight: 700; cursor: pointer; transition: background-color 0.2s; }
+.grid-button:hover { background-color: #4a758f; }
+
+/* --- 메뉴 (음식/비품 공통) --- */
+
+.menu-item { display: flex; align-items: center; margin-bottom: 25px; }
+.menu-image { width: 120px; height: 120px; background-color: var(--container-bg-color); border-radius: var(--border-radius); margin-right: 20px; flex-shrink: 0; background-size: cover; background-position: center; }
+.menu-details { flex-grow: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.menu-info-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    width: 100%;
+}
+.menu-name { font-size: 20px; font-weight: 500; }
+.menu-price { font-size: 18px; font-weight: 700; color: var(--primary-text-color); }
+.quantity-control { display: flex; align-items: center; gap: 15px; }
+.quantity-btn { width: 30px; height: 30px; background-size: contain; cursor: pointer; border: none; background-color: transparent; }
+.minus-btn { background-image: url('../assets/images/minus_button.png'); }
+.plus-btn { background-image: url('../assets/images/plus_button.png'); }
+.menu-name { 
+    font-size: 20px; 
+    font-weight: 500;
+}
+.menu-price { 
+    font-size: 18px; 
+    font-weight: 700;
+    color: var(--primary-text-color);
+    margin-left: 10px; 
+    flex-shrink: 0; 
+}
+.quantity { font-size: 18px; font-weight: 500; color: var(--secondary-text-color); min-width: 25px; text-align: center; }
+.select-button { background-color: var(--accent-color); color: var(--light-text-color); border: none; padding: 8px 24px; border-radius: 5px; font-size: 16px; font-weight: 300; cursor: pointer; }
+.footer { width: calc(100% - 40px); position: absolute; bottom: 20px; left: 20px; right: 20px; height: 69px; background-color: var(--accent-color); border-radius: var(--border-radius); display: flex; align-items: center; justify-content: space-between; color: var(--light-text-color); padding: 0 25px; font-size: 20px; }
+.footer .divider { width: 1px; height: 40px; background-color: white; opacity: 0.7; }
+.footer .cart-button { font-weight: 400; cursor: pointer; background: none; border: none; color: white; font-family: var(--main-font); font-size: inherit; }
+
+/* --- 장바구니 --- */
+.cart-header { display: flex; align-items: center; width: 100%; position: relative; justify-content: center; margin-bottom: 20px; }
+.cart-header .back-button { position: static; transform: none; }
+.cart-title { font-size: 24px; font-weight: 500; flex-grow: 1; text-align: center; margin-right: -39px; }
+.cart-items { flex-grow: 1; width: 100%; overflow-y: auto; }
+.item { display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 15px 0; }
+.item-image { width: 80px; height: 80px; background-color: var(--container-bg-color); border-radius: var(--border-radius); margin-right: 15px; background-size: cover; background-position: center; flex-shrink: 0; }
+.item-details { flex-grow: 1; }
+.item-price { font-weight: 500; margin-left: auto; }
+.delete-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: #999; }
+.footer-cart { padding: 20px; background-color: white; border-top: 1px solid #eee; margin: 0 -20px -20px; border-radius: 0 0 19px 19px; margin-top: auto; }
+.total-price-container { display: flex; justify-content: space-between; font-size: 20px; margin-bottom: 15px; }
+.order-button { width: 100%; padding: 15px; font-size: 18px; background-color: var(--accent-color); color: white; border: none; border-radius: var(--border-radius); cursor: pointer; }
+.order-button:disabled { background-color: #ccc; }
+
+/* --- 요청 이력 --- */
+.task-card { background-color: #f9f9f9; border: 1px solid #eee; border-radius: 12px; padding: 20px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+.task-title { font-size: 18px; font-weight: 600; }
+.task-time { font-size: 14px; color: #888; }
+.btn-detail { background-color: var(--accent-color); color: white; border: none; border-radius: 5px; padding: 8px 12px; font-size: 14px; cursor: pointer; }
+
+/* --- 상세 상태 및 타임라인 --- */
+.content { width: 100%; flex-grow: 1; display: flex; }
+.status-card { width: 100%; background-color: white; color: #474646; border-radius: 19px; padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem; }
+.status-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 1rem; }
+.status-timeline { display: flex; flex-direction: column; }
+.timeline-item { display: flex; align-items: flex-start; gap: 1.5rem; }
+.timeline-point { display: flex; flex-direction: column; align-items: center; }
+.point { width: 20px; height: 20px; border-radius: 50%; background-color: var(--accent-color); }
+.line { width: 4px; height: 40px; background-color: var(--accent-color); }
+.timeline-item.inactive .point, .timeline-item.inactive .line { background-color: var(--border-color); }
+.timeline-item:last-child .line { background-color: transparent; }
+.details { flex-grow: 1; display: flex; justify-content: space-between; }
+.label { font-weight: 500; }
+.time { color: #777; font-size: 14px; }
+
+/* --- 요청 완료 페이지 스타일 추가 및 수정 --- */
+.status-section.vertical-center {
+    flex-grow: 1;
+    justify-content: center; /* 수직 중앙 정렬 */
+    gap: 30px; /* 요소 간 간격 조정 */
+}
+.robot-icon-large {
+    width: 150px;
+    height: 150px;
+}
+#toast-full-image {
+    display: block;         /* 이미지 깨짐 방지 */
+    max-width: 100%;        /* 부모 요소 너비에 맞게 조절 */
+    max-height: 100%;       /* 부모 요소 높이에 맞게 조절 */
+    object-fit: contain;    /* 이미지 비율 유지하며 모두 보이게 */
 }
 
 .global-toast {
     position: fixed;
-    top: 100px;
+    top: 50%;
     left: 50%;
-    transform: translateX(-50%);
-    border-radius: var(--border-radius);
+    transform: translate(-50%, -50%);
     z-index: 9999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 12px 20px;
-    color: white;
-    font-size: 16px;
+    display: flex;          /* Flex 컨테이너로 설정 */
+    align-items: center;     /* 수직 중앙 정렬 */
+    justify-content: center; /* 수평 중앙 정렬 */
+    background-color: transparent;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    border-radius: 0;
 }
+
 .global-toast.hidden {
-    display: none; 
+    display: none;
 }
 
-
-/* ==============================================
-  3. 뷰(View)별 스타일
-==============================================
-*/
-
-/* --- 뷰: 메인 홈 (view-home) --- */
-/* header와 main-content가 너비를 100% 사용하도록 명시적 규칙 추가 */
-.app-layout .header,
-.app-layout .main-content {
-    width: 100%;
-}
-
-.app-layout .main-content {
+/* --- 상태 표시 페이지 (호출, 완료 등) 공통 스타일 --- */
+.status-section.vertical-center {
     flex-grow: 1;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 20px;
+}
+.status-text {
+    font-size: 40px; 
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: center;
+}
+.estimated-time-text {
+    font-size: 20px;
+    color: var(--secondary-text-color);
+}
+.task-name-display {
+    font-size: 20px;
+    color: var(--secondary-text-color);
+    background-color: #f0f0f0;
+    padding: 5px 15px;
+    border-radius: 15px;
 }
 
-.view-home .header {
-    width: 100%; text-align: right; font-size: 28px; font-weight: 700;
+/* --- 흰색 박스 내부의 일관된 헤더 스타일 --- */
+.box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 20px;
+    flex-shrink: 0;
 }
-.view-home .main-content-home h1 {
-    font-size: 75px; font-weight: 700; margin-bottom: 8px;
+.box-header .page-title {
+    font-size: 24px;
+    font-weight: 500;
+    flex-grow: 1;
+    text-align: center;
 }
-.view-home .button-grid {
-    width: 100%; max-width: 420px; display: grid; grid-template-columns: 1fr 1fr;
-    gap: 15px; margin: 40px auto 0;
+.box-header .header-placeholder {
+    width: 39px;
+    flex-shrink: 0;
 }
-.view-home .grid-button {
-    background-color: var(--accent-color); color: var(--light-text-color);
-    border: none; border-radius: 12px; padding: 25px 10px;
-    font-family: var(--main-font); font-size: 24px; font-weight: 700;
-    cursor: pointer; transition: background-color 0.2s;
-}
-.view-home .grid-button:hover {
-    background-color: #4a758f;
-}
-
-/* --- 뷰: 음식/비품 메뉴 (view-menu, view-supply) --- */
-.view-menu .main-content-box, .view-supply .main-content-box {
-    padding-top: 60px; /* 뒤로가기 버튼 공간 확보 */
-}
-.view-menu .menu-list, .view-supply .menu-list {
-    flex-grow: 1; overflow-y: auto;
-}
-.view-menu .menu-item, .view-supply .menu-item {
-    display: flex; align-items: center; margin-bottom: 25px;
-}
-.view-menu .menu-image, .view-supply .menu-image {
-    width: 170px; height: 170px; background-color: var(--container-bg-color);
-    border-radius: var(--border-radius); margin-right: 20px; flex-shrink: 0;
-    background-size: cover; background-position: center;
-}
-.view-menu .menu-details, .view-supply .menu-details {
-    flex-grow: 1; display: flex; flex-direction: column;
-    align-items: flex-start; gap: 25px;
-}
-.view-menu .quantity-control, .view-supply .quantity-control {
-    display: flex; align-items: center; gap: 15px;
+.box-header .header-btn {
+    background-color: #050303;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
 }
 
-/* [수정] 모든 수량 조절 버튼 스타일 통합 */
-.quantity-btn {
-    width: 36px; height: 36px; background-size: contain;
-    cursor: pointer; border: none; background-color: transparent;
+.btn-header-action {
+    background-color: #2F2F2F; /* 검은색 배경 */
+    color: rgb(5, 2, 2);
+    font-family: var(--main-font);
+    font-size:20px;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px; /* 둥근 모서리 */
 }
-.minus-btn { background-image: url('../assets/images/minus_button.png'); }
-.plus-btn { background-image: url('../assets/images/plus_button.png'); }
+/* --- 흰색 박스 내부 헤더 --- */
+.box-header { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px; flex-shrink: 0; }
+.box-header .page-title { font-size: 24px; font-weight: 500; flex-grow: 1; text-align: center; }
+.box-header .header-placeholder { width: 39px; flex-shrink: 0; }
+.box-header .header-btn { background-color: transparent; border: none; cursor: pointer; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.box-header .back-button { width: 39px; height: 39px; background-image: url('../assets/images/back_button.png'); background-size: contain; background-repeat: no-repeat; }
 
-.view-menu .quantity, .view-supply .quantity {
-    font-size: 20px; font-weight: 500; color: var(--secondary-text-color);
-    min-width: 25px; text-align: center;
-}
-.view-menu .select-button, .view-supply .select-button {
-    background-color: var(--accent-color); color: var(--light-text-color);
-    border: none; padding: 8px 24px; border-radius: 5px;
-    font-size: 20px; font-weight: 300; cursor: pointer;
-}
-.view-menu .footer, .view-supply .footer {
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-    width: calc(100% - 40px); height: 69px; background-color: var(--accent-color);
-    border-radius: var(--border-radius); display: flex; align-items: center;
-    justify-content: space-between; color: var(--light-text-color);
-    padding: 0 25px; font-size: 24px;
-}
-
-/* --- 뷰: 장바구니 (view-cart) --- */
-.view-cart .cart-title {
-    font-size: 24px; font-weight: 500; color: var(--primary-text-color);
-    margin-left: 15px;
-}
-.view-cart .cart-items {
-    flex-grow: 1; padding: 0 20px; overflow-y: auto;
-}
-.view-cart .item {
-    display: flex; align-items: center; border-bottom: 1px solid #eee; padding: 20px 0;
-}
-.view-cart .item-image {
-    width: 90px; height: 90px; background-color: var(--container-bg-color);
-    border-radius: var(--border-radius); margin-right: 15px;
-    background-size: cover; background-position: center;
-}
-.view-cart .footer {
-    padding: 20px; background-color: white;
-}
-.view-cart .order-button:disabled {
-    background-color: #999;
+.box-header .back-button {
+    width: 39px;
+    height: 39px;
+    background-image: url('../assets/images/back_button.png');
+    background-size: contain;
+    background-repeat: no-repeat;
 }
 
-/* --- 뷰: 주문/호출 성공 (view-order-success, view-robot-success) --- */
-.view-order-success .order-history-button, .view-robot-success .order-history-button {
-    position: relative; top: 25px; right: 25px; background-color: var(--primary-text-color);
-    color: var(--light-text-color); border-radius: 7px; padding: 12px 20px;
-}
-.view-order-success .status-section, .view-robot-success .status-section {
-    display: flex; flex-direction: column; align-items: center;
-    gap: 40px; margin-top: 80px;
-}
-.view-order-success .robot-icon-container .line, .view-robot-success .robot-icon-container .line {
-    width: 200px; height: 5px; background-color: var(--border-color);
-}
-.view-order-success .close-button, .view-robot-success .close-button {
-    width: 100%; padding: 20px; font-size: 24px;
-}
 
-/* --- 뷰: 요청 이력 상세 (view-history-detail) --- */
-.view-history-detail .status-card {
-    width: 100%; background-color: white; color: #474646; border-radius: 19px;
-    padding: 2rem; display: flex; flex-direction: column; gap: 1.5rem;
+/* --- 로딩 스피너 --- */
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 5px solid rgba(0, 0, 0, 0.1);
+    border-top-color: var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* --- 하단 닫기/취소 버튼 --- */
+.btn-bottom-close {
+    width: calc(100% + 40px);
+    margin: 20px -20px -20px;
+    padding: 20px;
+    font-size: 20px;
+    font-weight: 500;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 0 0 19px 19px;
+    cursor: pointer;
     margin-top: auto;
-}
-.view-history-detail .timeline-item {
-    display: flex; align-items: center; gap: 1.5rem;
-}
-.view-history-detail .point {
-    width: 20px; height: 20px; border-radius: 50%; background-color: var(--accent-color);
-}
-.view-history-detail .line {
-    width: 4px; height: 40px; background-color: var(--accent-color);
-}
-.view-history-detail .inactive .point, .view-history-detail .inactive .line {
-    background-color: var(--border-color);
-}
-.view-history-detail .timeline-item:last-child .line {
-    background-color: transparent;
-}
-/* --- 뷰: 로봇 호출 중 (view-call-robot) --- */
-.view-call-robot .loading-message {
-  margin-top: 100px;
-  font-size: 20px;
-  font-weight: 400;
-  color: var(--light-text-color);
-  text-align: center;
-  white-space: pre-line;
-}
-
-/* --- 뷰: 호출 완료 대기 상태 (view-call-ready) --- */
-.view-call-ready .status-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 30px;
-  margin-top: 80px;
-}
-
-.view-call-ready .timeline {
-  margin-top: 30px;
-  width: 100%;
-  padding-left: 30px;
-  border-left: 3px solid var(--accent-color);
-}
-.view-call-ready .timeline-step {
-  position: relative;
-  margin-bottom: 24px;
-  font-size: 18px;
-}
-.view-call-ready .timeline-step::before {
-  content: '';
-  position: absolute;
-  left: -11px;
-  top: 3px;
-  width: 14px;
-  height: 14px;
-  background-color: var(--accent-color);
-  border-radius: 50%;
-}
-.view-call-ready .timeline-step.inactive::before {
-  background-color: var(--border-color);
-}
-
-/* --- 뷰: 요청 이력 목록 (view-task-list) --- */
-.view-task-list {
-  padding: 20px;
-}
-.view-task-list .task-card {
-  background-color: white;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 15px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-.view-task-list .task-title {
-  font-size: 20px;
-  font-weight: 600;
-}
-.view-task-list .task-time {
-  font-size: 14px;
-  color: #888;
-}
-
-/* --- 뷰: 요청 이력 상세 (get_call_history_page) 보완 --- */
-.view-history-detail .history-title {
-  font-size: 22px;
-  font-weight: 700;
-  margin-bottom: 20px;
-  
-}
-.view-history-detail .close-button {
-  margin-top: 30px;
-  background-color: var(--accent-color);
-  color: white;
-  border: none;
-  border-radius: 10px;
-  padding: 16px;
-  font-size: 18px;
-  font-weight: 600;
-  cursor: pointer;
 }

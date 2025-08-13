@@ -114,7 +114,7 @@ class RMSClient:
         msg.robot_state_id = robot_state_id
         
         self.robot_state_pub.publish(msg)
-        self.node.get_logger().info(f'로봇 상태 발행: {robot_state_id}')
+        # self.node.get_logger().info(f'로봇 상태 발행: {robot_state_id}')
     
     def publish_battery_status(self, charge_percentage=85.0, is_charging=False):
         """배터리 상태 발행"""

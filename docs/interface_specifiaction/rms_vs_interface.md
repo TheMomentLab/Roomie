@@ -185,6 +185,42 @@ int32 location_id
 
 ---
 
+### 1.6 등록 요청 (Action)
+- **From**: RC → VS
+- **Protocol**: ROS2 Action
+- **Action**: `/vs/action/enroll`
+
+```action
+# Enroll.action
+# Goal
+float32 duration_sec
+---
+# Result
+bool success
+---
+# Feedback
+float32 progress
+```
+
+---
+
+### 1.7 추적 중지 요청
+- **From**: RC → VS
+- **Protocol**: ROS2 Service
+- **Topic**: `/vs/command/stop_tracking`
+
+```srv
+# std_srvs/Trigger.srv
+# Request
+---
+# Response
+bool success
+string message
+```
+message는 항상 빈 string
+
+---
+
 ## 2. Topic Interfaces
 
 ### 2.1 장애물 감지 결과
@@ -198,11 +234,56 @@ int32 robot_id
 bool dynamic
 float32 x
 float32 y
+float32 depth
 ```
 
 **dynamic 값:**
 - `False`: 정적 장애물
 - `True`: 동적 장애물
+
+**출력 단위:**
+- X, Y: 화면 상 정규화된 좌표 (0~1)
+- depth: 미터(m) (뎁스 카메라가 인식하는 depth)
+
+**발행 주기:**
+- 감지될 때마다 발행
+
+### 2.2 유리 문 상태 감지 결과
+- **From**: VS → RC
+- **Protocol**: ROS2 Topic
+- **Topic**: `/vs/glass_door_status`
+
+```msg
+# GlassDoorStatus.msg
+int32 robot_id
+bool opened
+```
+
+**opened 산출 로직:**
+- 유리문 감지됨: `opened=False`
+- 유리문 감지되지 않음: `opened=True`
+
+**발행 주기:**
+- 감지될 때마다 발행
+
+### 2.3 추적 결과
+- **From**: VS → RC
+- **Protocol**: ROS2 Topic
+- **Topic**: `/vs/tracking`
+
+```msg
+# Tracking.msg
+int32 id
+int32 event   # 0=정상상태복귀, 1=멀어짐, 2=LOST, 3=REACQUIRED (히스테리시스 적용)
+```
+
+**규약:**
+- `id`: 추적 대상 ID
+- `event`: 상태 전이 시에만 발행
+  - 0=정상상태복귀: 멀어졌던 타겟이 다시 가까워짐 (bbox 너비 >= 화면 너비의 20%, 연속 5프레임)
+  - 1=멀어짐: 타겟이 멀어짐 (bbox 너비 < 화면 너비의 20%, 연속 5프레임)
+  - 2=LOST: 추적 실패
+  - 3=REACQUIRED: 추적 재획득
 
 ---
 
@@ -251,9 +332,12 @@ Vision Service는 3개의 카메라를 사용합니다:
   - `door_elevator/DoorStatus.srv`
   - `door_elevator/ElevatorStatus.srv`
   - `sensor/ButtonStatus.srv`
+  - `std_srvs/Trigger.srv` (alias: `/vs/command/stop_tracking`)
 - **Messages**: `roomie_msgs/msg/`
   - `robot_status/Obstacle.msg`
   - `robot_status/GlassDoorStatus.msg`
+  - `robot_status/Tracking.msg`
 - **Actions**: `roomie_msgs/action/`
+  - `Enroll.action`
  
 

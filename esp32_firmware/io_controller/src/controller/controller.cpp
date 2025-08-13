@@ -1,5 +1,7 @@
 #include "controller.h"
 #include <Arduino.h>
+#include <SPI.h>
+#include <string.h>
 
 const char* robotStateToString(RobotState state) {
   switch (state) {
@@ -21,8 +23,16 @@ const char* robotStateToString(RobotState state) {
   }
 }
 
+const char* cardReaderStateToString(CardReaderState state) {
+  switch (state) {
+    case CardReaderState::DEACTIVATED: return "비활성화";
+    case CardReaderState::ACTIVATED:  return "활성화";
+    default:                        return "UNKNOWN";
+  }
+}
+
 // 초음파 센서 거리 측정 헬퍼 함수
-float getDistanceCM(int trigPin, int echoPin) {
+float Controller::getDistanceCM(int trigPin, int echoPin) {
   digitalWrite(trigPin, LOW);
   delayMicroseconds(2);
   digitalWrite(trigPin, HIGH);
@@ -36,20 +46,46 @@ float getDistanceCM(int trigPin, int echoPin) {
   return duration * 0.034 / 2.0; // cm 단위로 변환
 }
 
-Controller::Controller() : lockState(false), servoAttached(false), currentRobotState(RobotState::INITIAL), lastUpdate(0) {}
+Controller::Controller() : 
+  lockState(false), 
+  servoAttached(false), 
+  rfid(RFID_SS_PIN, RFID_RST_PIN), // rfid 객체 초기화
+  rfidInitialized(false),
+  currentRobotState(RobotState::INITIAL),
+  cardReaderState(CardReaderState::DEACTIVATED),
+  lastUpdate(0),
+  cardReaderStartTime(0) {}
 
 bool Controller::init() {
   Serial.println("컨트롤러 초기화 시작...");
+
+  // RFID 리더기 초기화
+  SPI.begin();
+  delay(100); 
+  rfid.PCD_Init();
+  delay(100); 
   
   // 서보모터 초기화
   lockServo.attach(SERVO_LOCK_PIN);
   if (lockServo.attached()) {
     Serial.println("서보모터 초기화 성공");
     servoAttached = true;
-    setLockState(false);
+    setLockState(true);
   } else {
     Serial.println("⚠️ 서보모터 초기화 실패!");
     servoAttached = false;
+  }
+  
+  // 버전 확인으로 간단하게 초기화 성공 여부 판단
+  byte version = rfid.PCD_ReadRegister(MFRC522::VersionReg);
+  if (version != 0x00 && version != 0xFF) {
+      Serial.print("RFID 리더기 초기화 성공 (버전: 0x");
+      Serial.print(version, HEX);
+      Serial.println(")");
+      rfidInitialized = true;
+  } else {
+      Serial.println("⚠️ RFID 리더기 초기화 실패!");
+      rfidInitialized = false;
   }
 
   // 초음파 센서 핀 초기화
@@ -67,7 +103,52 @@ bool Controller::init() {
   Serial.println("LED 핀 초기화 완료");
   
   setRobotState(RobotState::INITIAL);
-  Serial.println("컨트롤러 초기화 완료");
+  Serial.println("✅ IO 초기화 완료");
+  return true;
+}
+
+bool Controller::readCardInfo(int32_t& location_id) {
+  if (!rfidInitialized) {
+    Serial.println("⚠️ RFID가 초기화되지 않아 읽을 수 없습니다.");
+    return false;
+  }
+  
+  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) {
+    return false; // 새 카드가 없으면 실패 반환
+  }
+
+  Serial.println("INFO: 카드 인식됨, 데이터 읽기 시도...");
+
+  MFRC522::MIFARE_Key key;
+  for (byte i = 0; i < 6; i++) key.keyByte[i] = 0xFF;
+
+  byte blockAddr = 4;
+  MFRC522::StatusCode status;
+  
+  status = rfid.PCD_Authenticate(MFRC522::PICC_CMD_MF_AUTH_KEY_A, blockAddr, &key, &(rfid.uid));
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print("❌ 인증 실패: ");
+    Serial.println(rfid.GetStatusCodeName(status));
+    return false;
+  }
+
+  byte readBuffer[18];
+  byte size = sizeof(readBuffer);
+  status = rfid.MIFARE_Read(blockAddr, readBuffer, &size);
+  if (status != MFRC522::STATUS_OK) {
+    Serial.print("❌ 데이터 읽기 실패: ");
+    Serial.println(rfid.GetStatusCodeName(status));
+    return false;
+  }
+
+  // 읽어온 바이트 배열을 int32_t로 변환
+  memcpy(&location_id, readBuffer, sizeof(location_id));
+  
+  Serial.printf("카드 읽기 성공! Location ID: %d\n", location_id);
+
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+
   return true;
 }
 
@@ -133,6 +214,18 @@ bool Controller::isItemLoaded() {
 void Controller::setRobotState(RobotState state) {
   currentRobotState = state;
   Serial.printf("로봇 상태 변경: %d (%s)\n", state, robotStateToString(state));
+}
+
+void Controller::setCardReaderState(CardReaderState state) {
+  cardReaderState = state;
+  Serial.printf("카드 리더 상태 변경: %s\n", cardReaderStateToString(state));
+  
+  if (state == CardReaderState::ACTIVATED) {
+    cardReaderStartTime = millis();
+    Serial.println("카드 리더 활성화 - 카드를 대주세요");
+  } else {
+    Serial.println("카드 리더 비활성화");
+  }
 }
 
 void Controller::setSystemStatus(bool ready) {

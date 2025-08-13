@@ -56,7 +56,7 @@ GUI_EVENT_TOPIC = '/robot_gui/event'
 CMD_VEL_TOPIC = '/cmd_vel'
 
 # ===== Button Configuration =====
-TARGET_BUTTON_ID = 0  # 상행버튼
+TARGET_BUTTON_ID = 101  # 상행버튼
 INTERIOR_BUTTON_ID = 6  # 6층 버튼
 BUTTON_TRACKING_TIMER_HZ = 10.0  # 10Hz (0.1초마다)
 
@@ -69,15 +69,15 @@ BACKUP_TIMEOUT = 10.0  # 후진 타임아웃 (초)
 SIMPLE_GOAL_TOPIC = '/simple_goal_pose'  # simple_navigator2 목표 토픽
 
 # ===== 가상 test =====
-ELEVATOR_CENTER_X = -2.0  # 엘리베이터 중앙 X 좌표 5.25
-ELEVATOR_CENTER_Y = 1.0  # 엘리베이터 중앙 Y 좌표 -3.0
-ELEVATOR_CENTER_YAW = 0.0  # 엘리베이터 중앙 방향 (라디안) -1.57
-ELEVATOR_INTERIOR_X = 0.0  # 엘리베이터 내부 X 좌표
-ELEVATOR_INTERIOR_Y = 1.0   # 엘리베이터 내부 Y 좌표
-ELEVATOR_INTERIOR_YAW = 3.14 # 엘리베이터 내부 방향 (라디안)
-ELEVATOR_EXIT_X = -2.0  # 엘리베이터 외부 X 좌표 (6층)
-ELEVATOR_EXIT_Y = 1.0   # 엘리베이터 외부 Y 좌표 (6층)
-ELEVATOR_EXIT_YAW = -1.57 # 엘리베이터 외부 방향 (라디안)
+# ELEVATOR_CENTER_X = -2.0  # 엘리베이터 중앙 X 좌표 5.25
+# ELEVATOR_CENTER_Y = 1.0  # 엘리베이터 중앙 Y 좌표 -3.0
+# ELEVATOR_CENTER_YAW = 0.0  # 엘리베이터 중앙 방향 (라디안) -1.57
+# ELEVATOR_INTERIOR_X = 0.0  # 엘리베이터 내부 X 좌표
+# ELEVATOR_INTERIOR_Y = 1.0   # 엘리베이터 내부 Y 좌표
+# ELEVATOR_INTERIOR_YAW = 3.14 # 엘리베이터 내부 방향 (라디안)
+# ELEVATOR_EXIT_X = -2.0  # 엘리베이터 외부 X 좌표 (6층)
+# ELEVATOR_EXIT_Y = 1.0   # 엘리베이터 외부 Y 좌표 (6층)
+# ELEVATOR_EXIT_YAW = -1.57 # 엘리베이터 외부 방향 (라디안)
 
 # ===== 실내 test =====
 # ELEVATOR_CENTER_X = -0.2  # 엘리베이터 중앙 X 좌표 5.25
@@ -91,24 +91,24 @@ ELEVATOR_EXIT_YAW = -1.57 # 엘리베이터 외부 방향 (라디안)
 # ELEVATOR_EXIT_YAW = 0.0 # 엘리베이터 외부 방향 (라디안)
 
 # ===== Elevator Center Position (시나리오 0.5용) =====
-# ELEVATOR_BUTTON_X = 3.95  # 엘리베이터 중앙 X 좌표 5.25
-# ELEVATOR_BUTTON_Y = -4.0  # 엘리베이터 중앙 Y 좌표 -3.0
-# ELEVATOR_BUTTON_YAW = -1.57  # 엘리베이터 중앙 방향 (라디안) -1.57
+ELEVATOR_BUTTON_X = 3.95  # 엘리베이터 중앙 X 좌표 5.25
+ELEVATOR_BUTTON_Y = -4.0  # 엘리베이터 중앙 Y 좌표 -3.0
+ELEVATOR_BUTTON_YAW = -1.57  # 엘리베이터 중앙 방향 (라디안) -1.57
 
-# # ===== Elevator Center Position (시나리오 1.5용) =====
-# ELEVATOR_CENTER_X = 5.53  # 엘리베이터 중앙 X 좌표 5.25
-# ELEVATOR_CENTER_Y = -4.5  # 엘리베이터 중앙 Y 좌표 -3.0
-# ELEVATOR_CENTER_YAW = -1.70  # 엘리베이터 중앙 방향 (라디안) -1.57
+# ===== Elevator Center Position (시나리오 1.5용) =====
+ELEVATOR_CENTER_X = 5.53  # 엘리베이터 중앙 X 좌표 5.25
+ELEVATOR_CENTER_Y = -4.5  # 엘리베이터 중앙 Y 좌표 -3.0
+ELEVATOR_CENTER_YAW = -1.70  # 엘리베이터 중앙 방향 (라디안) -1.57
 
-# # ===== Elevator Interior Position (시나리오 2용) =====
-# ELEVATOR_INTERIOR_X = 5.53  # 엘리베이터 내부 X 좌표
-# ELEVATOR_INTERIOR_Y = -7.4   # 엘리베이터 내부 Y 좌표
-# ELEVATOR_INTERIOR_YAW = 2.5 # 엘리베이터 내부 방향 (라디안)
+# ===== Elevator Interior Position (시나리오 2용) =====
+ELEVATOR_INTERIOR_X = 5.53  # 엘리베이터 내부 X 좌표
+ELEVATOR_INTERIOR_Y = -7.43   # 엘리베이터 내부 Y 좌표
+ELEVATOR_INTERIOR_YAW = 2.5 # 엘리베이터 내부 방향 (라디안)
 
-# # ===== Elevator Exit Position (시나리오 4용) =====
-# ELEVATOR_EXIT_X = -5.53  # 엘리베이터 외부 X 좌표 (6층)
-# ELEVATOR_EXIT_Y = -4.0   # 엘리베이터 외부 Y 좌표 (6층)
-# ELEVATOR_EXIT_YAW = 1.57 # 엘리베이터 외부 방향 (라디안)
+# ===== Elevator Exit Position (시나리오 4용) =====
+ELEVATOR_EXIT_X = 5.53  # 엘리베이터 외부 X 좌표 (6층)
+ELEVATOR_EXIT_Y = -4.0   # 엘리베이터 외부 Y 좌표 (6층)
+ELEVATOR_EXIT_YAW = 1.57 # 엘리베이터 외부 방향 (라디안)
 
 
 
@@ -140,8 +140,8 @@ TARGET_BUTTON_X = 0.5      # 목표 x좌표 (화면 중앙)
 MIN_BUTTON_CONFIDENCE = 0.5  # 최소 신뢰도
 
 # 속도 제한
-MAX_LINEAR_SPEED = 0.15   # 최대 선속도 (m/s)
-MIN_LINEAR_SPEED = 0.03 # 최소 선속도 (m/s)
+MAX_LINEAR_SPEED = 0.20   # 최대 선속도 (m/s)
+MIN_LINEAR_SPEED = 0.05 # 최소 선속도 (m/s)
 MAX_ANGULAR_SPEED = 0.25  # 최대 각속도 (rad/s)
 
 # 제어 게인

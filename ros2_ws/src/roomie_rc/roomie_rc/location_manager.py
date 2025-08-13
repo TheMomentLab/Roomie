@@ -26,7 +26,7 @@ class LocationID(IntEnum):
     ROOM_202 = 202
 
 
-# 위치 데이터베이스 (테스트용)
+# # 위치 데이터베이스 (테스트용)
 # LOCATIONS = {
 #     LocationID.LOB_WAITING: {"x": 0.0, "y": 0.5, "floor": 0},
 #     LocationID.LOB_CALL: {"x": 0.0, "y": 1.5, "floor": 0},
@@ -35,15 +35,15 @@ class LocationID(IntEnum):
 #     LocationID.SUP_PICKUP: {"x": 0.0, "y": 2.0, "floor": 0},
 #     LocationID.ELE_1: {"x": 2.0, "y": 2.5, "floor": 0},
 #     LocationID.ELE_2: {"x": 2.0, "y": 2.5, "floor": 1},
-#     LocationID.ROOM_101: {"x": 1.0, "y": 0.0, "floor": 0},
-#     LocationID.ROOM_102: {"x": 1.5, "y": 0.0, "floor": 0},
-#     LocationID.ROOM_201: {"x": 2.5, "y": 0.5, "floor": 1},
-#     LocationID.ROOM_202: {"x": 2.5, "y": 1.5, "floor": 1},
+#     LocationID.ROOM_101: {"x": 3.0, "y": 0.0, "floor": 0},
+#     LocationID.ROOM_102: {"x": 3.0, "y": 1.0, "floor": 0},
+#     LocationID.ROOM_201: {"x": 3.0, "y": 0.0, "floor": 1},
+#     LocationID.ROOM_202: {"x": 3.0, "y": 1.0, "floor": 1},
 # }
 
 # 위치 데이터베이스
 LOCATIONS = {
-    LocationID.LOB_WAITING: {"x": 0.0, "y": 0.5, "floor": 0},
+    LocationID.LOB_WAITING: {"x": 0.0, "y": 1.5, "floor": 0},
     LocationID.LOB_CALL: {"x": 0.0, "y": 1.5, "floor": 0},
     LocationID.RES_PICKUP: {"x": -5.4, "y": 5.9, "floor": 0},
     LocationID.RES_CALL: {"x": -0.3, "y": 3.5, "floor": 0},

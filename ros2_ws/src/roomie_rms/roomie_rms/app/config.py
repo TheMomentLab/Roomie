@@ -157,7 +157,8 @@ class Settings(BaseSettings):
     DB_POOL_SIZE: int = 5
 
     # FastAPI 서버 설정
-    FASTAPI_HOST: str = "192.168.0.47"
+    FASTAPI_HOST: str = "192.168.0.5"
+    # FASTAPI_HOST: str = "192.168.0.47"
     FASTAPI_PORT: int = 8000
 
     # 로그 설정

@@ -15,130 +15,60 @@
   </property>
   <property name="styleSheet">
    <string>QWidget {
-    background-color: #3a4a5c;
-    color: white;
-    font-family: "Malgun Gothic", "Arial", sans-serif;
+    background-color: #171E26;
 }
 
-QLabel#indicatorLeft, QLabel#indicatorRight {
-    background-color: #1abc9c;
-    border-radius: 30px;
-    min-width: 60px;
-    max-width: 60px;
-    min-height: 60px;
-    max-height: 60px;
-}
-
-QLabel#messageLabel {
+QLabel {
     color: white;
-    font-size: 36px;
-    font-weight: normal;
+    font-family: &quot;Malgun Gothic&quot;, &quot;Arial&quot;, sans-serif;
+    background-color: transparent;
+    border: none;
 }</string>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="spacing">
-    <number>60</number>
+  <widget class="QLabel" name="elevatorImage">
+   <property name="geometry">
+     <rect>
+      <x>660</x>
+      <y>90</y>
+      <width>551</width>
+      <height>601</height>
+     </rect>
    </property>
-   <property name="leftMargin">
-    <number>200</number>
+   <property name="text">
+    <string/>
    </property>
-   <property name="topMargin">
-    <number>200</number>
+   <property name="pixmap">
+    <pixmap resource="../../roomie_rgui/assets/resources.qrc">:/roomie_rgui/assets/rgui_elevator.png</pixmap>
    </property>
-   <property name="rightMargin">
-    <number>200</number>
+   <property name="scaledContents">
+    <bool>true</bool>
    </property>
-   <property name="bottomMargin">
-    <number>200</number>
+  </widget>
+  <widget class="QLabel" name="mainMessage">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>760</y>
+     <width>1921</width>
+     <height>100</height>
+    </rect>
    </property>
-   <item>
-    <spacer name="topSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>100</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="indicatorLayout">
-     <property name="spacing">
-      <number>30</number>
-     </property>
-     <item>
-      <spacer name="leftIndicatorSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <widget class="QLabel" name="indicatorLeft">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="indicatorRight">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="rightIndicatorSpacer">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>40</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <widget class="QLabel" name="messageLabel">
-     <property name="text">
-      <string>목표층으로 이동합니다.</string>
-     </property>
-     <property name="alignment">
-      <set>Qt::AlignCenter</set>
-     </property>
-     <property name="wordWrap">
-      <bool>true</bool>
-     </property>
-    </widget>
-   </item>
-   <item>
-    <spacer name="bottomSpacer">
-     <property name="orientation">
-      <enum>Qt::Vertical</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>20</width>
-       <height>100</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
-  </layout>
+   <property name="styleSheet">
+    <string>font-size: 90px; 
+font-weight: bold; 
+color: white; 
+letter-spacing: 2px;</string>
+   </property>
+   <property name="text">
+    <string>목표층으로 이동중입니다.</string>
+   </property>
+   <property name="alignment">
+    <set>Qt::AlignCenter</set>
+   </property>
+  </widget>
  </widget>
- <resources/>
+ <resources>
+  <include location="../../roomie_rgui/assets/resources.qrc"/>
+ </resources>
  <connections/>
 </ui>

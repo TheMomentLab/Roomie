@@ -1,11 +1,14 @@
 # --- 서버 설정 ---
-SERVER_IP = "192.168.0.47"
+SERVER_IP = "192.168.0.5"
 SERVER_PORT = 8000
 API_URL = f"http://{SERVER_IP}:{SERVER_PORT}/api/gui"
 WEBSOCKET_URL = f"ws://{SERVER_IP}:{SERVER_PORT}/api/gui/ws/admin/admin_01"
 
 # --- 통신 설정 ---
 WEBSOCKET_RECONNECT_INTERVAL = 3000  # 재연결 시도 간격 (ms)
+
+# --- WebSocket 설정 ---
+WEBSOCKET_MAX_RECONNECT_ATTEMPTS = 10  # 최대 재연결 시도 횟수
 
 # --- UI 설정 ---
 UI_FILE = 'admin_gui.ui'

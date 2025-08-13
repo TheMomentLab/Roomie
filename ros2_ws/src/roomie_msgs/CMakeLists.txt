@@ -32,9 +32,14 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/robot_status/RoomiePose.msg"
   "msg/robot_status/Obstacle.msg"
   "msg/robot_status/GlassDoorStatus.msg"
+  "msg/robot_status/Tracking.msg"
   
   # Messages - User Interface
   "msg/user_interface/RobotGuiEvent.msg"
+
+  # Messages - rfid
+  "msg/rfid/ReadCardRequest.msg"
+  "msg/rfid/ReadCardResponse.msg"
   
   # Services - Robot Control
   "srv/robot_control/SetVSMode.srv"
@@ -47,6 +52,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   
   # Services - Sensor
   "srv/sensor/ButtonStatus.srv"
+  "srv/sensor/ButtonStatus2.srv"
   "srv/sensor/CheckItemLoaded.srv"
   "srv/sensor/CheckDoorState.srv"
   
@@ -57,9 +63,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/PerformTask.action"
   "action/PerformReturn.action"
   "action/StartCountdown.action"
+  "action/ReadCardInfo.action"
   "action/ReturnCountdown.action"
   "action/SetPose.action"
   "action/ClickButton.action"
+  "action/Enroll.action"
   
   DEPENDENCIES
     geometry_msgs

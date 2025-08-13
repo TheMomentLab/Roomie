@@ -3,10 +3,12 @@ import logging
 import os
 import math
 from datetime import datetime
+import numpy as np
+import cv2
 
 # PyQt6 및 관련 모듈
 from PyQt6 import QtWidgets, uic, QtCore, QtGui
-from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool, QThread, Qt
+from PyQt6.QtCore import pyqtSignal, pyqtSlot, QThreadPool, QThread, Qt, QPointF
 from PyQt6.QtGui import QCloseEvent, QPixmap
 from PyQt6.QtWidgets import QGraphicsScene, QGraphicsPixmapItem
 
@@ -192,6 +194,30 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ros_node = None
         self.ros_topic_handler = ROS2TopicHandler(self)
         
+        # 좌표 변환 파라미터 초기화
+        # 로봇 실제 좌표 ↔ 이미지 픽셀 좌표
+        robot_coords = np.array([
+            [-5.4, 5.9],  # 로봇 좌표 1
+            [0, 0],       # 로봇 좌표 2 (원점)
+            [5.9, 3.4]    # 로봇 좌표 3
+        ], dtype=np.float32)
+
+        pixel_coords = np.array([
+            [92, 20],     # 픽셀 좌표 1
+            [202, 131],   # 픽셀 좌표 2 (원점)
+            [323, 76]     # 픽셀 좌표 3
+        ], dtype=np.float32)
+
+        # 아핀 변환 행렬 계산
+        try:
+            # OpenCV의 getAffineTransform 함수를 사용하여 2x3 변환 행렬을 직접 계산
+            # 이 행렬에는 회전, 크기 조절, 평행 이동 정보가 모두 포함되어 있음
+            self.affine_matrix = cv2.getAffineTransform(robot_coords, pixel_coords)
+        except Exception as e:
+            logger.error(f"아핀 변환 행렬 계산 중 오류 발생: {e}")
+            # 오류 발생 시, 실행을 중단하거나 기본 행렬을 설정할 수 있습니다.
+            self.affine_matrix = None
+        
         # UI 및 기능 설정
         self.setup_ui_objects()
         self.setup_floor_buttons()
@@ -267,6 +293,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ws_thread.started.connect(self.ws_client.connect)
         self.ws_client.message_received.connect(self.handle_websocket_message)
         self.ws_client.connection_status_changed.connect(self.update_connection_status)
+        self.ws_client.connection_attempt_failed.connect(self.handle_connection_failure)
         self.ws_thread.start()
 
     def setup_connections(self):
@@ -304,14 +331,17 @@ class MainWindow(QtWidgets.QMainWindow):
     # --- 이벤트 핸들러 및 슬롯 ---
     def closeEvent(self, event: QCloseEvent):
         logger.info("애플리케이션 종료 중...")
-        if hasattr(self, 'ws_client'): self.ws_client.disconnect()
+        if hasattr(self, 'ws_client'): 
+            self.ws_client.disconnect()
         if hasattr(self, 'ws_thread'):
             self.ws_thread.quit()
             self.ws_thread.wait()
-        if hasattr(self, 'ros_timer'): self.ros_timer.stop()
+        if hasattr(self, 'ros_timer'): 
+            self.ros_timer.stop()
         if hasattr(self, 'ros_node') and self.ros_node:
             self.ros_node.destroy_node()
-            if rclpy.ok(): rclpy.shutdown()
+            if rclpy.ok(): 
+                rclpy.shutdown()
         super().closeEvent(event)
 
     def switch_page(self, index: int):
@@ -332,6 +362,22 @@ class MainWindow(QtWidgets.QMainWindow):
         robot_current_floor = floor + 1
         self.robot_floor_map[robot_id] = robot_current_floor
         
+        if self.affine_matrix is not None:
+            robot_x = pose.position.x
+            robot_y = pose.position.y
+            
+            # (x, y, 1) 형태의 동차 좌표(Homogeneous coordinates)로 변환
+            robot_vec = np.array([robot_x, robot_y, 1]) 
+            
+            # 아핀 변환 행렬과 곱하여 픽셀 좌표 계산
+            pixel_vec = self.affine_matrix @ robot_vec
+            pixel_x, pixel_y = pixel_vec[0], pixel_vec[1]
+            
+        else:
+            # 변환 행렬이 없는 경우, (0,0)으로 표시
+            pixel_x, pixel_y = 0, 0
+            logger.warning(f"로봇 {robot_id}의 좌표를 변환할 수 없습니다 (아핀 변환 행렬 없음).")
+        
         if robot_id not in self.robot_items:
             try:
                 pixmap = QPixmap('assets/robot_icon.png').scaled(12, 12, transformMode=Qt.TransformationMode.SmoothTransformation)
@@ -339,6 +385,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     logger.error(f"로봇 {robot_id} 아이콘 이미지 로드 실패")
                     return
                 robot_item = QGraphicsPixmapItem(pixmap)
+                robot_item.setOffset(-6, -6)
                 robot_item.setZValue(1)
                 robot_item.setTransformOriginPoint(robot_item.boundingRect().center())
                 self.map_scene.addItem(robot_item)
@@ -349,12 +396,11 @@ class MainWindow(QtWidgets.QMainWindow):
                 return
 
         robot_item = self.robot_items[robot_id]
-        robot_item.setPos(pose.position.x, pose.position.y)
+        robot_item.setPos(pixel_x, pixel_y)
         
-        q = pose.orientation
-        yaw_rad = math.atan2(2.0 * (q.w * q.z + q.x * q.y), 1.0 - 2.0 * (q.y * q.y + q.z * q.z))
+        yaw_rad = pose.position.z
         yaw_deg = math.degrees(yaw_rad)
-        robot_item.setRotation(yaw_deg)
+        robot_item.setRotation(-yaw_deg + 90)
         
         if robot_current_floor == self.current_floor:
             robot_item.setVisible(True)
@@ -377,7 +423,35 @@ class MainWindow(QtWidgets.QMainWindow):
 
     @pyqtSlot(bool)
     def update_connection_status(self, connected: bool):
-        self.statusBar().showMessage("서버 연결됨" if connected else "서버 연결 끊김 - 재연결 시도 중...")
+        if connected:
+            self.statusBar().showMessage("서버 연결됨")
+        else:
+            self.statusBar().showMessage("서버 연결 끊김 - 재연결 시도 중...")
+
+    @pyqtSlot(int, str)
+    def handle_connection_failure(self, attempt_count: int, error_msg: str):
+        """연결 시도 실패 시 호출"""
+        logger.error(f"WebSocket 연결 시도 {attempt_count} 실패: {error_msg}")
+        self.statusBar().showMessage(f"연결 실패 (시도 {attempt_count}) - 재연결 중...")
+
+    def get_websocket_status(self) -> dict:
+        """WebSocket 연결 상태 정보 반환"""
+        if hasattr(self, 'ws_client') and self.ws_client:
+            return self.ws_client.get_connection_status()
+        return {
+            "is_connected": False,
+            "is_connecting": False,
+            "connection_attempts": 0,
+            "max_attempts": 0,
+            "last_message_time": 0
+        }
+
+    def log_connection_status(self):
+        """연결 상태를 로그에 기록"""
+        status = self.get_websocket_status()
+        logger.info(f"WebSocket 상태: 연결={status['is_connected']}, 연결중={status['is_connecting']}, "
+                   f"시도횟수={status['connection_attempts']}/{status['max_attempts']}, "
+                   f"재연결활성화={status['should_reconnect']}")
 
     @pyqtSlot(str)
     def handle_http_error(self, error_msg: str):

@@ -3,186 +3,175 @@ import asyncio
 from . import config
 from .vision_client import VisionServiceClient
 from .motion_controller import MotionController
-from .coordinate_transformer import CoordinateTransformer 
-import asyncio
-
+from .coordinate_transformer import CoordinateTransformer
+from visualization_msgs.msg import Marker
+from geometry_msgs.msg import Point
 
 class ImageServoing:
+    """
+    카메라를 이용한 시각 서보잉을 담당하는 클래스입니다.
+    - align_to_standby_pose: 버튼을 정면으로 바라보는 준비 자세까지 로봇팔을 정렬합니다.
+    """
     def __init__(self, vision_client: VisionServiceClient, motion_controller: MotionController, coord_transformer: CoordinateTransformer):
         self.vision_client = vision_client
         self.motion_controller = motion_controller
         self.coord_transformer = coord_transformer
         self.robot_id = config.ROBOT_ID
-        self.max_attempts = 20000
-        self.position_tolerance_m = 0.001
-        # ➕ [추가] 정렬 성공 시의 최종 목표 Pose와 Orientation을 저장할 속성
+        self.max_attempts = 200  # 최대 시도 횟수
         self.last_target_pose = None
         self.last_target_orientation = None
+        self.marker_pub = self.motion_controller.joint_publisher.create_publisher(Marker, '/debug/target_markers', 10)
+        self._log("RViz 디버그 마커 퍼블리셔 생성됨.")
 
-    async def align_to_standby_pose(self, button_id: int) -> bool:
-        """
-        [수정됨] '비례 이동' 방식으로 정렬하고, 안정성을 위해 목표 방향을 고정합니다.
-        """
-        self._log(f"버튼 ID {button_id}에 대한 비례 이동 서보잉을 시작합니다.")
-        self.last_target_pose = None
-        self.last_target_orientation = None
+    def _set_successful_alignment_state(self, pose: np.ndarray, orientation: np.ndarray):
+        """정렬 성공 시, 최종 목표 자세와 방향을 클래스 변수에 저장합니다."""
+        self.last_target_pose = pose
+        self.last_target_orientation = orientation
+        self._log("✅ '준비 위치' 정렬 성공.")
 
-        for attempt in range(self.max_attempts):
-            self._log(f"--- 정렬 시도 #{attempt + 1} ---")
+    def _publish_debug_markers(self, button_pos: np.ndarray, standby_pos: np.ndarray):
+        """계산된 버튼 위치와 준비 위치를 RViz에 시각화합니다."""
+        # 버튼 위치 마커 (빨간색 구)
+        marker_btn = Marker()
+        marker_btn.header.frame_id = "base_link"
+        marker_btn.header.stamp = self.motion_controller.joint_publisher.get_clock().now().to_msg()
+        marker_btn.ns = "targets"
+        marker_btn.id = 0
+        marker_btn.type = Marker.SPHERE
+        marker_btn.action = Marker.ADD
+        marker_btn.pose.position = Point(x=button_pos[0], y=button_pos[1], z=button_pos[2])
+        marker_btn.pose.orientation.w = 1.0
+        marker_btn.scale.x = 0.03; marker_btn.scale.y = 0.03; marker_btn.scale.z = 0.03
+        marker_btn.color.a = 0.8; marker_btn.color.r = 1.0; marker_btn.color.g = 0.0; marker_btn.color.b = 0.0
 
-            # 1. 비전 서비스로부터 버튼 위치 정보 획득
-            response = self.vision_client.request_button_status(self.robot_id, button_id)
-            if not response or not response.success:
-                self._log("버튼 정보를 얻지 못했습니다. 시야에 없는지 확인하세요.", error=True)
-                await asyncio.sleep(0.5)
-                continue
-            
-            # 2. 2D 이미지 좌표 생성
+        # 준비 위치 마커 (파란색 구)
+        marker_sby = Marker(
+            header=marker_btn.header, ns=marker_btn.ns, id=1, type=Marker.SPHERE, action=Marker.ADD,
+            pose=marker_btn.pose, scale=marker_btn.scale, color=marker_btn.color
+        )
+        marker_sby.pose.position = Point(x=standby_pos[0], y=standby_pos[1], z=standby_pos[2])
+        marker_sby.color.r = 0.0; marker_sby.color.b = 1.0
+
+        self.marker_pub.publish(marker_btn)
+        self.marker_pub.publish(marker_sby)
+
+    async def _get_current_button_pose(self, button_id: int) -> np.ndarray | None:
+        """비전 데이터를 이용해 현재 프레임에서 버튼의 3D 변환 행렬(T_base_to_btn)을 계산합니다."""
+        response = await self.vision_client.request_status(
+            mode=config.POSE_ESTIMATION_MODE, robot_id=self.robot_id, button_id=button_id
+        )
+        if not response or not response.success:
+            self._log("버튼 시야 이탈. 자세 계산 실패.", error=True)
+            return None
+
+        image_points_2d = None
+        if config.POSE_ESTIMATION_MODE == 'corner':
+            if hasattr(response, 'corners') and len(response.corners) == 8:
+                image_points_2d = np.array(response.corners, dtype=np.float32).reshape((4, 2))
+            else:
+                self._log("'corner' 모드지만 corners 정보 없음.", error=True)
+                return None
+        else:
             center_x_px = response.x * config.IMAGE_WIDTH_PX
             center_y_px = response.y * config.IMAGE_HEIGHT_PX
             pixel_area = response.size * config.IMAGE_WIDTH_PX * config.IMAGE_HEIGHT_PX
             pixel_diameter = np.sqrt(max(0, pixel_area))
             radius_px = pixel_diameter / 2.0
-            
             image_points_2d = np.array([
                 [center_x_px + radius_px, center_y_px], [center_x_px - radius_px, center_y_px],
                 [center_x_px, center_y_px + radius_px], [center_x_px, center_y_px - radius_px]
             ], dtype=np.float32)
 
-            # 3. 현재 로봇팔의 Pose(FK) 획득
-            current_robot_transform = self.motion_controller._get_current_transform()
+        current_robot_transform = self.motion_controller._get_current_transform()
+        return self.coord_transformer.get_button_pose_in_base_frame(
+            robot_fk_transform=current_robot_transform,
+            mode=config.POSE_ESTIMATION_MODE,
+            image_points_2d=image_points_2d
+        )
 
-            # 4. PnP를 통해 최종 목표 위치/방향 계산 (로봇 베이스 기준)
-            target_xyz, calculated_orientation = self.coord_transformer.get_target_pose_from_points(
-                image_points_2d, current_robot_transform)
+    def create_look_at_matrix(self, camera_pos: np.ndarray, target_pos: np.ndarray, world_up: np.ndarray = np.array([0, 0, 1])) -> np.ndarray | None:
+        """카메라 위치에서 목표 위치를 바라보는 3x3 회전 행렬을 생성합니다."""
+        epsilon = 1e-6
 
-            if target_xyz is None:
-                self._log("목표 '준비 위치' 계산 실패. PnP 에러일 수 있습니다.", error=True)
-                continue
+        forward = target_pos - camera_pos
+        forward_norm = np.linalg.norm(forward)
+        if forward_norm < epsilon: return None
+        forward /= forward_norm
 
-            # ======================= [핵심 수정 시작] =======================
-            # PBVS 모드의 안정성을 위해, 비전으로 계산된 방향 대신
-            # MODEL_ONLY 모드처럼 항상 로봇 베이스와 정렬된 방향을 사용하도록 강제합니다.
-            # 이렇게 하면 press_forward_x()가 항상 예측 가능한 방향(로봇의 X축)으로 동작합니다.
-            # stable_orientation = np.eye(3)
-            stable_orientation = calculated_orientation
+        if abs(np.dot(forward, world_up)) > 0.999:
+            self._log("카메라가 수직 방향을 향하고 있어 world_up 벡터를 임시 변경합니다.", info=True)
+            right = np.cross(np.array([1, 0, 0]), forward)
+        else:
+            right = np.cross(world_up, forward)
 
-            # ======================== [핵심 수정 끝] ========================
+        right_norm = np.linalg.norm(right)
+        if right_norm < epsilon: return None
+        right /= right_norm
 
-            # 5. 현재 위치와 최종 목표 사이의 거리 오차 계산
-            current_pos = current_robot_transform[:3, 3]
-            position_error = np.linalg.norm(current_pos - target_xyz)
-            self._log(f"목표까지의 남은 거리: {position_error*1000:.2f} mm")
+        down = np.cross(forward, right)
+        rotation_matrix = np.array([right, down, forward]).T
+        return rotation_matrix
 
-            # 6. 오차가 허용 범위 내이면 성공으로 판단하고 루프 종료
-            if position_error < self.position_tolerance_m:
-                self.last_target_pose = target_xyz
-                # 성공 시에도 안정화된 방향을 저장합니다.
-                self.last_target_orientation = stable_orientation
-                self._log(f"✅ '준비 위치' 정렬 성공. 최종 목표 Pose를 저장했습니다: {np.round(self.last_target_pose, 4)}")
-                return True
-
-            
-                # ======================= [핵심 수정 시작] =======================
-            # 7. 이번 스텝에서 이동할 '중간 목표 지점'을 고정 거리 방식으로 계산합니다.
-
-            # (1) 현재 위치에서 최종 목표까지의 방향 벡터 계산
-            move_vector = target_xyz - current_pos
-            direction_vector = move_vector / position_error # 정규화된 방향 벡터
-
-            # (2) 이번 스텝에 이동할 거리는 '고정값'과 '남은 거리' 중 작은 값으로 선택 (오버슈팅 방지)
-            step_distance = min(config.SERVOING_CONSTANT_STEP_M, position_error)
-
-            # (3) 중간 목표 지점 계산
-            step_target_xyz = current_pos + direction_vector * step_distance
-            self._log(f"  -> 이번 스텝 목표 위치 (고정 이동): {np.round(step_target_xyz, 4)}")
-            # ======================== [핵심 수정 끝] ========================
-
-                
-            # 8. 계산된 중간 목표 지점으로 한 스텝 이동 (안정화된 방향 사용)
-            if not self.motion_controller.move_to_pose_ik(step_target_xyz, stable_orientation):
-                self._log("IK 이동 스텝 실패. 목표에 도달할 수 없습니다.", error=True)
-                return False
-
-            await asyncio.sleep(0.2)
-
-        self._log(f"❌ 최대 시도 횟수({self.max_attempts}회) 내에 정렬하지 못했습니다.", error=True)
-        return False
-
-    async def align_with_ibvs(self, button_id: int) -> bool:
-        """
-        [수정됨] 하이브리드 IBVS 방식으로 버튼을 정렬합니다.
-        - 좌/우, 상/하는 픽셀 오차에 비례하여 움직입니다.
-        - 전/후는 고정된 거리(SERVOING_CONSTANT_STEP_M)만큼 움직입니다.
-        """
-        self._log(f"버튼 ID {button_id}에 대한 하이브리드 IBVS 정렬을 시작합니다.")
+    async def align_to_standby_pose(self, button_id: int) -> bool:
+        """버튼의 정면 방향을 기준으로 '준비 위치'를 계산하여 로봇팔을 정렬합니다."""
+        self._log(f"버튼 ID {button_id}에 대한 비례 이동 서보잉을 시작합니다.")
+        self.last_target_pose = None
+        self.last_target_orientation = None
+        epsilon = 1e-6
 
         for attempt in range(self.max_attempts):
-            self._log(f"--- IBVS 정렬 시도 #{attempt + 1} ---")
+            self._log(f"--- 정렬 시도 #{attempt + 1} ---")
 
-            # 1. 비전 정보 획득 (기존과 동일)
-            response = self.vision_client.request_button_status(self.robot_id, button_id)
-            if not response or not response.success:
-                self._log("버튼 정보를 얻지 못했습니다. 시야에 없는지 확인하세요.", error=True)
-                await asyncio.sleep(0.5)
+            T_base_to_btn = await self._get_current_button_pose(button_id)
+            if T_base_to_btn is None:
+                await asyncio.sleep(0.1)
                 continue
 
-            # 2. 픽셀 좌표 및 크기 정의 (기존과 동일)
-            target_x_px = config.IMAGE_WIDTH_PX / 2
-            target_y_px = config.IMAGE_HEIGHT_PX / 2
-            current_x_px = response.x * config.IMAGE_WIDTH_PX
-            current_y_px = response.y * config.IMAGE_HEIGHT_PX
+            button_orientation_matrix = T_base_to_btn[:3, :3]
+            button_pos = T_base_to_btn[:3, 3]
+            button_z_vector = button_orientation_matrix[:, 2]
+            standby_pos = button_pos - button_z_vector * config.SERVOING_STANDBY_DISTANCE_M
 
-            target_size_px = config.IMAGE_HEIGHT_PX * config.IBVS_TARGET_SIZE_RATIO
-            current_size_px = np.sqrt(response.size * config.IMAGE_WIDTH_PX * config.IMAGE_HEIGHT_PX)
+            current_pos = self.motion_controller._get_current_transform()[:3, 3]
+            position_error_vec = standby_pos - current_pos
+            position_error = np.linalg.norm(position_error_vec)
+            self._log(f"준비 위치까지 남은 거리: {position_error * 1000:.2f} mm")
 
-            # 3. 픽셀 오차 계산 (기존과 동일)
-            error_x = current_x_px - target_x_px
-            error_y = current_y_px - target_y_px
+            # --- [디버그용] 계산된 좌표를 RViz에 마커로 표시 ---
+            self._publish_debug_markers(button_pos, standby_pos)
 
-            # 4. 성공 여부 판단 (기존과 동일)
-            is_centered = abs(error_x) < config.IBVS_PIXEL_TOLERANCE and \
-                        abs(error_y) < config.IBVS_PIXEL_TOLERANCE
-            is_at_correct_distance = abs(current_size_px - target_size_px) < (config.IBVS_PIXEL_TOLERANCE * 2)
-
-            if is_centered and is_at_correct_distance:
-                self._log(f"✅ IBVS 정렬 성공.")
-                current_transform = self.motion_controller._get_current_transform()
-                self.last_target_pose = current_transform[:3, 3]
-                self.last_target_orientation = current_transform[:3, :3]
+            if position_error < config.SERVOING_POSITION_TOLERANCE_M:
+                self._set_successful_alignment_state(standby_pos, button_orientation_matrix)
                 return True
 
-            # ======================= [핵심 수정 시작] =======================
-            # 5. 이동 벡터 계산
-            # (1) 좌/우, 상/하 이동량은 픽셀 오차에 비례하여 계산
-            move_y = -error_x * config.IBVS_GAIN_X  # Y축(좌/우)
-            move_z = error_y * config.IBVS_GAIN_Y   # Z축(상/하)
+            move_direction = position_error_vec / (position_error + epsilon)
+            step_distance = min(config.SERVOING_MAX_STEP_M, position_error)
+            
+            if step_distance < config.IK_MIN_STEP_M:
+                self._log(f"이동 거리가 최소 스텝보다 작아 성공으로 간주합니다.")
+                self._set_successful_alignment_state(standby_pos, button_orientation_matrix)
+                return True
 
-            # (2) 전/후 이동량은 '고정 거리'를 사용
-            move_x = 0.0
-            # 어느정도 중앙에 정렬되었을 때만 전/후진 수행 (안정성 확보)
-            if abs(error_x) < (config.IBVS_PIXEL_TOLERANCE * 5) and abs(error_y) < (config.IBVS_PIXEL_TOLERANCE * 5):
-                if current_size_px < target_size_px: # 너무 멀면
-                    move_x = config.SERVOING_CONSTANT_STEP_M # 고정값만큼 전진
-                else: # 너무 가까우면
-                    move_x = -config.SERVOING_CONSTANT_STEP_M # 고정값만큼 후진
+            step_target_xyz = current_pos + move_direction * step_distance
+            target_orientation = self.create_look_at_matrix(current_pos, button_pos)
 
-            self._log(f"픽셀 오차: [X:{error_x:.1f}, Y:{error_y:.1f}], 크기: {current_size_px:.1f}/{target_size_px:.1f}")
-            move_vector_cam = np.array([move_x, move_y, move_z])
-            self._log(f"  -> 계산된 이동 벡터(카메라 기준): {np.round(move_vector_cam*1000, 2)} mm")
-            # ======================== [핵심 수정 끝] ========================
+            if target_orientation is None:
+                self._log("Look-at 방향 행렬 계산 실패.", error=True)
+                continue
 
-            # 6. 계산된 벡터만큼 로봇을 상대 이동 (기존과 동일)
-            if not self.motion_controller.move_relative_cartesian(move_vector_cam):
-                self._log("IBVS 이동 스텝 실패.", error=True)
+            # 9. 계산된 위치와 '수정된 방향'으로 로봇팔을 한 스텝 이동
+            if not await self.motion_controller.move_to_pose_ik(
+                step_target_xyz, orientation=target_orientation, blocking=True
+            ):
+                self._log("IK 이동 스텝 실패.", error=True)
                 return False
 
             await asyncio.sleep(0.1)
 
         self._log(f"❌ 최대 시도 횟수({self.max_attempts}회) 내에 정렬하지 못했습니다.", error=True)
         return False
-        
-    def _log(self, message: str, error: bool = False):
+
+    def _log(self, message: str, info: bool = False, error: bool = False):
         if config.DEBUG:
             log_level = "ERROR" if error else "INFO"
             print(f"[ImageServoing][{log_level}] {message}")
