@@ -1370,22 +1370,13 @@ class MultiModelDetector:
                     else:
                         self.logger.info(f"✅ 일반 주행 모델 로딩 성공 (GPU): {normal_model_path}")
                 except Exception as e:
-                    self.logger.warning(f"⚠️ 일반 주행 모델 로딩 실패: {e}")
+                    self.logger.error(f"❌ 일반 주행 모델 로딩 실패: {e}")
+                    self.logger.error("🚨 normal 모델 로딩에 실패했습니다. 파일 경로와 권한을 확인해주세요.")
             else:
-                # 일반 주행용 모델이 없으면 COCO 사전훈련 모델 사용
-                try:
-                    self.models['normal'] = YOLO('yolov8n.pt')
-                    # 🚀 GPU 설정 추가
-                    self.models['normal'].to('cuda')
-                    # COCO 모델 클래스 확인
-                    if hasattr(self.models['normal'], 'names'):
-                        actual_classes = list(self.models['normal'].names.values())
-                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용 (GPU)")
-                        self.logger.info(f"📋 COCO 클래스 (전체 {len(actual_classes)}개): person, chair 등만 필터링 사용")
-                    else:
-                        self.logger.info("✅ 일반 주행용으로 COCO 사전훈련 모델(yolov8n.pt) 사용 (GPU)")
-                except Exception as e:
-                    self.logger.warning(f"⚠️ COCO 모델도 로딩 실패: {e}")
+                # 일반 주행용 모델이 없으면 에러 로그만 출력하고 COCO 폴백 제거
+                self.logger.error("❌ 일반 주행용 모델(normal/best.pt)을 찾을 수 없습니다!")
+                self.logger.error("⚠️ COCO 모델 폴백이 비활성화되었습니다. normal 모델을 준비해주세요.")
+                # COCO 폴백 제거로 normal 모델 강제 사용
             
             # 2. 엘리베이터용 모델 (best_v2.pt 우선, best_v1.pt, best.pt 순서)
             elevator_model_path = self._find_elevator_model()
@@ -1410,13 +1401,17 @@ class MultiModelDetector:
             loaded_models = list(self.models.keys())
             self.logger.info(f"모델 초기화 완료: {loaded_models} ({len(loaded_models)}/2개)")
             
-            # 기본 모델 설정
-            if 'elevator' in self.models:
-                self.current_model_name = 'elevator'
-                self.current_model = self.models['elevator']
-            elif 'normal' in self.models:
+            # 기본 모델 설정 (normal 모델 우선)
+            if 'normal' in self.models:
                 self.current_model_name = 'normal'
                 self.current_model = self.models['normal']
+                self.logger.info("🎯 기본 모델: normal (일반 주행용)")
+            elif 'elevator' in self.models:
+                self.current_model_name = 'elevator'
+                self.current_model = self.models['elevator']
+                self.logger.info("🎯 기본 모델: elevator (엘리베이터용)")
+            else:
+                self.logger.error("❌ 사용 가능한 모델이 없습니다!")
             
             return len(self.models) > 0
                 
@@ -1625,9 +1620,9 @@ class MultiModelDetector:
                             
                             if class_id < len(coco_names):
                                 class_name = coco_names[class_id]
-                                # 관심 있는 객체만 필터링
-                                if class_name not in ['person', 'chair']:
-                                    continue  # 사람과 의자만 탐지
+                                # 관심 있는 객체만 필터링 (의자, 문, 사람)
+                                if class_name not in ['person', 'chair', 'door']:
+                                    continue  # 사람, 의자, 문 탐지
                             else:
                                 class_name = f"unknown_{class_id}"
                         else:
