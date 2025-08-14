@@ -216,32 +216,32 @@ class RCNode(Node):
             self.rms_client = RMSClient(self)
             self.get_logger().info('✅ RMS 클라이언트 준비 완료')
             
-            # # GUI 클라이언트
-            # self.get_logger().info('GUI 클라이언트 초기화...')
-            # self.gui_client = GUIClient(self)
-            # if not self.wait_for_action_server(self.gui_client.start_countdown_client, 'GUI StartCountdown'):
-            #     return False
-            # if not self.wait_for_action_server(self.gui_client.return_countdown_client, 'GUI ReturnCountdown'):
-            #     return False
-            # if not self.wait_for_topic_connection(self.gui_client.gui_event_pub, '/robot_gui/event', True):
-            #     return False
-            # if not self.wait_for_topic_connection(self.gui_client.gui_event_sub, '/robot_gui/event', False):
-            #     return False
-            # self.get_logger().info('✅ GUI 클라이언트 준비 완료')
+            # GUI 클라이언트
+            self.get_logger().info('GUI 클라이언트 초기화...')
+            self.gui_client = GUIClient(self)
+            if not self.wait_for_action_server(self.gui_client.start_countdown_client, 'GUI StartCountdown'):
+                return False
+            if not self.wait_for_action_server(self.gui_client.return_countdown_client, 'GUI ReturnCountdown'):
+                return False
+            if not self.wait_for_topic_connection(self.gui_client.gui_event_pub, '/robot_gui/event', True):
+                return False
+            if not self.wait_for_topic_connection(self.gui_client.gui_event_sub, '/robot_gui/event', False):
+                return False
+            self.get_logger().info('✅ GUI 클라이언트 준비 완료')
             
-            # # Nav2 클라이언트
-            # self.get_logger().info('Nav2 클라이언트 초기화...')
-            # self.nav_client = NavClient(self)
-            # if not self.wait_for_action_server(self.nav_client.nav_to_pose_client, 'NavigateToPose'):
-            #     return False
-            # self.get_logger().info('✅ Nav2 클라이언트 준비 완료')
+            # Nav2 클라이언트
+            self.get_logger().info('Nav2 클라이언트 초기화...')
+            self.nav_client = NavClient(self)
+            if not self.wait_for_action_server(self.nav_client.nav_to_pose_client, 'NavigateToPose'):
+                return False
+            self.get_logger().info('✅ Nav2 클라이언트 준비 완료')
             
-            # # VS 클라이언트
-            # self.get_logger().info('VS 클라이언트 초기화...')
-            # self.vs_client = VSClient(self)
-            # if not self.wait_for_service(self.vs_client.location_client, '/vs/command/location'):
-            #     return False
-            # self.get_logger().info('✅ VS 클라이언트 준비 완료')
+            # VS 클라이언트
+            self.get_logger().info('VS 클라이언트 초기화...')
+            self.vs_client = VSClient(self)
+            if not self.wait_for_service(self.vs_client.location_client, '/vs/command/location'):
+                return False
+            self.get_logger().info('✅ VS 클라이언트 준비 완료')
             
             # # IOC 클라이언트
             # self.get_logger().info('IOC 클라이언트 초기화...')

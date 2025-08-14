@@ -56,6 +56,11 @@ LOCATIONS = {
     LocationID.ROOM_202: {"x": 7.3, "y": 3.4, "floor": 1},
 }
 
+# # 위치 데이터베이스
+# LOCATIONS = {
+#     LocationID.LOB_WAITING: {"x": 0.0, "y": 1.5, "floor": 0},
+#     LocationID.ROOM_101: {"x": 5.9, "y": 3.4, "floor": 0},
+# }
 
 class LocationManager:
     """위치 정보 관리"""
