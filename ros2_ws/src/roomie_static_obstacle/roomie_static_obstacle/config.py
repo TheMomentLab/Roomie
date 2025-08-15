@@ -12,7 +12,7 @@ from typing import Dict, List, Optional, Tuple
 
 
 # 수평 시야 내로 간주할 x 정규화 범위 [0, 1]
-IN_PATH_X_RANGE: Tuple[float, float] = (0.3, 0.7)
+IN_PATH_X_RANGE: Tuple[float, float] = (0.40, 0.60)
 
 
 # 전방(A 행 기준) 깊이 → 웨이포인트 매핑 (단위: m)
@@ -52,7 +52,7 @@ WAYPOINTS: Dict[str, Dict] = {
     'C5': {'x': 4.00, 'y': 0.0, 'neighbors': ['B5', 'C4']},
 }
 
-# # 웨이포인트 좌표/그래프 (단위: m)
+# 웨이포인트 좌표/그래프 (단위: m)
 # WAYPOINTS: Dict[str, Dict] = {
 #     'A1': {'x': 0.35, 'y': 3.20, 'neighbors': ['B1', 'A2']},
 #     'A2': {'x': 1.70, 'y': 3.20, 'neighbors': ['A1', 'A3']},

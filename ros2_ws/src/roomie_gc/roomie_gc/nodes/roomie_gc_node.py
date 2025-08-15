@@ -283,22 +283,6 @@ class RoomieGCNode(Node):
                 self.pending_tracking_request = True
                 self.get_logger().info('등록 중 106 수신: 추적 모드 전환 요청 보류 설정(pending_tracking_request=True)')
 
-    def _publish_robot_state(self) -> None:
-        msg = RobotState()
-        msg.robot_id = self.config.robot_id
-        msg.robot_state_id = self.robot_state_id
-        self.robot_state_pub.publish(msg)
-
-    def _send_gui_event(self, event_id: int, detail: str = '') -> None:
-        msg = RobotGuiEvent()
-        msg.robot_id = self.config.robot_id
-        msg.rgui_event_id = event_id
-        msg.task_id = self.config.task_id
-        msg.timestamp = self.get_clock().now().to_msg()
-        msg.detail = detail
-        self.gui_event_pub.publish(msg)
-        self.get_logger().info(f'GUI 이벤트 전송: id={event_id}, detail={detail}')
-
     # ===== 콜백: IOC 카드 응답 (타입드 메시지 기준, 현재 구독 비활성) =====
     def _on_card_response(self, msg) -> None:
         # 기대 타입: roomie_msgs/ReadCardResponse (success: bool, location_id: int32)
@@ -342,6 +326,26 @@ class RoomieGCNode(Node):
         goal.duration_sec = 5.0
         self.enroll_client.send_goal_async(goal).add_done_callback(self._on_enroll_goal_response)
         self.get_logger().info('투숙객 등록 요청')
+
+    # ===== 등록 액션 콜백들 =====
+    def _on_enroll_goal_response(self, future) -> None:
+        goal_handle = future.result()
+        result_future = goal_handle.get_result_async()
+        result_future.add_done_callback(self._on_enroll_result)
+
+    def _on_enroll_result(self, future) -> None:
+        res = future.result().result
+        self.get_logger().info(f'등록 완료: success={res.success}')
+        self._send_gui_event(10, '길안내 이동 시작')
+        # 등록 중 106이 먼저 들어온 경우 바로 추적 모드 전환으로 진행
+        if self.pending_tracking_request:
+            self.get_logger().info('보류된 106 처리: START_MOVING으로 전이')
+            self.pending_tracking_request = False
+            self.current_state = GCState.START_MOVING
+        else:
+            self.current_state = GCState.WAITING_TRACKING_REQUEST
+        # 다음 단계 대비 초기화
+        self.nav_goal_sent = False
 
     # ===== [시나리오 3] 추적 모드 전환 및 주행 시작 =====
     def _state_start_moving(self) -> None:
@@ -406,40 +410,7 @@ class RoomieGCNode(Node):
         # Nav2 액션 결과 콜백에서 상태 전이 처리. 여기서는 폴링 없음.
         pass
 
-    # ===== [시나리오 4] 목적지 도착 처리 =====
-    def _state_arrived(self) -> None:
-        # 도착 시 추적 중지 단계로 전이 (GUI 이벤트는 stop_tracking 성공 후 전송)
-        self.current_state = GCState.STOP_TRACKING
-
-    # ===== [시나리오 4] 추적 중지 및 대기모드 전환 =====
-    def _state_stop_tracking(self) -> None:
-        if self.stop_tracking_requested:
-            return
-        self.stop_tracking_requested = True
-        req = Trigger.Request()
-        future = self.stop_tracking_client.call_async(req)
-        self.get_logger().info('VS 추적 중지 요청')
-        future.add_done_callback(self._on_stop_tracking_done)
-
-    def _on_enroll_goal_response(self, future) -> None:
-        goal_handle = future.result()
-        result_future = goal_handle.get_result_async()
-        result_future.add_done_callback(self._on_enroll_result)
-
-    def _on_enroll_result(self, future) -> None:
-        res = future.result().result
-        self.get_logger().info(f'등록 완료: success={res.success}')
-        self._send_gui_event(10, '길안내 이동 시작')
-        # 등록 중 106이 먼저 들어온 경우 바로 추적 모드 전환으로 진행
-        if self.pending_tracking_request:
-            self.get_logger().info('보류된 106 처리: START_MOVING으로 전이')
-            self.pending_tracking_request = False
-            self.current_state = GCState.START_MOVING
-        else:
-            self.current_state = GCState.WAITING_TRACKING_REQUEST
-        # 다음 단계 대비 초기화
-        self.nav_goal_sent = False
-
+    # ===== Nav2 액션 콜백들 =====
     def _on_nav_goal_response(self, future) -> None:
         goal_handle = future.result()
         accepted = getattr(goal_handle, 'accepted', True)
@@ -459,6 +430,22 @@ class RoomieGCNode(Node):
         self.stop_tracking_requested = False
 
         self._state_arrived()
+
+    # ===== [시나리오 4] 목적지 도착 처리 =====
+    def _state_arrived(self) -> None:
+        # 도착 시 추적 중지 단계로 전이 (GUI 이벤트는 stop_tracking 성공 후 전송)
+        self.current_state = GCState.STOP_TRACKING
+
+    # ===== [시나리오 4] 추적 중지 및 대기모드 전환 =====
+    def _state_stop_tracking(self) -> None:
+        if self.stop_tracking_requested:
+            return
+        self.stop_tracking_requested = True
+        req = Trigger.Request()
+        future = self.stop_tracking_client.call_async(req)
+        self.get_logger().info('VS 추적 중지 요청')
+        future.add_done_callback(self._on_stop_tracking_done)
+
 
     def _on_stop_tracking_done(self, future) -> None:
         try:
@@ -542,6 +529,22 @@ class RoomieGCNode(Node):
         # 다음 주기에서 시나리오 종료/대기 유지
 
     # ===== Utilities =====
+    def _publish_robot_state(self) -> None:
+        msg = RobotState()
+        msg.robot_id = self.config.robot_id
+        msg.robot_state_id = self.robot_state_id
+        self.robot_state_pub.publish(msg)
+
+    def _send_gui_event(self, event_id: int, detail: str = '') -> None:
+        msg = RobotGuiEvent()
+        msg.robot_id = self.config.robot_id
+        msg.rgui_event_id = event_id
+        msg.task_id = self.config.task_id
+        msg.timestamp = self.get_clock().now().to_msg()
+        msg.detail = detail
+        self.gui_event_pub.publish(msg)
+        self.get_logger().info(f'GUI 이벤트 전송: id={event_id}, detail={detail}')
+
     def _destination_to_pose(self, location_id: int) -> PoseStamped:
         return self.location_manager.get_pose(location_id, yaw=0.0)
 

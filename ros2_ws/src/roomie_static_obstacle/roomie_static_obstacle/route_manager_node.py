@@ -23,6 +23,8 @@ import rclpy
 from rclpy.node import Node
 from rclpy.action import ActionClient
 from geometry_msgs.msg import PoseStamped, Quaternion
+from visualization_msgs.msg import Marker, MarkerArray
+from nav_msgs.msg import Path
 from nav2_msgs.action import NavigateToPose
 from roomie_msgs.msg import Obstacle
 
@@ -122,6 +124,10 @@ class StaticRouteManager(Node):
         # 장애물 구독
         self.obstacle_sub = self.create_subscription(Obstacle, '/vs/obstacle', self.obstacle_cb, 10)
 
+        # 디버깅용 시각화 퍼블리셔 (RViz)
+        self.marker_pub = self.create_publisher(MarkerArray, 'route_manager/markers', 10)
+        self.path_pub = self.create_publisher(Path, 'route_manager/path', 10)
+
         # 경로/상태 관리
         self.astar = AStar(WAYPOINTS)
         self.blocked: Set[str] = set()
@@ -149,6 +155,9 @@ class StaticRouteManager(Node):
         self.recalculate_path()
         self.start_rotate_to_next()
 
+        # RViz 마커 주기 발행 (0.5s)
+        self.debug_timer = self.create_timer(0.5, self.publish_debug_markers)
+
     # ---------- 콜백/핵심 로직 ----------
     def obstacle_cb(self, msg: Obstacle) -> None:
         self.last_obstacle = msg
@@ -175,6 +184,8 @@ class StaticRouteManager(Node):
             self.get_logger().info(f"경로: {path_str}")
         else:
             self.get_logger().error("경로를 찾을 수 없음")
+        # 경로 갱신 시 시각화 업데이트
+        self.publish_debug_markers()
 
     def advance_if_possible(self) -> None:
         if not self.path or self.path_index >= len(self.path) - 1:
@@ -384,6 +395,8 @@ class StaticRouteManager(Node):
 
         # 관찰 후 진행: 이미 회전 완료 상태이므로 즉시 이동
         self.advance_after_observation()
+        # 시각화 업데이트
+        self.publish_debug_markers()
 
     def advance_after_observation(self) -> None:
         if not self.path or self.path_index >= len(self.path) - 1:
@@ -430,6 +443,8 @@ class StaticRouteManager(Node):
             )
             move_pose = self.make_pose_to_wp(self.current_wp, next_wp)
             self.send_nav_goal(move_pose, kind='move')
+        # 시각화 업데이트
+        self.publish_debug_markers()
 
     def normalize_angle(self, a: float) -> float:
         """[-pi, pi] 범위로 정규화"""
@@ -438,6 +453,180 @@ class StaticRouteManager(Node):
         while a < -math.pi:
             a += 2.0 * math.pi
         return a
+
+    # ---------- RViz 시각화 ----------
+    def _make_color(self, r: float, g: float, b: float, a: float = 1.0):
+        from std_msgs.msg import ColorRGBA
+
+        c = ColorRGBA()
+        c.r = float(r)
+        c.g = float(g)
+        c.b = float(b)
+        c.a = float(a)
+        return c
+
+    def publish_debug_markers(self) -> None:
+        """RViz에서 볼 수 있는 마커/경로를 발행"""
+        try:
+            ma = MarkerArray()
+            now = self.get_clock().now().to_msg()
+
+            # 모든 웨이포인트 표시
+            wp_ns = 'wp'
+            text_ns = 'wp_text'
+            blocked_ns = 'blocked'
+            current_ns = 'current'
+            next_ns = 'next'
+            path_ns = 'path'
+
+            # 기본 웨이포인트 스피어 + 텍스트
+            for i, (wp_id, info) in enumerate(WAYPOINTS.items()):
+                x = float(info['x'])
+                y = float(info['y'])
+
+                m = Marker()
+                m.header.frame_id = 'map'
+                m.header.stamp = now
+                m.ns = wp_ns
+                m.id = i
+                m.type = Marker.SPHERE
+                m.action = Marker.ADD
+                m.pose.position.x = x
+                m.pose.position.y = y
+                m.pose.position.z = 0.05
+                m.pose.orientation.w = 1.0
+                m.scale.x = 0.15
+                m.scale.y = 0.15
+                m.scale.z = 0.15
+                m.color = self._make_color(0.8, 0.8, 0.8, 0.9)
+                ma.markers.append(m)
+
+                t = Marker()
+                t.header.frame_id = 'map'
+                t.header.stamp = now
+                t.ns = text_ns
+                t.id = i
+                t.type = Marker.TEXT_VIEW_FACING
+                t.action = Marker.ADD
+                t.pose.position.x = x
+                t.pose.position.y = y
+                t.pose.position.z = 0.35
+                t.pose.orientation.w = 1.0
+                t.scale.z = 0.18
+                t.color = self._make_color(1.0, 1.0, 1.0, 0.9)
+                t.text = str(wp_id)
+                ma.markers.append(t)
+
+            # 차단된 웨이포인트 강조
+            for j, wp_id in enumerate(sorted(self.blocked)):
+                if wp_id not in WAYPOINTS:
+                    continue
+                info = WAYPOINTS[wp_id]
+                x = float(info['x'])
+                y = float(info['y'])
+                m = Marker()
+                m.header.frame_id = 'map'
+                m.header.stamp = now
+                m.ns = blocked_ns
+                m.id = j
+                m.type = Marker.SPHERE
+                m.action = Marker.ADD
+                m.pose.position.x = x
+                m.pose.position.y = y
+                m.pose.position.z = 0.08
+                m.pose.orientation.w = 1.0
+                m.scale.x = 0.22
+                m.scale.y = 0.22
+                m.scale.z = 0.22
+                m.color = self._make_color(1.0, 0.2, 0.2, 0.9)
+                ma.markers.append(m)
+
+            # 현재/다음 웨이포인트 강조
+            if self.current_wp in WAYPOINTS:
+                info = WAYPOINTS[self.current_wp]
+                m = Marker()
+                m.header.frame_id = 'map'
+                m.header.stamp = now
+                m.ns = current_ns
+                m.id = 0
+                m.type = Marker.SPHERE
+                m.action = Marker.ADD
+                m.pose.position.x = float(info['x'])
+                m.pose.position.y = float(info['y'])
+                m.pose.position.z = 0.1
+                m.pose.orientation.w = 1.0
+                m.scale.x = 0.28
+                m.scale.y = 0.28
+                m.scale.z = 0.28
+                m.color = self._make_color(0.2, 1.0, 0.2, 0.95)
+                ma.markers.append(m)
+
+            if self.path and self.path_index < len(self.path) - 1:
+                next_wp = self.path[self.path_index + 1]
+                if next_wp in WAYPOINTS:
+                    info = WAYPOINTS[next_wp]
+                    m = Marker()
+                    m.header.frame_id = 'map'
+                    m.header.stamp = now
+                    m.ns = next_ns
+                    m.id = 0
+                    m.type = Marker.SPHERE
+                    m.action = Marker.ADD
+                    m.pose.position.x = float(info['x'])
+                    m.pose.position.y = float(info['y'])
+                    m.pose.position.z = 0.1
+                    m.pose.orientation.w = 1.0
+                    m.scale.x = 0.24
+                    m.scale.y = 0.24
+                    m.scale.z = 0.24
+                    m.color = self._make_color(0.2, 0.6, 1.0, 0.95)
+                    ma.markers.append(m)
+
+            # 경로 라인
+            if self.path and len(self.path) >= 2:
+                path_marker = Marker()
+                path_marker.header.frame_id = 'map'
+                path_marker.header.stamp = now
+                path_marker.ns = path_ns
+                path_marker.id = 0
+                path_marker.type = Marker.LINE_STRIP
+                path_marker.action = Marker.ADD
+                path_marker.scale.x = 0.06
+                path_marker.color = self._make_color(1.0, 0.85, 0.1, 0.95)
+                # 현재 인덱스부터 그리기
+                for wp_id in self.path[self.path_index:]:
+                    if wp_id not in WAYPOINTS:
+                        continue
+                    info = WAYPOINTS[wp_id]
+                    from geometry_msgs.msg import Point
+                    p = Point()
+                    p.x = float(info['x'])
+                    p.y = float(info['y'])
+                    p.z = 0.02
+                    path_marker.points.append(p)
+                ma.markers.append(path_marker)
+
+                # nav_msgs/Path 도 발행
+                nav_path = Path()
+                nav_path.header.frame_id = 'map'
+                nav_path.header.stamp = now
+                for wp_id in self.path[self.path_index:]:
+                    if wp_id not in WAYPOINTS:
+                        continue
+                    pose = PoseStamped()
+                    pose.header.frame_id = 'map'
+                    pose.header.stamp = now
+                    pose.pose.position.x = float(WAYPOINTS[wp_id]['x'])
+                    pose.pose.position.y = float(WAYPOINTS[wp_id]['y'])
+                    pose.pose.orientation.w = 1.0
+                    nav_path.poses.append(pose)
+                self.path_pub.publish(nav_path)
+
+            # 마커 발행
+            # 이전 프레임의 잔여 마커 제거를 위해 각 ns/id를 일관되게 사용하고 전체 세트를 주기적으로 갱신
+            self.marker_pub.publish(ma)
+        except Exception as e:
+            self.get_logger().warn(f'시각화 마커 발행 오류: {e}')
 
 
 def main(args=None) -> None:
