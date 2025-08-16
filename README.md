@@ -1,4 +1,23 @@
 # 호텔 실내 배송 로봇 Roomie
+![Banner]()
+
+<p align="center">
+  <a href="https://www.apache.org/licenses/LICENSE-2.0">
+    <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License">
+  </a>
+  <a href="https://docs.google.com/presentation/d/1ov9HC-qspBt8EVuyY66NAY0iMZ1nOyS5X9acsZ7iivs/edit?usp=sharing">
+    <img src="https://img.shields.io/badge/PRESENTATION-GoogleSlides-yellow?style=for-the-badge&logo=google-slides&logoColor=white" alt="발표자료">
+  </a>
+  <a href="https://youtube.com/playlist?list=PLCGG9KRfKwMmQqXvp43pChNMyyLSyjHp9&si=Qhge_jErHH7Qlb4e">
+    <img src="https://img.shields.io/badge/DEMO-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white" alt="배송기능 데모영상">
+  </a>
+</p>
+
+
+##
+발표자료 
+
+
 
 
 ### 프로젝트 구조
