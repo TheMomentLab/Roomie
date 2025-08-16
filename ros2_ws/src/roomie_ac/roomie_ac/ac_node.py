@@ -50,6 +50,53 @@ class DirectPressStrategy(BaseStrategy):
             raise RuntimeError("직접 누르기 실패")
 
         await asyncio.sleep(1.0)
+class PBVSOneShotPressStrategy(BaseStrategy):
+    """[신규] One-Shot PBVS로 정렬 후 누르는 전략입니다."""
+    def __init__(self, motion_controller: MotionController, image_servo: ImageServoing, logger):
+        super().__init__(motion_controller, logger)
+        self.image_servo = image_servo
+        self.max_alignment_attempts = 50  # [핵심 수정] 최대 5번까지 정렬을 재시도합니다.
+
+    async def execute(self, button_id: int, goal_handle):
+        self.logger.info(f">> 전략 4: One-Shot 시각 서보잉 정렬 시작 (최대 {self.max_alignment_attempts}번 시도)")
+
+        # --- [핵심 수정] 재시도 루프 추가 ---
+        alignment_success = False
+        for attempt in range(self.max_alignment_attempts):
+            self.logger.info(f"  [정렬 시도 #{attempt + 1}/{self.max_alignment_attempts}]")
+            # align_to_standby_pose_oneshot을 호출하고 결과를 받습니다.
+            if await self.image_servo.align_to_standby_pose_oneshot(button_id):
+                alignment_success = True
+                break  # 성공했으면 루프를 탈출합니다.
+            else:
+                self.logger.warn("  [정렬 실패] 0.5초 후 재시도합니다...")
+                await asyncio.sleep(0.5) # 잠시 기다린 후 다시 시도
+
+        # 만약 루프가 모두 끝날 때까지 성공하지 못했다면, 그때 비로소 최종 실패 처리합니다.
+        if not alignment_success:
+            raise RuntimeError(f"One-Shot 시각 서보잉 정렬에 {self.max_alignment_attempts}번 시도했으나 모두 실패했습니다.")
+        # --- 재시도 루프 끝 ---
+
+        # --- (이 아래 로직은 기존과 동일합니다) ---
+        standby_pose = self.image_servo.last_target_pose
+        button_orientation_matrix = self.image_servo.last_target_orientation
+
+        if standby_pose is None or button_orientation_matrix is None:
+            raise RuntimeError("버튼 위치/방향 정보를 얻지 못했습니다.")
+
+        button_z_vector = button_orientation_matrix[:, 2]
+        press_pose = standby_pose + button_z_vector * config.PRESS_FORWARD_DISTANCE_M
+
+        self.logger.info(">> One-Shot PBVS 누르기 위치로 이동")
+        if not await self.motion_controller.move_to_pose_ik(press_pose, orientation=None, blocking=True):
+            raise RuntimeError("One-Shot PBVS 누르기 실패")
+
+        await asyncio.sleep(1.0)
+
+        self.logger.info(">> One-Shot PBVS 대기 위치로 후퇴")
+        if not await self.motion_controller.move_to_pose_ik(standby_pose, orientation=None, blocking=True):
+            raise RuntimeError("One-Shot PBVS 후퇴 실패")
+
 
 class StandbyPressStrategy(BaseStrategy):
     """사전 정의된 좌표를 기준으로 전/후진하여 누르는 전략입니다."""
@@ -138,7 +185,8 @@ class ArmActionServer(Node):
         self.strategies = {
             config.ControlStrategy.MODEL_DIRECT_PRESS: DirectPressStrategy(self.motion_controller, self.get_logger()),
             config.ControlStrategy.MODEL_STANDBY_PRESS: StandbyPressStrategy(self.motion_controller, self.get_logger()),
-            config.ControlStrategy.PBVS_PRESS: PBVSPressStrategy(self.motion_controller, self.image_servo, self.get_logger())
+            config.ControlStrategy.PBVS_PRESS: PBVSPressStrategy(self.motion_controller, self.image_servo, self.get_logger()),
+            config.ControlStrategy.PBVS_ONESHOT_PRESS: PBVSOneShotPressStrategy(self.motion_controller, self.image_servo, self.get_logger())
         }
         self.selected_strategy = self.strategies.get(config.CONTROL_STRATEGY)
         if self.selected_strategy is None:

@@ -35,12 +35,13 @@ class ControlStrategy(IntEnum):
     MODEL_DIRECT_PRESS = 1
     MODEL_STANDBY_PRESS = 2
     PBVS_PRESS = 3
+    PBVS_ONESHOT_PRESS = 4
 
 
 # 제어 전략 설정
 # ControlMode.MODEL_ONLY : 미리 정의된 좌표로 이동 (이미지 서보잉 없음)
 # ControlMode.HYBRID     : 비전 기반 이미지 서보잉 사용 (기존 방식)
-CONTROL_STRATEGY = ControlStrategy.MODEL_STANDBY_PRESS
+CONTROL_STRATEGY = ControlStrategy.PBVS_PRESS
 
 # --- [추가] 좌표 계산 모드 설정 ---
 # 'corner': ArUco 마커의 4개 모서리점을 이용한 PnP 계산 (정확도 높음)
@@ -70,7 +71,7 @@ SERIAL_BAUD_RATE = 460800
 SERIAL_TIMEOUT = 10.0 # 시리얼 연결 및 응답 대기 타임아웃
 
 # --- 카메라 및 인식 설정 ---
-CAMERA_DEVICE_ID = 4  # 사용자의 카메라 장치 번호
+CAMERA_DEVICE_ID = 8  # 사용자의 카메라 장치 번호
 YOLO_MODEL_PATH = '/home/mac/dev_ws/addinedu/project/ros-repo-2/ros2_ws/src/roomie_ac/roomie_ac/data/best.pt'
 
 

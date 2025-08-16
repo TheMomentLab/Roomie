@@ -413,7 +413,7 @@ border: none;</string>
              </font>
             </property>
             <property name="styleSheet">
-             <string notr="true">margin-top: 10px; margin-bottom: 5px;</string>
+             <string notr="true">margin-top: 10px; margin-bottom: 5px; color: #333333;</string>
             </property>
             <property name="text">
              <string>주문정보</string>
@@ -429,8 +429,7 @@ border: none;</string>
              </size>
             </property>
             <property name="styleSheet">
-             <string notr="true">background-color: white;
-border-radius: 8px;</string>
+             <string notr="true">background-color: white; border-radius: 8px; </string>
             </property>
             <layout class="QGridLayout" name="order_items_layout">
              <property name="leftMargin">
@@ -462,7 +461,7 @@ border-radius: 8px;</string>
              </font>
             </property>
             <property name="styleSheet">
-             <string notr="true">margin-top: 10px; margin-bottom: 5px;</string>
+             <string notr="true">margin-top: 10px; margin-bottom: 5px; color: #333333;</string>
             </property>
             <property name="text">
              <string>배송정보</string>
@@ -502,6 +501,9 @@ border-radius: 8px;</string>
                  <pointsize>11</pointsize>
                 </font>
                </property>
+                 <property name="styleSheet">
+                <string notr="true">color: #333333;</string>
+               </property>
                <property name="text">
                 <string>호실</string>
                </property>
@@ -516,6 +518,9 @@ border-radius: 8px;</string>
                  <weight>75</weight>
                  <bold>true</bold>
                 </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #333333;</string>
                </property>
                <property name="text">
                 <string/>
@@ -547,6 +552,9 @@ border-radius: 8px;</string>
                  <weight>75</weight>
                  <bold>true</bold>
                 </font>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #333333;</string>
                </property>
                <property name="text">
                 <string/>
