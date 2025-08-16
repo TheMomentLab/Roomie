@@ -1,5 +1,4 @@
-# 호텔 실내 배송 로봇 Roomie
-![Banner]()
+![Banner](https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/banner.png?raw=true)
 
 <p align="center">
   <a href="https://www.apache.org/licenses/LICENSE-2.0">
@@ -12,13 +11,6 @@
     <img src="https://img.shields.io/badge/DEMO-YouTube-red?style=for-the-badge&logo=youtube&logoColor=white" alt="배송기능 데모영상">
   </a>
 </p>
-
-
-##
-발표자료 
-
-
-
 
 ### 프로젝트 구조
 
