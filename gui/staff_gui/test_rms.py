@@ -74,8 +74,9 @@ async def send_test_order():
         "action": "food_order_creation",
         "payload": {
             "task_id": task_id,
-            "request_location": "ROOM_505",
-            "order_details": {"items": [{"name": "수동 테스트 버거", "quantity": 1, "price": 9900}]}
+            "request_location": "ROOM_101",
+            "order_details": {"items": [{"name": "스파게티", "quantity": 1, "price": 15000},
+                                        {"name": "피자", "quantity": 1, "price": 31000}]}
         }
     }
     await send_to_all_clients(order_event)
@@ -119,7 +120,8 @@ def run_auto_scenario_in_thread():
             # 1. 주문 생성
             task_id = int(time.time())
             room_number = 300 + random.randint(1, 20)
-            items = [{"name": "자동주문 스파게티", "quantity": random.randint(1,2), "price": 15000}]
+            items = [{"name": "스파게티", "quantity": 1, "price": 15000},
+                     {"name": "피자", "quantity": 1, "price": 31000}]
             
             order_event = {
                 "type": "event", "action": "food_order_creation",
@@ -165,4 +167,4 @@ if __name__ == "__main__":
     print("📄 API 문서 (수동 테스트): http://127.0.0.1:8800/docs\n")
     
     run_auto_scenario_in_thread()
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

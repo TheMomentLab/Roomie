@@ -55,8 +55,10 @@ class ImageServoing:
         self.marker_pub.publish(marker_btn)
         self.marker_pub.publish(marker_sby)
 
+    # image_servoing.py
+
     async def _get_current_button_pose(self, button_id: int) -> np.ndarray | None:
-        """비전 데이터를 이용해 현재 프레임에서 버튼의 3D 변환 행렬(T_base_to_btn)을 계산합니다."""
+        """[수정됨] 비전 데이터를 이용해 현재 프레임에서 버튼의 3D 변환 행렬(T_base_to_btn)을 계산합니다."""
         response = await self.vision_client.request_status(
             mode=config.POSE_ESTIMATION_MODE, robot_id=self.robot_id, button_id=button_id
         )
@@ -64,30 +66,36 @@ class ImageServoing:
             self._log("버튼 시야 이탈. 자세 계산 실패.", error=True)
             return None
 
-        image_points_2d = None
+        # 로봇의 현재 FK 변환 행렬을 미리 계산
+        current_robot_transform = self.motion_controller._get_current_transform()
+        
+        # [핵심 수정] 모드에 따라 CoordinateTransformer에 전달할 인자를 다르게 구성합니다.
         if config.POSE_ESTIMATION_MODE == 'corner':
             if hasattr(response, 'corners') and len(response.corners) == 8:
                 image_points_2d = np.array(response.corners, dtype=np.float32).reshape((4, 2))
+                return self.coord_transformer.get_button_pose_in_base_frame(
+                    robot_fk_transform=current_robot_transform,
+                    mode='corner',
+                    image_points_2d=image_points_2d  # corner 모드용 인자
+                )
             else:
-                self._log("'corner' 모드지만 corners 정보 없음.", error=True)
+                self._log("'corner' 모드지만 corners 정보가 없어 실패 처리합니다.", error=True)
                 return None
+        
+        elif config.POSE_ESTIMATION_MODE == 'normal':
+            # normal 모드일 때는 x, y, size 정보를 직접 전달합니다.
+            return self.coord_transformer.get_button_pose_in_base_frame(
+                robot_fk_transform=current_robot_transform,
+                mode='normal',
+                center_x_norm=response.x,  # normal 모드용 인자
+                center_y_norm=response.y,  # normal 모d드용 인자
+                size_norm=response.size    # normal 모드용 인자
+            )
+        
         else:
-            center_x_px = response.x * config.IMAGE_WIDTH_PX
-            center_y_px = response.y * config.IMAGE_HEIGHT_PX
-            pixel_area = response.size * config.IMAGE_WIDTH_PX * config.IMAGE_HEIGHT_PX
-            pixel_diameter = np.sqrt(max(0, pixel_area))
-            radius_px = pixel_diameter / 2.0
-            image_points_2d = np.array([
-                [center_x_px + radius_px, center_y_px], [center_x_px - radius_px, center_y_px],
-                [center_x_px, center_y_px + radius_px], [center_x_px, center_y_px - radius_px]
-            ], dtype=np.float32)
-
-        current_robot_transform = self.motion_controller._get_current_transform()
-        return self.coord_transformer.get_button_pose_in_base_frame(
-            robot_fk_transform=current_robot_transform,
-            mode=config.POSE_ESTIMATION_MODE,
-            image_points_2d=image_points_2d
-        )
+            # 지원하지 않는 모드에 대한 예외 처리
+            self._log(f"지원하지 않는 POSE_ESTIMATION_MODE: {config.POSE_ESTIMATION_MODE}", error=True)
+            return None
 
     def create_look_at_matrix(self, camera_pos: np.ndarray, target_pos: np.ndarray, world_up: np.ndarray = np.array([0, 0, 1])) -> np.ndarray | None:
         """카메라 위치에서 목표 위치를 바라보는 3x3 회전 행렬을 생성합니다."""
@@ -171,6 +179,50 @@ class ImageServoing:
         self._log(f"❌ 최대 시도 횟수({self.max_attempts}회) 내에 정렬하지 못했습니다.", error=True)
         return False
 
+
+    async def align_to_standby_pose_oneshot(self, button_id: int) -> bool:
+        """[신규] 버튼 위치를 단 한번만 측정하여 '준비 위치'로 즉시 이동합니다."""
+        self._log(f"One-Shot PBVS 서보잉 시작 (버튼 ID: {button_id})")
+        self.last_target_pose = None
+        self.last_target_orientation = None
+
+        # 1. 버튼의 3D 변환 행렬을 단 한번만 계산
+        T_base_to_btn = await self._get_current_button_pose(button_id)
+        if T_base_to_btn is None:
+            self._log("버튼 자세 계산 실패.", error=True)
+            return False
+
+        # 2. 버튼의 위치와 방향 정보 추출
+        button_orientation_matrix = T_base_to_btn[:3, :3]
+        button_pos = T_base_to_btn[:3, 3]
+        
+        # 3. '준비 위치' 계산 (버튼 정면에서 일정 거리 뒤)
+        button_z_vector = button_orientation_matrix[:, 2]
+        standby_pos = button_pos - button_z_vector * config.SERVOING_STANDBY_DISTANCE_M
+
+        # 4. 현재 로봇팔의 위치에서 목표물을 바라보는 방향 계산
+        current_pos = self.motion_controller._get_current_transform()[:3, 3]
+        target_orientation = self.create_look_at_matrix(current_pos, button_pos)
+
+        if target_orientation is None:
+            self._log("Look-at 방향 행렬 계산 실패.", error=True)
+            return False
+
+        # --- [디버그용] 계산된 좌표를 RViz에 마커로 표시 ---
+        self._publish_debug_markers(button_pos, standby_pos)
+
+        # 5. 계산된 '준비 위치'로 단 한번에 이동
+        self._log(f"계산된 준비 위치 {standby_pos}로 한번에 이동합니다.")
+        if not await self.motion_controller.move_to_pose_ik(
+            standby_pos, orientation=target_orientation, blocking=True
+        ):
+            self._log("IK 이동 실패.", error=True)
+            return False
+        
+        # 6. 성공 상태 저장 및 반환
+        self._set_successful_alignment_state(standby_pos, button_orientation_matrix)
+        return True
+    
     def _log(self, message: str, info: bool = False, error: bool = False):
         if config.DEBUG:
             log_level = "ERROR" if error else "INFO"

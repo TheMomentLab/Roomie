@@ -10,6 +10,13 @@ class CoordinateTransformer:
         try:
             self.hand_eye_matrix = np.load(config.HAND_EYE_MATRIX_FILE)
             self._log(f"✅ 성공적으로 Hand-Eye 보정 행렬을 불러왔습니다: {config.HAND_EYE_MATRIX_FILE}", info=True)
+
+            # --- [핵심 수정] Hand-Eye 보정 행렬의 단위를 미터(m)로 통일 ---
+            # 만약 보정 시 사용한 단위가 'mm'였다면, 이동(translation) 부분을 1000으로 나눠 미터 단위로 변환합니다.
+            if config.HAND_EYE_UNIT == 'mm':
+                self.hand_eye_matrix[:3, 3] /= 1000.0
+                self._log("Hand-Eye 행렬의 이동(translation) 값을 'mm'에서 'm' 단위로 변환했습니다.", info=True)
+            
         except FileNotFoundError:
             self.hand_eye_matrix = np.eye(4)
             self._log(f"⚠️ Hand-Eye 보정 파일을 찾을 수 없어 단위 행렬을 사용합니다. 경로: {config.HAND_EYE_MATRIX_FILE}", error=True)

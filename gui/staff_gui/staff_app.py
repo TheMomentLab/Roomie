@@ -228,7 +228,13 @@ class StaffGUI(QMainWindow):
     # 3. mark_as_food_ready 함수를 아래 내용으로 교체
     def mark_as_food_ready(self):
         if self.selected_task_id is None:
-            QMessageBox.warning(self, "오류", "준비완료 처리할 주문을 선택하세요.")
+            # 경고창도 스타일을 일관되게 적용하기 위해 수정
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.Warning)
+            msg_box.setWindowTitle("오류")
+            msg_box.setText("준비완료 처리할 주문을 선택하세요.")
+            msg_box.setStyleSheet("QLabel { color: black; }")
+            msg_box.exec()
             return
 
         task_id = self.selected_task_id
@@ -239,24 +245,41 @@ class StaffGUI(QMainWindow):
             response = requests.post(request_url, json=payload_to_send, timeout=5)
             response.raise_for_status()
             if response.json().get('payload', {}).get('status_changed') == 'food_ready':
-                QMessageBox.information(self, "처리 완료", f"주문 #{task_id}이(가) '픽업 대기중' 상태로 변경되었습니다.")
+                # 성공 알림창 (QMessageBox.information 대체)
+                msg_box = QMessageBox(self)
+                msg_box.setIcon(QMessageBox.Icon.Information)
+                msg_box.setWindowTitle("처리 완료")
+                msg_box.setText(f"주문 #{task_id}이(가) '픽업 대기중' 상태로 변경되었습니다.")
+                msg_box.setStyleSheet("QLabel { color: black; }")
+                msg_box.exec()
                 
                 if task_id in self.orders_in_progress:
                     order_data = self.orders_in_progress[task_id]
                     order_data['payload']['status'] = "픽업 대기중"
-
-                    # 통합된 생성 함수 사용
                     new_widget = self.create_order_item_widget(task_id, order_data['payload'], "픽업 대기중")
-                    
                     list_item = order_data['list_item']
                     list_item.setSizeHint(new_widget.sizeHint())
                     self.listWidget_in_progress.setItemWidget(list_item, new_widget)
             else:
                 raise Exception("서버 응답 오류")
+                
         except requests.RequestException as e:
-            QMessageBox.critical(self, "통신 오류", f"서버와 통신할 수 없습니다: {e}")
+            # 통신 오류 알림창 (QMessageBox.critical 대체)
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setWindowTitle("통신 오류")
+            msg_box.setText(f"서버와 통신할 수 없습니다: {e}")
+            msg_box.setStyleSheet("QLabel { color: black; }")
+            msg_box.exec()
+            
         except Exception as e:
-            QMessageBox.critical(self, "처리 실패", f"서버에서 상태 변경을 실패했습니다: {e}")
+            # 처리 실패 알림창 (QMessageBox.critical 대체)
+            msg_box = QMessageBox(self)
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.setWindowTitle("처리 실패")
+            msg_box.setText(f"서버에서 상태 변경을 실패했습니다: {e}")
+            msg_box.setStyleSheet("QLabel { color: black; }")
+            msg_box.exec()
 
     def update_order_details(self):
         if self.selected_task_id is None:
@@ -282,6 +305,7 @@ class StaffGUI(QMainWindow):
         total_quantity = 0
         total_price = 0
 
+        # 동적으로 생성되는 주문 항목 라벨에 스타일 적용
         for i, item_data in enumerate(items):
             name = item_data.get('name', 'N/A')
             quantity = item_data.get('quantity', 0)
@@ -290,9 +314,18 @@ class StaffGUI(QMainWindow):
             total_quantity += quantity
             total_price += price * quantity
             
-            layout.addWidget(QLabel(name), i, 0)
-            layout.addWidget(QLabel(str(quantity)), i, 1, Qt.AlignmentFlag.AlignRight)
-            layout.addWidget(QLabel(f"{price:,.0f}원"), i, 2, Qt.AlignmentFlag.AlignRight)
+            name_label = QLabel(name)
+            name_label.setStyleSheet("color: #333333;")
+            
+            qty_label = QLabel(str(quantity))
+            qty_label.setStyleSheet("color: #333333;")
+
+            price_label = QLabel(f"{price:,.0f}원")
+            price_label.setStyleSheet("color: #333333;")
+
+            layout.addWidget(name_label, i, 0)
+            layout.addWidget(qty_label, i, 1, Qt.AlignmentFlag.AlignRight)
+            layout.addWidget(price_label, i, 2, Qt.AlignmentFlag.AlignRight)
         
         if items:
             line = QFrame()
@@ -300,10 +333,15 @@ class StaffGUI(QMainWindow):
             line.setFrameShadow(QFrame.Shadow.Sunken)
             layout.addWidget(line, len(items), 0, 1, 3)
 
+        # 동적으로 생성되는 합계 라벨에 스타일 적용
         total_label = QLabel("합계")
-        total_label.setStyleSheet("font-weight: bold;")
+        total_label.setStyleSheet("font-weight: bold; color: #333333;")
+
         total_qty_label = QLabel(f"<b>{total_quantity}</b>")
+        total_qty_label.setStyleSheet("color: #333333;")
+
         total_price_label = QLabel(f"<b>{total_price:,.0f}원</b>")
+        total_price_label.setStyleSheet("color: #333333;")
 
         layout.addWidget(total_label, len(items) + 1, 0)
         layout.addWidget(total_qty_label, len(items) + 1, 1, Qt.AlignmentFlag.AlignRight)
@@ -389,15 +427,30 @@ class StaffGUI(QMainWindow):
 
         # 첫 번째 줄
         top_layout = QHBoxLayout()
-        top_layout.addWidget(QLabel(f"<b>주문 #{task_id}</b>"))
+        
+        # ▼▼▼ 주문 번호 라벨 색상 지정 ▼▼▼
+        order_id_label = QLabel(f"<b>주문 #{task_id}</b>")
+        order_id_label.setStyleSheet("color: #333333;")
+        top_layout.addWidget(order_id_label)
+        
         top_layout.addStretch()
-        top_layout.addWidget(QLabel(time_text))
+        
+        # ▼▼▼ 시간 라벨 색상 지정 ▼▼▼
+        time_label = QLabel(time_text)
+        time_label.setStyleSheet("color: #333333;")
+        top_layout.addWidget(time_label)
 
         # 두 번째 줄
         bottom_layout = QHBoxLayout()
-        bottom_layout.addWidget(QLabel(details_text))
+
+        # ▼▼▼ 상세 정보 라벨 색상 지정 ▼▼▼
+        details_label = QLabel(details_text)
+        details_label.setStyleSheet("color: #333333;")
+        bottom_layout.addWidget(details_label)
+
         bottom_layout.addStretch()
         
+        # 상태 라벨은 기존 스타일을 유지 (수정 없음)
         status_label = QLabel(status_html)
         status_label.setTextFormat(Qt.TextFormat.RichText)
         bottom_layout.addWidget(status_label)
