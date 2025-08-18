@@ -39,8 +39,6 @@
 
 ## 🍽️ 룸서비스 배송 기능
 
-<img src="assets/images/delivery_flow.png" width="85%">
-
 <table>
   <tr>
     <th style="width:15%">주요 단계</th>
@@ -54,7 +52,7 @@
       메뉴 확인 후 주문 → Staff GUI로 알림 전송<br>
       조리 완료 후 Staff GUI에서 “픽업 요청” 전달
     </td>
-    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="200"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="200"></td>
   </tr>
   <tr>
     <td>픽업 및 적재</td>
@@ -64,16 +62,16 @@
       Robot GUI에 주문 내역 표시 → 적재 혼동 방지<br>
       서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
     </td>
-    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>객실 배송</td>
     <td>
       Nav2 기반 주행으로 객실 앞까지 이동<br>
-      목적지 QR/ArUco Marker 인식 → 객실 위치 확인<br>
+      목적지 ArUco Marker 인식 → 객실 위치 확인<br>
       Guest GUI 및 Robot GUI를 통해 도착 알림 제공
     </td>
-    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>음식 수령</td>
@@ -81,7 +79,7 @@
       고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령<br>
       완료 후 로봇은 대기 장소로 복귀
     </td>
-    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="400"></td>
   </tr>
 </table>
 
@@ -142,7 +140,7 @@
       Vision Service가 버튼 좌표 인식<br>
       Arm Controller를 이용해 호출 버튼 클릭
     </td>
-    <td><img src="assets/images/elevator_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>탑승 및 내부 조작</td>
@@ -151,7 +149,7 @@
       층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어<br>
       상단 디스플레이 OCR로 목적 층 도착 여부 확인
     </td>
-    <td><img src="assets/images/elevator_flow.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>하차</td>
@@ -178,21 +176,21 @@
       현재 작업 수, 로봇 수를 실시간 확인<br>
       2D 맵 상의 로봇 위치 표시
     </td>
-    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>로봇 관리</td>
     <td>
       현재 위치, 현재 작업, 배터리 상태 모니터링
     </td>
-    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="400"></td>
   </tr>
   <tr>
     <td>작업 히스토리</td>
     <td>
       작업 리스트 및 상세 기록 확인 가능
     </td>
-    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="400"></td>
   </tr>
 </table>
  
@@ -203,7 +201,9 @@
 
 ## 1) 로봇암 제어
 
-[ 상세 설계 보기](ros2_ws/src/roomie_ac/README.md)
+<img src="assets/images/arm-principle.png" width="600">
+
+[상세 설계 보기](ros2_ws/src/roomie_ac/README.md)
 
 - **구성**
   - 서보모터, 2D 카메라, 버튼 클릭 엔드이펙터
@@ -213,10 +213,6 @@
   - 관측 자세 → 클릭 준비 자세 → 버튼 클릭 → 클릭 확인
 - **제어 기법**
   - Gaussian 속도/가속도 프로파일 적용 → 미세 진동(지터) 최소화
-
-
-<img src="assets/images/arm-principle.png" alt="ERD 다이어그램" width="600">
-
 
 ---
 
