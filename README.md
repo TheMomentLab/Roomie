@@ -122,12 +122,6 @@
  
 ---
 
-## ⚡️ micro-ROS ...
-- **hello1**
-  - hello2
-  - hello3
-
----
 
 # 3. 핵심 기술
 
@@ -174,9 +168,25 @@
 ---
 
 ## 4) 마이크로 ROS
-- **hello1**
-  - hello2
-  - hello3
+- **적재함 문 감지**
+  - 센서와 문 사이의 거리 측정
+  - 측정거리 5.0cm 초과 시 문이 열린 것으로 판단
+- **적재 감지**
+  - 내부 공간 측면 하단에 설치되어 반대쪽 측면까지의 거리 측정
+  - 측정거리 25.0cm 미만 시 물건이 적재된 것으로 판단
+- **RFID 카드 리더**
+  - MFRC522 모듈을 사용하여 RFID 카드의 UID를 읽음
+  - 카드 데이터: 카드의 블록 4에 저장된 4바이트 데이터를 location_id로 해석
+  - 카드 읽기 성공 시 `success=true`, `location_id=읽은값`, 실패 시 `success=false`, `location_id=-1`
+- **LED 상태 표시**
+  - 로봇의 상태(RobotState)에 따라 RGB LED 색상 제어
+
+| 상태 ID | 상태 이름 | RGB LED |
+|---|---|---|
+| 0 | `INITIAL` | 청록색 |
+| 1, 2, 11, 13, 21, 23 | `CHARGING`, `WAITING`, `PICKUP_WAITING`, `DELIVERY_WAITING`, `GUIDE_WAITING`, `DESTINATION_SEARCHING` | 초록색 |
+| 10, 12, 20, 22, 30, 31 | `PICKUP_MOVING`, `DELIVERY_MOVING`, `CALL_MOVING`, `GUIDE_MOVING`, `RETURN_MOVING`, `ELEVATOR_RIDING` | 파란색 |
+| 90 | `ERROR` | 빨간색 |
 
 ---
 
