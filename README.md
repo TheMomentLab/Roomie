@@ -28,6 +28,9 @@
 ---
 
 # 1. 프로젝트 개요
+
+<img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image3.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image7.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image5.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image2.png?raw=true" width="25%">
+
 - **프로젝트 목적**
   - 호텔에서 발생하는 반복적인 업무를 로봇이 자율적으로 수행하여 직원의 업무 부담을 줄이고 투숙객에게는 새롭고 편리한 경험을 제공
   
@@ -87,8 +90,6 @@
 
 ## 🧭 길 안내 기능
 
-<img src="assets/images/escort_image.png" width="85%">
-
 <table>
   <tr>
     <th style="width:15%">주요 단계</th>
@@ -125,8 +126,6 @@
 ---
 
 ## 🏢 층간 이동 기능
-
-<img src="assets/images/elevator_flow.png" width="85%">
 
 <table>
   <tr>
@@ -201,7 +200,7 @@
 
 ## 1) 로봇암 제어
 
-<img src="assets/images/arm-principle.png" width="600">
+<img src="assets/images/arm-principle.png" width="75%">
 
 [상세 설계 보기](ros2_ws/src/roomie_ac/README.md)
 
@@ -232,6 +231,8 @@
 ---
 
 ## 3) 비전 인식
+
+<img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" width="33%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-elevator.gif?raw=true" width="33%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-tracking.gif?raw=true" width="33%">
 
 - **YOLOv8n 기반 객체 인식**
   - 장애물: 정적/동적/유리문
@@ -445,9 +446,27 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 
 # 9. 팀 구성
 
-| 역할 | 이름 | 담당 내용 |
-|------|------|-----------|
-| 팀장 | **장진혁** | - 프로젝트 기획 및 총괄<br>- ROS2 패키지 구조 및 통신 시퀀스 설계<br>- 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현<br>- ROS2 × PyQt 기반 ROBOT GUI 구현 |
-| 팀원 | **김지연** | - 백엔드 구현 및 DB 설계<br>- micro-ROS 기반 IO Controller 구현<br>- HTTP/WebSocket × PyQt 기반 Admin GUI 구현<br>- 로봇 하드웨어 제작 |
-| 팀원 | **김종명** | - FreeRTOS 기반 로봇암 제어<br>- HTTP/WebSocket × HTML,JS,CSS 기반 GUEST GUI 구현<br>- HTTP/WebSocket × PyQt 기반 STAFF GUI 구현<br>- Jira 일정 관리<br>- 로봇 하드웨어 제작 |
-| 팀원 | **박효진** | - 로봇 SLAM & Navigation 총괄<br>- 동적/정적 장애물 처리 알고리즘 설계 및 구현<br>- 경로 생성 및 주행 동작 구현<br>- 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현 |
+## 🧑‍💼 장진혁 @jinhyuk2me
+- 프로젝트 기획 및 총괄
+- ROS2 패키지 구조 및 통신 시퀀스 설계
+- 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현
+- ROS2 × PyQt 기반 ROBOT GUI 구현
+
+## 🧑‍💼 김지연 @heyjay1002
+- 백엔드 구현 및 DB 설계
+- micro-ROS 기반 IO Controller 구현
+- HTTP/WebSocket × PyQt 기반 Admin GUI 구현
+- 로봇 하드웨어 제작
+
+## 🧑‍💼 김종명 @jongbob1918
+- FreeRTOS 기반 로봇암 제어
+- HTTP/WebSocket × HTML,JS,CSS 기반 GUEST GUI 구현
+- HTTP/WebSocket × PyQt 기반 STAFF GUI 구현
+- Jira 일정 관리
+- 로봇 하드웨어 제작
+
+## 🧑‍💼 박효진 @Park-hyojin
+- 로봇 SLAM & Navigation 총괄
+- 동적/정적 장애물 처리 알고리즘 설계 및 구현
+- 경로 생성 및 주행 동작 구현
+- 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현
