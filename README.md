@@ -254,18 +254,14 @@ Roomie/
 
 ---
 
-# 7. 기술 스택
+## 7. 기술 스택
 
 | 분류 | 사용 기술 |
 |------|-----------|
-| **ML / DL** | ![YOLOv8](https://img.shields.io/badge/YOLOv8-FFB400?style=for-the-badge&logo=yolov5&logoColor=black) ![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white) ![ByteTrack](https://img.shields.io/badge/ByteTrack-222222?style=for-the-badge&logo=github&logoColor=white) ![TCN](https://img.shields.io/badge/TCN-800080?style=for-the-badge&logo=neural&logoColor=white) ![MediaPipe](https://img.shields.io/badge/MediaPipe-FF6F00?style=for-the-badge&logo=google&logoColor=white)<br>![Whisper](https://img.shields.io/badge/Whisper-9467BD?style=for-the-badge&logo=openai&logoColor=white) ![Ollama](https://img.shields.io/badge/Ollama-333333?style=for-the-badge&logo=vercel&logoColor=white) ![Coqui](https://img.shields.io/badge/Coqui-FFD166?style=for-the-badge&logo=soundcloud&logoColor=black) ![NumPy](https://img.shields.io/badge/NumPy-013243?style=for-the-badge&logo=numpy&logoColor=white) ![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white) |
-| **GUI** | ![PyQt6](https://img.shields.io/badge/PyQt6-41CD52?style=for-the-badge&logo=qt&logoColor=white) |
-| **데이터베이스** | ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=for-the-badge&logo=mysql&logoColor=white) |
-| **네트워크 / 통신** | ![Socket](https://img.shields.io/badge/Socket-000000?style=for-the-badge&logo=socketdotio&logoColor=white) ![JSON](https://img.shields.io/badge/JSON-292929?style=for-the-badge&logo=json&logoColor=white) ![UDP](https://img.shields.io/badge/UDP-D8B4FE?style=for-the-badge&logo=wifi&logoColor=white) ![TCP](https://img.shields.io/badge/TCP-004E64?style=for-the-badge&logo=networkx&logoColor=white) |
-| **분석 / 시각화** | ![Pandas](https://img.shields.io/badge/Pandas-150458?style=for-the-badge&logo=pandas&logoColor=white) ![Matplotlib](https://img.shields.io/badge/Matplotlib-11557C?style=for-the-badge&logo=chartdotjs&logoColor=white) |
-| **시뮬레이션 / 합성 데이터** | ![Unity](https://img.shields.io/badge/Unity-000000?style=for-the-badge&logo=unity&logoColor=white) ![Blender](https://img.shields.io/badge/Blender-F5792A?style=for-the-badge&logo=blender&logoColor=white) ![Polycam](https://img.shields.io/badge/Polycam-272727?style=for-the-badge&logo=camera&logoColor=white) |
-
-
+| **ML / DL** | [![PyTorch](https://img.shields.io/badge/PyTorch-E34A6F?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/) [![CNN](https://img.shields.io/badge/CNN-Deep_Learning-blue?style=for-the-badge)](https://en.wikipedia.org/wiki/Convolutional_neural_network) [![YOLO](https://img.shields.io/badge/YOLO-Object_Detection-yellow?style=for-the-badge&logo=yolo&logoColor=black)](https://github.com/AlexeyAB/darknet) [![DeepSORT](https://img.shields.io/badge/DeepSORT-Tracking-purple?style=for-the-badge)](https://github.com/nwojke/deep_sort) |
+| **GUI** | [![PyQt](https://img.shields.io/badge/PyQt-GUI-green?style=for-the-badge)](https://riverbankcomputing.com/software/pyqt/intro) [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript) [![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML) [![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS) |
+| **통신** | [![ROS2](https://img.shields.io/badge/ROS2-Robot_Framework-blue?style=for-the-badge&logo=ros&logoColor=white)](https://docs.ros.org/en/foxy/index.html) [![UDP](https://img.shields.io/badge/UDP-Network-green?style=for-the-badge)](https://en.wikipedia.org/wiki/User_Datagram_Protocol) [![HTTP](https://img.shields.io/badge/HTTP-Protocol-lightgrey?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/HTTP) [![WebSocket](https://img.shields.io/badge/WebSocket-Real_Time-blueviolet?style=for-the-badge)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) [![micro-ROS](https://img.shields.io/badge/micro--ROS-Embedded-orange?style=for-the-badge)](https://micro.ros.org/) |
+| **로보틱스** | [![ikpy](https://img.shields.io/badge/ikpy-Inverse_Kinematics-green?style=for-the-badge)](https://github.com/Phylliade/ikpy) [![FreeRTOS](https://img.shields.io/badge/FreeRTOS-RTOS-blue?style=for-the-badge)](https://www.freertos.org/) [![Nav2](https://img.shields.io/badge/Nav2-ROS_Navigation-red?style=for-the-badge)](https://navigation.ros.org/) [![OpenCV](https://img.shields.io/badge/OpenCV-Computer_Vision-darkgreen?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org/) |
 
 ---
 
