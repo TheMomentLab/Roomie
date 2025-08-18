@@ -181,12 +181,12 @@
 - **LED 상태 표시**
   - 로봇의 상태(RobotState)에 따라 RGB LED 색상 제어
 
-| 상태 ID | 상태 이름 | RGB LED |
-|---|---|---|
-| 0 | `INITIAL` | 청록색 |
-| 1, 2, 11, 13, 21, 23 | `CHARGING`, `WAITING`, `PICKUP_WAITING`, `DELIVERY_WAITING`, `GUIDE_WAITING`, `DESTINATION_SEARCHING` | 초록색 |
-| 10, 12, 20, 22, 30, 31 | `PICKUP_MOVING`, `DELIVERY_MOVING`, `CALL_MOVING`, `GUIDE_MOVING`, `RETURN_MOVING`, `ELEVATOR_RIDING` | 파란색 |
-| 90 | `ERROR` | 빨간색 |
+  | 상태 ID | 상태 이름 | RGB LED |
+  |---|---|---|
+  | 0                    | `INITIAL` | 청록색 |
+  | 1, 2, 11, 13, 21, 23 | `CHARGING`, `WAITING`, `PICKUP_WAITING`, `DELIVERY_WAITING`, `GUIDE_WAITING`, `DESTINATION_SEARCHING` | 초록색 |
+  | 10, 12, 20, 22, 30, 31 | `PICKUP_MOVING`, `DELIVERY_MOVING`, `CALL_MOVING`, `GUIDE_MOVING`, `RETURN_MOVING`, `ELEVATOR_RIDING` | 파란색 |
+  | 90 | `ERROR` | 빨간색 |
 
 ---
 
@@ -225,7 +225,7 @@
 | SR_01 | 로봇 호출 기능 | 특정 위치로 로봇 호출<br>호출 가능 장소:<br>- 객실 입구 (ROOM_XX)<br>- 레스토랑 (RES_2)<br>- 로비 (LOB_2) | O |
 | SR_02 | 로봇 이동 기능 | 로봇이 자율 주행을 통해 작업 수행 또는 복귀 이동<br>작업 종류:<br>- 호출<br>- 길 안내<br>- 배송<br>- 식음료<br>- 비품 | O |
 | SR_02_01 | 경로 생성 기능 | 목적지까지 로봇 스스로 경로를 생성하고 이동 | O |
-| SR_02_02 | 장애물 회피 기능 | 이동 중 장애물 인식 및 충돌 회피<br>장애물:<br>- 정적: 소화기, 식탁, 의자, 휴지통<br>- 동적: 사람 | O |
+| SR_02_02 | 장애물 회피 기능 | 이동 중 장애물 인식 및 충돌 회피<br>장애물:<br> - 정적:  식탁, 의자, 휴지통<br> - 동적: 사람 | O |
 | SR_02_03 | 충돌 감지 기능 | 주행 중 충돌 감지하여 일시 정지<br>IMU 값 기반 충돌 판단 (Threshold 하드웨어 측정) | O |
 | SR_02_04 | 전복 감지 기능 | 주행 불능 시 전복 감지 및 관리자 알림<br>IMU 값 기반 전복 판단 (Threshold 하드웨어 측정) |   |
 | SR_02_05 | 팔로잉 확인 기능 | ‘길 안내’ 수행 시 투숙객이 따라오고 있는지 확인 | O |
@@ -261,21 +261,29 @@
 ---
 
 ### 2) System Architecture Diagram
+- 로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램
+
 <img src="assets/images/system_architecture_diagram.png" alt="시스템 아키텍처 다이어그램" width="600">
 
 ---
 
 ### 3) State Diagram
+- 로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현
+
 <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="600">
 
 ---
 
 ### 4) ERD(Entity Relationship Diagram)
+- 시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램
+
 <img src="assets/images/erd.png" alt="ERD 다이어그램" width="600">
 
 ---
 
 ### 5) Test MAP
+- 로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵
+
 <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="600">
 
 ---
