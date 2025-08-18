@@ -29,9 +29,7 @@
 
 # 1. 프로젝트 개요
 - **프로젝트 목적**
-  - 호텔에서 발생하는 반복적인 업무를 로봇이 자율적으로 수행하여</br>
-    직원의 업무 부담을 줄이고</br>
-    투숙객에게는 새롭고 편리한 경험을 제공</br>
+  - 호텔에서 발생하는 반복적인 업무를 로봇이 자율적으로 수행하여 직원의 업무 부담을 줄이고 투숙객에게는 새롭고 편리한 경험을 제공
   
 - **프로젝트 기간**
   - 2025년 7월 7일 ~ 2025년 8월 13일(총 38일)
@@ -41,91 +39,162 @@
 
 ## 🍽️ 룸서비스 배송 기능
 
-<p align="center">
-  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery_demo.gif?raw=true" width="60%">
-</p>
+<img src="assets/images/delivery_flow.png" width="85%">
 
-
-<img src="assets/images/delivery_flow.png" alt="ERD 다이어그램" width="600">
-
-- **음식 주문 및 요청**
-  - 객실 내 비치된 QR코드로 Guest GUI 접속
-  - 메뉴 확인 후 주문 → Staff GUI로 알림 전송
-  - 조리 완료 후 Staff GUI에서 “픽업 요청” 전달
-
-- **픽업 및 적재**
-  - Roomie가 레스토랑 픽업 위치로 이동
-  - ArUco Marker 인식으로 정확한 픽업 위치 정렬
-  - Robot GUI에 주문 내역 표시 → 적재 혼동 방지
-  - 서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
-
-- **객실 배송**
-  - Nav2 기반 주행으로 객실 앞까지 이동
-  - 목적지 QR/ArUco Marker 인식 → 객실 위치 확인
-  - Guest GUI 및 Robot GUI를 통해 도착 알림 제공
-
-- **음식 수령**
-  - 고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령
-  - 완료 후 로봇은 대기 장소로 복귀
+<table>
+  <tr>
+    <th style="width:15%">주요 단계</th>
+    <th style="width:55%">설명</th>
+    <th style="width:30%">사진</th>
+  </tr>
+  <tr>
+    <td>음식 주문 및 요청</td>
+    <td>
+      객실 내 비치된 QR코드로 Guest GUI 접속<br>
+      메뉴 확인 후 주문 → Staff GUI로 알림 전송<br>
+      조리 완료 후 Staff GUI에서 “픽업 요청” 전달
+    </td>
+    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>픽업 및 적재</td>
+    <td>
+      Roomie가 레스토랑 픽업 위치로 이동<br>
+      ArUco Marker 인식으로 정확한 픽업 위치 정렬<br>
+      Robot GUI에 주문 내역 표시 → 적재 혼동 방지<br>
+      서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
+    </td>
+    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>객실 배송</td>
+    <td>
+      Nav2 기반 주행으로 객실 앞까지 이동<br>
+      목적지 QR/ArUco Marker 인식 → 객실 위치 확인<br>
+      Guest GUI 및 Robot GUI를 통해 도착 알림 제공
+    </td>
+    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>음식 수령</td>
+    <td>
+      고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령<br>
+      완료 후 로봇은 대기 장소로 복귀
+    </td>
+    <td><img src="assets/images/delivery_flow.png" width="300"></td>
+  </tr>
+</table>
 
 ---
 
 ## 🧭 길 안내 기능
 
-<p align="center">
-  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/guide_demo.gif?raw=true" width="60%">
-</p>
+<img src="assets/images/escort_image.png" width="85%">
 
-<img src="assets/images/escort_image.png" alt="ERD 다이어그램" width="600">
-
-- **안내 요청 및 목적지 입력**
-  - 객실 카드 인증 시 목적지 자동 입력
-  - Guest GUI 또는 Robot GUI에서 직접 입력 가능
-
-- **안내 대상 인식**
-  - 로봇 후면 카메라로 고객 인식
-  - DeepSORT 기반 타겟 추적 알고리즘 적용
-
-- **목적지 안내**
-  - 고객을 일정 거리로 추적하며 목적지까지 안내
-  - 고객이 시야에서 벗어나면 정지
-  - 고객이 다시 나타나면 이동 재개
+<table>
+  <tr>
+    <th style="width:15%">주요 단계</th>
+    <th style="width:55%">설명</th>
+    <th style="width:30%">사진</th>
+  </tr>
+  <tr>
+    <td>안내 요청 및 목적지 입력</td>
+    <td>
+      객실 카드 인증 시 목적지 자동 입력<br>
+      Guest GUI 또는 Robot GUI에서 직접 입력 가능
+    </td>
+    <td><img src="assets/images/escort_image.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>안내 대상 인식</td>
+    <td>
+      로봇 후면 카메라로 고객 인식<br>
+      DeepSORT 기반 타겟 추적 알고리즘 적용
+    </td>
+    <td><img src="assets/images/escort_image.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>목적지 안내</td>
+    <td>
+      고객을 일정 거리로 추적하며 목적지까지 안내<br>
+      고객이 시야에서 벗어나면 정지<br>
+      고객이 다시 나타나면 이동 재개
+    </td>
+    <td><img src="assets/images/escort_image.png" width="300"></td>
+  </tr>
+</table>
 
 ---
 
 ## 🏢 층간 이동 기능
 
-<p align="center">
-  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator_demo.gif?raw=true" width="60%">
-</p>
+<img src="assets/images/elevator_flow.png" width="85%">
 
-<img src="assets/images/elevator_flow.png" alt="ERD 다이어그램" width="600">
-
-- **엘리베이터 호출**
-  - Vision Service가 버튼 좌표 인식
-  - Arm Controller를 이용해 호출 버튼 클릭
-
-- **탑승 및 내부 조작**
-  - 문 중앙 정렬 후 탑승
-  - 층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어
-  - 상단 디스플레이 OCR로 목적 층 도착 여부 확인
-
-- **하차**
-  - 도착 후 중앙 정렬 → 안전하게 하차
+<table>
+  <tr>
+    <th style="width:15%">주요 단계</th>
+    <th style="width:55%">설명</th>
+    <th style="width:30%">사진</th>
+  </tr>
+  <tr>
+    <td>엘리베이터 호출</td>
+    <td>
+      Vision Service가 버튼 좌표 인식<br>
+      Arm Controller를 이용해 호출 버튼 클릭
+    </td>
+    <td><img src="assets/images/elevator_flow.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>탑승 및 내부 조작</td>
+    <td>
+      문 중앙 정렬 후 탑승<br>
+      층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어<br>
+      상단 디스플레이 OCR로 목적 층 도착 여부 확인
+    </td>
+    <td><img src="assets/images/elevator_flow.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>하차</td>
+    <td>
+      목적 층 도착 후 중앙 정렬 → 안전하게 하차
+    </td>
+    <td><img src="assets/images/elevator_flow.png" width="300"></td>
+  </tr>
+</table>
 
 ---
 
 ## 📊 관리자 모니터링 기능
 
-- **대시보드**
-  - 현재 작업 수, 로봇 수를 실시간 확인
-  - 2D 맵 상의 로봇 위치 표시
-
-- **로봇 관리**
-  - 현재 위치, 현재 작업, 배터리 상태 모니터링
-
-- **작업 히스토리**
-  - 작업 리스트 및 상세 기록 확인 가능
+<table>
+  <tr>
+    <th style="width:15%">주요 단계</th>
+    <th style="width:55%">설명</th>
+    <th style="width:30%">사진</th>
+  </tr>
+  <tr>
+    <td>대시보드</td>
+    <td>
+      현재 작업 수, 로봇 수를 실시간 확인<br>
+      2D 맵 상의 로봇 위치 표시
+    </td>
+    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>로봇 관리</td>
+    <td>
+      현재 위치, 현재 작업, 배터리 상태 모니터링
+    </td>
+    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+  </tr>
+  <tr>
+    <td>작업 히스토리</td>
+    <td>
+      작업 리스트 및 상세 기록 확인 가능
+    </td>
+    <td><img src="assets/images/system_architecture_diagram.png" width="300"></td>
+  </tr>
+</table>
  
 
 ---
@@ -386,7 +455,3 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 | 팀원 | **김지연** | - 백엔드 구현 및 DB 설계<br>- micro-ROS 기반 IO Controller 구현<br>- HTTP/WebSocket × PyQt 기반 Admin GUI 구현<br>- 로봇 하드웨어 제작 |
 | 팀원 | **김종명** | - FreeRTOS 기반 로봇암 제어<br>- HTTP/WebSocket × HTML,JS,CSS 기반 GUEST GUI 구현<br>- HTTP/WebSocket × PyQt 기반 STAFF GUI 구현<br>- Jira 일정 관리<br>- 로봇 하드웨어 제작 |
 | 팀원 | **박효진** | - 로봇 SLAM & Navigation 총괄<br>- 동적/정적 장애물 처리 알고리즘 설계 및 구현<br>- 경로 생성 및 주행 동작 구현<br>- 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현 |
-
----
-
-
