@@ -45,6 +45,9 @@
   <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery_demo.gif?raw=true" width="60%">
 </p>
 
+
+<img src="assets/images/delivery_flow.png" alt="ERD 다이어그램" width="600">
+
 - **음식 주문 및 요청**
   - 객실 내 비치된 QR코드로 Guest GUI 접속
   - 메뉴 확인 후 주문 → Staff GUI로 알림 전송
@@ -73,6 +76,8 @@
   <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/guide_demo.gif?raw=true" width="60%">
 </p>
 
+<img src="assets/images/escort_image.png" alt="ERD 다이어그램" width="600">
+
 - **안내 요청 및 목적지 입력**
   - 객실 카드 인증 시 목적지 자동 입력
   - Guest GUI 또는 Robot GUI에서 직접 입력 가능
@@ -93,6 +98,8 @@
 <p align="center">
   <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator_demo.gif?raw=true" width="60%">
 </p>
+
+<img src="assets/images/elevator_flow.png" alt="ERD 다이어그램" width="600">
 
 - **엘리베이터 호출**
   - Vision Service가 버튼 좌표 인식
@@ -362,6 +369,7 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 
 
 <img src="assets/images/confluence.gif" alt="ERD 다이어그램" width="200">
+
 ---
 
 # 9. 팀 구성
