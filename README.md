@@ -249,17 +249,28 @@
 | SR_14_01 | 저전력 자동 복귀 기능 | 배터리 20% 이하일 경우 작업 종료 후 대기 장소 복귀 | O |
 
 ---
-### 2) System Architect
+
+### 2) System Architecture Diagram
 <img src="assets/images/system_architecture_diagram.png" alt="시스템 아키텍처 다이어그램" width="600">
+
 ---
----
+
 ### 3) State Diagram
 <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="600">
+
 ---
 
 ### 4) ERD(Entity Relationship Diagram)
 <img src="assets/images/erd.png" alt="ERD 다이어그램" width="600">
+
 ---
+
+### 5) Test MAP
+<img src="assets/images/test_map.png" alt="ERD 다이어그램" width="600">
+
+---
+
+
 
 # 6. 프로젝트 구조
 
@@ -323,15 +334,16 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
   - 총 6스프린트로 구성된 애자일 기반 프로젝트 관리
   - 에픽-태스크 구조로 체계적 일정 관리
 
+<img src="assets/images/jira-1.gif" alt="ERD 다이어그램" width="500">
+<img src="assets/images/jira-2.gif" alt="ERD 다이어그램" width="500">
+---
+
 **2. Confluence 관리**
   - 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 체계적 문서화
   - 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 문서화
 
 
-<p align="center">
-  <img src="" width="100%">
-</p>
-
+<img src="assets/images/confluence.gif" alt="ERD 다이어그램" width="200">
 ---
 
 # 9. 팀 구성
@@ -342,10 +354,6 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 | 팀원 | **김지연** | - 백엔드 구현 및 DB 설계<br>- micro-ROS 기반 IO Controller 구현<br>- HTTP/WebSocket × PyQt 기반 Admin GUI 구현<br>- 로봇 하드웨어 제작 |
 | 팀원 | **김종명** | - FreeRTOS 기반 로봇암 제어<br>- HTTP/WebSocket × HTML,JS,CSS 기반 GUEST GUI 구현<br>- HTTP/WebSocket × PyQt 기반 STAFF GUI 구현<br>- Jira 일정 관리<br>- 로봇 하드웨어 제작 |
 | 팀원 | **박효진** | - 로봇 SLAM & Navigation 총괄<br>- 동적/정적 장애물 처리 알고리즘 설계 및 구현<br>- 경로 생성 및 주행 동작 구현<br>- 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현 |
-
----
-
-# 10. 라이선스
 
 ---
 
