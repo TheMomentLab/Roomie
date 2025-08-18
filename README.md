@@ -207,7 +207,11 @@
 ---
 
 # 5. 시스템 설계
-
+5-1.System Requirements
+---
+5-2.State Diagram
+---
+5-3.ERD(Entity Relationship Diagram)
 ---
 
 # 6. 프로젝트 구조
