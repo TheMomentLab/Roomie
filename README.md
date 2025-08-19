@@ -695,8 +695,8 @@ Roomie/
 
 <table>
   <tr>
-    <td align="center" width="400" valign="top">
-      <img src="assets/images/confluence.gif" width="200">
+    <td align="center" width="300" valign="top">
+      <img src="assets/images/confluence.gif" width="300">
     </td>
     <td align="left" valign="top">
       ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 Confluence를 통해 문서화<br>
