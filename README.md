@@ -658,7 +658,7 @@ Roomie/
       <img src="assets/images/jira-1.gif" width="500"><br>
       <img src="assets/images/jira-2.gif" width="500">
     </td>
-    <td align="left" valign="top"><br>
+    <td align="left" valign="top">
       ▪ 총 6 스프린트로 구성된 Jira 기반 프로젝트 관리<br>
       ▪ 에픽-태스크 구조로 체계적 일정 관리
     </td>
@@ -674,7 +674,7 @@ Roomie/
     <td align="center" width="400" valign="top">
       <img src="assets/images/confluence.gif" width="200">
     </td>
-    <td align="left" valign="top"><br>
+    <td align="left" valign="top">
       ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 Confluence를 통해 문서화<br>
       ▪ 주기적으로 일정 진행사항 체계적 문서화
     </td>
