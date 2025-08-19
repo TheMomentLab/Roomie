@@ -510,40 +510,36 @@
 ### 2) System Architecture Diagram
 
 <p align="center">
-  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/systemarchtecture_diagram.png?raw=true" alt="시스템 아키텍처 다이어그램" width="80%">
+  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/systemarchtecture_diagram.png?raw=true" alt="시스템 아키텍처 다이어그램" width="80%"><br>
+  <sub>로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램</sub>
 </p>
-
-- 로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램
 
 ---
 
 ### 3) State Diagram
 
 <p align="center">
-  <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="80%">
+  <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="80%"><br>
+  <sub>로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현</sub>
 </p>
-
-- 로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현
 
 ---
 
 ### 4) ERD(Entity Relationship Diagram)
 
 <p align="center">
-  <img src="assets/images/erd.png" alt="ERD 다이어그램" width="80%">
+  <img src="assets/images/erd.png" alt="ERD 다이어그램" width="80%"><br>
+  <sub>시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램</sub>
 </p>
-
-- 시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램
 
 ---
 
 ### 5) Test MAP
 
 <p align="center">
-  <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="80%">
+  <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="80%"><br>
+  <sub>로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵</sub>
 </p>
-
-- 로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵
 
 ---
 
