@@ -381,6 +381,24 @@
 ---
 
 ## 4) 마이크로 ROS
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/microros-2.jpg?raw=true" height="200"><br>
+        <sub>적재 여부 및 문 닫힘 확인을 위한 초음파 센서</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/dooropening.gif?raw=true" width="500"><br>
+        <sub>마이크로 ROS를 이용한 서랍 문 제어</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
 - **적재함 문 감지**
   - 센서와 문 사이의 거리 측정
   - 측정거리 5.0cm 초과 시 문이 열린 것으로 판단
