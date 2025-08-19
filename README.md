@@ -149,7 +149,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="assets/images/escort_image.png" width="300">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_1.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -161,7 +161,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="assets/images/escort_image.png" width="300">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_2.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -174,7 +174,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="assets/images/escort_image.png" width="300">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_3.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
