@@ -219,6 +219,7 @@
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator_entering.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="300">
         </p>
       </td>
