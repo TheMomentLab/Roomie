@@ -80,8 +80,8 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="150">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="150">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="130">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="130">
         </p>
       </td>
     </tr>
