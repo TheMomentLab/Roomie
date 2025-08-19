@@ -313,6 +313,25 @@
 
 ## 2) 경로 생성 및 주행
 
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/slam_mapping.png?raw=true" height="200"><br>
+        <sub>경로 생성</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/mobile-staticobstacle.gif?raw=true" height="200"><br>
+        <sub>정적 장애물 회피</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/mobile-dynamicobstacle.gif?raw=true" height="200"><br>
+        <sub>동적 장애물 회피</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
 - **Nav2 기반 경로 계획**
   - 전역/지역 경로 생성 및 주행
 - **웨이포인트 기반 경로 생성**
@@ -559,7 +578,7 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 **2. Confluence 관리**
 
 <p align="center">
-  <img src="assets/images/confluence.gif" width="200">
+  <img src="assets/images/confluence.gif" width="400">
 </p>
 
   - 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 체계적 문서화
