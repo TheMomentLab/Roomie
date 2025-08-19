@@ -711,4 +711,9 @@ Roomie/
 - 경로 생성 및 주행 동작 구현
 - 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현
 
+---
 
+# 10. 라이선스
+
+이 프로젝트는 [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)에 따라 오픈소스로 제공됩니다.
+자세한 사항은 [`LICENSE`](./LICENSE) 파일을 참고해주세요.
