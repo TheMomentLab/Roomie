@@ -29,7 +29,29 @@
 
 # 1. 프로젝트 개요
 
-<img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image3.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image7.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image5.png?raw=true" width="25%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image2.png?raw=true" width="25%">
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image3.png?raw=true" height="200"><br>
+        <sub>룸서비스 배송 기능</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image7.png?raw=true" height="200"><br>
+        <sub>길안내 기능</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image5.png?raw=true" height="200"><br>
+        <sub>층간 이동 기능</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image2.png?raw=true" height="200"><br>
+        <sub>관리자 모니터링 기능</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
 
 - **프로젝트 목적**
   - 호텔에서 발생하는 반복적인 업무를 로봇이 자율적으로 수행하여 직원의 업무 부담을 줄이고 투숙객에게는 새롭고 편리한 경험을 제공
@@ -42,157 +64,227 @@
 
 ## 🍽️ 룸서비스 배송 기능
 
-<table>
-  <tr>
-    <th style="width:15%">주요 단계</th>
-    <th style="width:55%">설명</th>
-    <th style="width:30%">사진</th>
-  </tr>
-  <tr>
-    <td>음식 주문 및 요청</td>
-    <td>
-      객실 내 비치된 QR코드로 Guest GUI 접속<br>
-      메뉴 확인 후 주문 → Staff GUI로 알림 전송<br>
-      조리 완료 후 Staff GUI에서 “픽업 요청” 전달
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="200"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="200"></td>
-  </tr>
-  <tr>
-    <td>픽업 및 적재</td>
-    <td>
-      Roomie가 레스토랑 픽업 위치로 이동<br>
-      ArUco Marker 인식으로 정확한 픽업 위치 정렬<br>
-      Robot GUI에 주문 내역 표시 → 적재 혼동 방지<br>
-      서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>객실 배송</td>
-    <td>
-      Nav2 기반 주행으로 객실 앞까지 이동<br>
-      목적지 ArUco Marker 인식 → 객실 위치 확인<br>
-      Guest GUI 및 Robot GUI를 통해 도착 알림 제공
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>음식 수령</td>
-    <td>
-      고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령<br>
-      완료 후 로봇은 대기 장소로 복귀
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="400"></td>
-  </tr>
-</table>
+<div align="center">
+  <table>
+    <tr>
+      <th style="width:15%">주요 단계</th>
+      <th style="width:80%">설명</th>
+      <th style="width:30%">사진</th>
+    </tr>
+    <tr>
+      <td>음식 주문 및 요청</td>
+      <td>
+        ▪ 객실 내 비치된 QR코드로 Guest GUI 접속<br>
+        ▪ 메뉴 확인 후 주문 → Staff GUI로 알림 전송<br>
+        ▪ 조리 완료 후 Staff GUI에서 “픽업 요청” 전달
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="200">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="200">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>픽업 및 적재</td>
+      <td>
+        ▪ Roomie가 레스토랑 픽업 위치로 이동<br>
+        ▪ ArUco Marker 인식으로 정확한 픽업 위치 정렬<br>
+        ▪ Robot GUI에 주문 내역 표시 → 적재 혼동 방지<br>
+        ▪ 서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="400">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>객실 배송</td>
+      <td>
+        ▪ Nav2 기반 주행으로 객실 앞까지 이동<br>
+        ▪ 목적지 ArUco Marker 인식 → 객실 위치 확인<br>
+        ▪ Guest GUI 및 Robot GUI를 통해 도착 알림 제공
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="400">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>음식 수령</td>
+      <td>
+        ▪ 고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령<br>
+        ▪ 완료 후 로봇은 대기 장소로 복귀
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="400">
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
 
 ---
 
 ## 🧭 길 안내 기능
 
-<table>
-  <tr>
-    <th style="width:15%">주요 단계</th>
-    <th style="width:55%">설명</th>
-    <th style="width:30%">사진</th>
-  </tr>
-  <tr>
-    <td>안내 요청 및 목적지 입력</td>
-    <td>
-      객실 카드 인증 시 목적지 자동 입력<br>
-      Guest GUI 또는 Robot GUI에서 직접 입력 가능
-    </td>
-    <td><img src="assets/images/escort_image.png" width="300"></td>
-  </tr>
-  <tr>
-    <td>안내 대상 인식</td>
-    <td>
-      로봇 후면 카메라로 고객 인식<br>
-      DeepSORT 기반 타겟 추적 알고리즘 적용
-    </td>
-    <td><img src="assets/images/escort_image.png" width="300"></td>
-  </tr>
-  <tr>
-    <td>목적지 안내</td>
-    <td>
-      고객을 일정 거리로 추적하며 목적지까지 안내<br>
-      고객이 시야에서 벗어나면 정지<br>
-      고객이 다시 나타나면 이동 재개
-    </td>
-    <td><img src="assets/images/escort_image.png" width="300"></td>
-  </tr>
-</table>
+<div align="center">
+  <table>
+    <tr>
+      <th style="width:15%">주요 단계</th>
+      <th style="width:80%">설명</th>
+      <th style="width:30%">사진</th>
+    </tr>
+    <tr>
+      <td>안내 요청 및 목적지 입력</td>
+      <td>
+        ▪ 객실 카드 인증 시 목적지 자동 입력<br>
+        ▪ Guest GUI 또는 Robot GUI에서 직접 입력 가능
+      </td>
+      <td>
+        <p align="center">
+          <img src="assets/images/escort_image.png" width="300">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>안내 대상 인식</td>
+      <td>
+        ▪ 로봇 후면 카메라로 고객 인식<br>
+        ▪ DeepSORT 기반 타겟 추적 알고리즘 적용
+      </td>
+      <td>
+        <p align="center">
+          <img src="assets/images/escort_image.png" width="300">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>목적지 안내</td>
+      <td>
+        ▪ 고객을 일정 거리로 추적하며 목적지까지 안내<br>
+        ▪ 고객이 시야에서 벗어나면 정지<br>
+        ▪ 고객이 다시 나타나면 이동 재개
+      </td>
+      <td>
+        <p align="center">
+          <img src="assets/images/escort_image.png" width="300">
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
 
 ---
 
 ## 🏢 층간 이동 기능
 
-<table>
-  <tr>
-    <th style="width:15%">주요 단계</th>
-    <th style="width:55%">설명</th>
-    <th style="width:30%">사진</th>
-  </tr>
-  <tr>
-    <td>엘리베이터 호출</td>
-    <td>
-      Vision Service가 버튼 좌표 인식<br>
-      Arm Controller를 이용해 호출 버튼 클릭
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>탑승 및 내부 조작</td>
-    <td>
-      문 중앙 정렬 후 탑승<br>
-      층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어<br>
-      상단 디스플레이 OCR로 목적 층 도착 여부 확인
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="400"><br><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>하차</td>
-    <td>
-      목적 층 도착 후 중앙 정렬 → 안전하게 하차
-    </td>
-    <td><img src="assets/images/elevator_flow.png" width="300"></td>
-  </tr>
-</table>
+<div align="center">
+  <table>
+    <tr>
+      <th style="width:15%">주요 단계</th>
+      <th style="width:80%">설명</th>
+      <th style="width:30%">사진</th>
+    </tr>
+    <tr>
+      <td>엘리베이터 호출</td>
+      <td>
+        ▪ Vision Service가 버튼 좌표 인식<br>
+        ▪ Arm Controller를 이용해 호출 버튼 클릭
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" width="400">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>탑승 및 내부 조작</td>
+      <td>
+        ▪ 문 중앙 정렬 후 탑승<br>
+        ▪ 층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어<br>
+        ▪ 상단 디스플레이 OCR로 목적 층 도착 여부 확인
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="400"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="400">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>하차</td>
+      <td>
+        ▪ 목적 층 도착 후 중앙 정렬 → 안전하게 하차
+      </td>
+      <td>
+        <p align="center">
+          <img src="assets/images/elevator_flow.png" width="300">
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
 
 ---
 
 ## 📊 관리자 모니터링 기능
 
-<table>
-  <tr>
-    <th style="width:15%">주요 단계</th>
-    <th style="width:55%">설명</th>
-    <th style="width:30%">사진</th>
-  </tr>
-  <tr>
-    <td>대시보드</td>
-    <td>
-      현재 작업 수, 로봇 수를 실시간 확인<br>
-      2D 맵 상의 로봇 위치 표시
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>로봇 관리</td>
-    <td>
-      현재 위치, 현재 작업, 배터리 상태 모니터링
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="400"></td>
-  </tr>
-  <tr>
-    <td>작업 히스토리</td>
-    <td>
-      작업 리스트 및 상세 기록 확인 가능
-    </td>
-    <td><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="400"></td>
-  </tr>
-</table>
- 
+<div align="center">
+  <table>
+    <tr>
+      <th style="width:15%">주요 단계</th>
+      <th style="width:80%">설명</th>
+      <th style="width:30%">사진</th>
+    </tr>
+    <tr>
+      <td>대시보드</td>
+      <td>
+        ▪ 현재 작업 수, 로봇 수를 실시간 확인<br>
+        ▪ 2D 맵 상의 로봇 위치 표시
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="600">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>로봇 관리</td>
+      <td>
+        ▪ 현재 위치, 현재 작업, 배터리 상태 모니터링
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="600">
+        </p>
+      </td>
+    </tr>
+    <tr>
+      <td>작업 히스토리</td>
+      <td>
+        ▪ 작업 리스트 및 상세 기록 확인 가능
+      </td>
+      <td>
+        <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="600">
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+
+ `
 
 ---
 
@@ -200,9 +292,13 @@
 
 ## 1) 로봇암 제어
 
-<img src="assets/images/arm-principle.png" width="75%">
+<p align="center">
+  <img src="assets/images/arm-principle.png" width="75%" alt="arm principle" />
+</p>
 
-[상세 설계 보기](ros2_ws/src/roomie_ac/README.md)
+<p align="center">
+  <a href="ros2_ws/src/roomie_ac/README.md">상세 설계 보기</a>
+</p>
 
 - **구성**
   - 서보모터, 2D 카메라, 버튼 클릭 엔드이펙터
@@ -232,7 +328,26 @@
 
 ## 3) 비전 인식
 
-<img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" width="33%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-elevator.gif?raw=true" width="33%"><img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-tracking.gif?raw=true" width="33%">
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" height="200"><br>
+        <sub>버튼 인식</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-elevator.gif?raw=true" height="200"><br>
+        <sub>엘리베이터 외부 객체 인식</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-tracking.gif?raw=true" height="200"><br>
+        <sub>길안내 기능을 위한 DeepSORT 특정인 추적</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
 
 - **YOLOv8n 기반 객체 인식**
   - 장애물: 정적/동적/유리문
@@ -275,19 +390,13 @@
 - **문제**: 일반 등속 제어 시 팔끝이 미세하게 떨림  
 - **해결**: Gaussian 함수 기반 속도/가속도 제어로 진동 최소화  
 
----
-
 ### 🛣️ 실내 복잡 환경 경로 생성
 - **문제**: 통로가 좁거나 장애물 있을 때 우회 불가  
 - **해결**: 웨이포인트 기반 경로 설계 + A\* 알고리즘으로 사전 우회 처리  
 
----
-
 ### 🧠 YOLO 단일 모델 한계
 - **문제**: 객체 클래스 수 증가 → 성능 저하  
 - **해결**: YOLOv8n은 ROI 생성, CNN으로 버튼 분류, EasyOCR로 층수 인식  
-
----
 
 ### 🏢 엘리베이터 탑승 정밀 동작
 - **문제**: 버튼 클릭 및 내부 정렬 시 기존 Nav2 주행의 한계  
@@ -342,28 +451,36 @@
 ### 2) System Architecture Diagram
 - 로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램
 
-<img src="assets/images/system_architecture_diagram.png" alt="시스템 아키텍처 다이어그램" width="600">
+<p align="center">
+  <img src="assets/images/system_architecture_diagram.png" alt="시스템 아키텍처 다이어그램" width="80%">
+</p>
 
 ---
 
 ### 3) State Diagram
 - 로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현
 
-<img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="600">
+<p align="center">
+  <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="80%">
+</p>
 
 ---
 
 ### 4) ERD(Entity Relationship Diagram)
 - 시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램
 
-<img src="assets/images/erd.png" alt="ERD 다이어그램" width="600">
+<p align="center">
+  <img src="assets/images/erd.png" alt="ERD 다이어그램" width="80%">
+</p>
 
 ---
 
 ### 5) Test MAP
 - 로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵
 
-<img src="assets/images/test_map.png" alt="ERD 다이어그램" width="600">
+<p align="center">
+  <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="80%">
+</p>
 
 ---
 
@@ -428,44 +545,50 @@ Roomie/
 Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 
 **1. Jira 관리**
+
+<p align="center">
+  <img src="assets/images/jira-1.gif" width="500" height="300">
+  <img src="assets/images/jira-2.gif" width="500" height="300">
+</p>
+
   - 총 6스프린트로 구성된 애자일 기반 프로젝트 관리
   - 에픽-태스크 구조로 체계적 일정 관리
 
-<img src="assets/images/jira-1.gif" alt="ERD 다이어그램" width="500">
-<img src="assets/images/jira-2.gif" alt="ERD 다이어그램" width="500">
 ---
 
 **2. Confluence 관리**
+
+<p align="center">
+  <img src="assets/images/confluence.gif" width="200">
+</p>
+
   - 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 체계적 문서화
   - 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 문서화
-
-
-<img src="assets/images/confluence.gif" alt="ERD 다이어그램" width="200">
 
 ---
 
 # 9. 팀 구성
 
-## 🧑‍💼 장진혁 @jinhyuk2me
+## 🧑‍💼 장진혁 [`@jinhyuk2me`](https://github.com/jinhyuk2me)
 - 프로젝트 기획 및 총괄
 - ROS2 패키지 구조 및 통신 시퀀스 설계
 - 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현
 - ROS2 × PyQt 기반 ROBOT GUI 구현
 
-## 🧑‍💼 김지연 @heyjay1002
+## 🧑‍💼 김지연 [`@heyjay1002`](https://github.com/heyjay1002)
 - 백엔드 구현 및 DB 설계
 - micro-ROS 기반 IO Controller 구현
 - HTTP/WebSocket × PyQt 기반 Admin GUI 구현
 - 로봇 하드웨어 제작
 
-## 🧑‍💼 김종명 @jongbob1918
+## 🧑‍💼 김종명 [`@jongbob1918`](https://github.com/jongbob1918)
 - FreeRTOS 기반 로봇암 제어
 - HTTP/WebSocket × HTML,JS,CSS 기반 GUEST GUI 구현
 - HTTP/WebSocket × PyQt 기반 STAFF GUI 구현
 - Jira 일정 관리
 - 로봇 하드웨어 제작
 
-## 🧑‍💼 박효진 @Park-hyojin
+## 🧑‍💼 박효진 [`@Park-hyojin`](https://github.com/Park-hyojin)
 - 로봇 SLAM & Navigation 총괄
 - 동적/정적 장애물 처리 알고리즘 설계 및 구현
 - 경로 생성 및 주행 동작 구현
