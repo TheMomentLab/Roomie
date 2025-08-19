@@ -2,9 +2,10 @@
 # 1. 동작 원리
 
 ## 1️⃣ 단계: 버튼 인식 (Perception)
-
-
 Vision Service에서 이미지 상의 버튼 bbox의 중심 좌표, 모서리 점들의 좌표, 픽셀 면적을 정규화하여 Arm Controller에 전달
+
+</br>
+</br>
 
 ## 2️⃣ 단계: 3차원 위치 추정 (Pose Estimation)
 2D 좌표를 3D 공간 좌표로 변환하는 과정
@@ -20,7 +21,9 @@ Vision Service에서 이미지 상의 버튼 bbox의 중심 좌표, 모서리 �
 
         (T base→btn)  =  (T base→tool) × (T tool→cam) × (T cam→btn)
 ​
- 
+</br>
+</br>
+
 ## 3️⃣ 단계: 동작 계획 (Motion Planning)
  최종 목표 좌표로 로봇팔의 엔드 이펙터(끝부분)를 해당 위치와 방향으로 보내기 위해 각 관절의 각도를 계산
 
@@ -29,6 +32,9 @@ Vision Service에서 이미지 상의 버튼 bbox의 중심 좌표, 모서리 �
 
 ### 2) 각도 변환
 - 계산된 라디안(Radian) 단위의 관절각을 ESP32가 이해할 수 있는 서보모터의 각도(Degree, 0°~180°)로 변환 
+
+</br>
+</br>
 
 ## 4️⃣ 단계: 동작 수행 및 제어 (Execution & Control)
 - 최종 서보모터 각도 명령은 시리얼 통신을 통해 ESP32 펌웨어로 전송하여 모터 동작
@@ -40,8 +46,6 @@ Vision Service에서 이미지 상의 버튼 bbox의 중심 좌표, 모서리 �
         ESP32에서  가우시안(Gaussian) 가감속 프로파일을 적용하여 부드러운 움직임 구현. 
 
 
-</br>
-</br>
 </br>
 </br>
 
