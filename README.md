@@ -71,13 +71,13 @@
       <th style="width:30%">사진</th>
     </tr>
     <tr>
-      <td>음식 주문 및 요청</td>
-      <td>
+      <td valign="top">음식 주문 및 요청</td>
+      <td valign="top">
         ▪ 객실 내 비치된 QR코드로 Guest GUI 접속<br>
         ▪ 메뉴 확인 후 주문 → Staff GUI로 알림 전송<br>
         ▪ 조리 완료 후 Staff GUI에서 “픽업 요청” 전달
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="130">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="130">
@@ -85,14 +85,14 @@
       </td>
     </tr>
     <tr>
-      <td>픽업 및 적재</td>
-      <td>
+      <td valign="top">픽업 및 적재</td>
+      <td valign="top">
         ▪ Roomie가 레스토랑 픽업 위치로 이동<br>
         ▪ ArUco Marker 인식으로 정확한 픽업 위치 정렬<br>
         ▪ Robot GUI에 주문 내역 표시 → 적재 혼동 방지<br>
         ▪ 서랍 제어 (문 열림/잠금 센서, 적재 여부 감지 센서 포함)
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="300"><br>
@@ -101,25 +101,25 @@
       </td>
     </tr>
     <tr>
-      <td>객실 배송</td>
-      <td>
+      <td valign="top">객실 배송</td>
+      <td valign="top">
         ▪ Nav2 기반 주행으로 객실 앞까지 이동<br>
         ▪ 목적지 ArUco Marker 인식 → 객실 위치 확인<br>
         ▪ Guest GUI 및 Robot GUI를 통해 도착 알림 제공
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
     <tr>
-      <td>음식 수령</td>
-      <td>
+      <td valign="top">음식 수령</td>
+      <td valign="top">
         ▪ 고객이 Robot GUI 조작 → 서랍 해제 후 음식 수령<br>
         ▪ 완료 후 로봇은 대기 장소로 복귀
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="300">
         </p>
@@ -127,7 +127,6 @@
     </tr>
   </table>
 </div>
-
 
 ---
 
@@ -141,37 +140,37 @@
       <th style="width:30%">사진</th>
     </tr>
     <tr>
-      <td>안내 요청 및 목적지 입력</td>
-      <td>
+      <td valign="top">안내 요청 및 목적지 입력</td>
+      <td valign="top">
         ▪ 객실 카드 인증 시 목적지 자동 입력<br>
         ▪ Guest GUI 또는 Robot GUI에서 직접 입력 가능
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_1.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
     <tr>
-      <td>안내 대상 인식</td>
-      <td>
+      <td valign="top">안내 대상 인식</td>
+      <td valign="top">
         ▪ 로봇 후면 카메라로 고객 인식<br>
         ▪ DeepSORT 기반 타겟 추적 알고리즘 적용
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_2.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
     <tr>
-      <td>목적지 안내</td>
-      <td>
+      <td valign="top">목적지 안내</td>
+      <td valign="top">
         ▪ 고객을 일정 거리로 추적하며 목적지까지 안내<br>
         ▪ 고객이 시야에서 벗어나면 정지<br>
         ▪ 고객이 다시 나타나면 이동 재개
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/escort_3.gif?raw=true" width="300">
         </p>
@@ -179,7 +178,6 @@
     </tr>
   </table>
 </div>
-
 
 ---
 
@@ -193,12 +191,12 @@
       <th style="width:30%">사진</th>
     </tr>
     <tr>
-      <td>엘리베이터 호출</td>
-      <td>
+      <td valign="top">엘리베이터 호출</td>
+      <td valign="top">
         ▪ Vision Service가 버튼 좌표 인식<br>
         ▪ Arm Controller를 이용해 호출 버튼 클릭
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="300"><br>
@@ -207,13 +205,13 @@
       </td>
     </tr>
     <tr>
-      <td>탑승 및 내부 조작</td>
-      <td>
+      <td valign="top">탑승 및 내부 조작</td>
+      <td valign="top">
         ▪ 문 중앙 정렬 후 탑승<br>
         ▪ 층수 버튼 크기와 좌표를 기반으로 Arm Controller 제어<br>
         ▪ 상단 디스플레이 OCR로 목적 층 도착 여부 확인
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="300"><br>
@@ -222,11 +220,11 @@
       </td>
     </tr>
     <tr>
-      <td>하차</td>
-      <td>
+      <td valign="top">하차</td>
+      <td valign="top">
         ▪ 목적 층 도착 후 중앙 정렬 → 안전하게 하차
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-last.gif?raw=true" width="300">
         </p>
@@ -247,34 +245,34 @@
       <th style="width:30%">사진</th>
     </tr>
     <tr>
-      <td>대시보드</td>
-      <td>
+      <td valign="top">대시보드</td>
+      <td valign="top">
         ▪ 현재 작업 수, 로봇 수를 실시간 확인<br>
         ▪ 2D 맵 상의 로봇 위치 표시
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="400">
         </p>
       </td>
     </tr>
     <tr>
-      <td>로봇 관리</td>
-      <td>
+      <td valign="top">로봇 관리</td>
+      <td valign="top">
         ▪ 현재 위치, 현재 작업, 배터리 상태 모니터링
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="400">
         </p>
       </td>
     </tr>
     <tr>
-      <td>작업 히스토리</td>
-      <td>
+      <td valign="top">작업 히스토리</td>
+      <td valign="top">
         ▪ 작업 리스트 및 상세 기록 확인 가능
       </td>
-      <td>
+      <td valign="top">
         <p align="center">
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="400">
         </p>
@@ -282,8 +280,6 @@
     </tr>
   </table>
 </div>
-
- `
 
 ---
 
