@@ -21,7 +21,7 @@
 - [5. 시스템 설계](#5-시스템-설계)
 - [6. 프로젝트 구조](#6-프로젝트-구조)
 - [7. 기술 스택](#7-기술-스택)
-- [8. 일정 관리](#8-프로젝트-일정-관리)
+- [8. 프로젝트 관리](#8-프로젝트-관리)
 - [9. 팀 구성](#9-팀-구성)
 
 ---
@@ -423,15 +423,17 @@
   - 카드 읽기 성공 시 `success=true`, `location_id=읽은값`, 실패 시 `success=false`, `location_id=-1`
 - **LED 상태 표시**
   - 로봇의 상태(RobotState)에 따라 RGB LED 색상 제어
- 
-<br>
+  - <details>
+    <summary>💡 제어 로직 보기</summary><br>
 
-  | 상태 ID | 상태 이름 | RGB LED |
-  |---|---|---|
-  | 0                    | `INITIAL` | 청록색 |
-  | 1, 2, 11, 13, 21, 23 | `CHARGING`, `WAITING`, `PICKUP_WAITING`, `DELIVERY_WAITING`, `GUIDE_WAITING`, `DESTINATION_SEARCHING` | 초록색 |
-  | 10, 12, 20, 22, 30, 31 | `PICKUP_MOVING`, `DELIVERY_MOVING`, `CALL_MOVING`, `GUIDE_MOVING`, `RETURN_MOVING`, `ELEVATOR_RIDING` | 파란색 |
-  | 90 | `ERROR` | 빨간색 |
+    | 상태 ID | 상태 이름 | RGB LED |
+    |---|---|---|
+    | 0 | `INITIAL` | 청록색 |
+    | 1, 2, 11, 13, 21, 23 | `CHARGING`, `WAITING`, `PICKUP_WAITING`, `DELIVERY_WAITING`, `GUIDE_WAITING`, `DESTINATION_SEARCHING` | 초록색 |
+    | 10, 12, 20, 22, 30, 31 | `PICKUP_MOVING`, `DELIVERY_MOVING`, `CALL_MOVING`, `GUIDE_MOVING`, `RETURN_MOVING`, `ELEVATOR_RIDING` | 파란색 |
+    | 90 | `ERROR` | 빨간색 |
+
+    </details>
 
 ---
 
@@ -656,11 +658,11 @@ Roomie/
 
 <table>
   <tr>
-    <td align="center" width="400">
+    <td align="center" width="400" valign="top">
       <img src="assets/images/jira-1.gif" width="500"><br>
       <img src="assets/images/jira-2.gif" width="500">
     </td>
-    <td align="left">
+    <td align="left" valign="top"><br>
       ▪ 총 6 스프린트로 구성된 Jira 기반 프로젝트 관리<br>
       ▪ 에픽-태스크 구조로 체계적 일정 관리
     </td>
@@ -673,16 +675,15 @@ Roomie/
 
 <table>
   <tr>
-    <td align="center" width="400">
+    <td align="center" width="400" valign="top">
       <img src="assets/images/confluence.gif" width="200">
     </td>
-    <td align="left">
-      ▪ 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 Confluence를 통해 체계적 문서화<br>
-      ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 문서화
+    <td align="left" valign="top"><br>
+      ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 Confluence를 통해 문서화<br>
+      ▪ 주기적으로 일정 진행사항 체계적 문서화
     </td>
   </tr>
 </table>
-
 
 ---
 
