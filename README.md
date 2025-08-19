@@ -33,19 +33,19 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image3.png?raw=true" height="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/intro_delivery_image.png?raw=true" height="200"><br>
         <sub>룸서비스 배송 기능</sub>
       </td>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image7.png?raw=true" height="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/intro_escort_image.png?raw=true" height="200"><br>
         <sub>길안내 기능</sub>
       </td>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image5.png?raw=true" height="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/intro_elevator_image.png?raw=true" height="200"><br>
         <sub>층간 이동 기능</sub>
       </td>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/image2.png?raw=true" height="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/intro_admin_image.png?raw=true" height="200"><br>
         <sub>관리자 모니터링 기능</sub>
       </td>
     </tr>
@@ -80,8 +80,8 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="200">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="200">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-qr.gif?raw=true" width="150">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-order.gif?raw=true" width="150">
         </p>
       </td>
     </tr>
@@ -95,9 +95,9 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="400">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -110,7 +110,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="400">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -122,7 +122,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="400">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-return.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -201,9 +201,9 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" width="400">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-first.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-alignbutton.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -216,9 +216,9 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="400"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="400">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-afterpushing.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-opendoor.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushinnerbutton.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
