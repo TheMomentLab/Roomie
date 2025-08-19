@@ -255,7 +255,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="600">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-dashboard.gif?raw=true" width="400">
         </p>
       </td>
     </tr>
@@ -266,7 +266,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="600">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-status.gif?raw=true" width="400">
         </p>
       </td>
     </tr>
@@ -277,7 +277,7 @@
       </td>
       <td>
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="600">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/staffgui-log.gif?raw=true" width="400">
         </p>
       </td>
     </tr>
