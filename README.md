@@ -292,9 +292,20 @@
 
 ## 1) 로봇암 제어
 
-<p align="center">
-  <img src="assets/images/arm-principle.png" width="75%" alt="arm principle" />
-</p>
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/arm-principle.png?raw=true" height="200"><br>
+        <sub>로봇암 제어 원리</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/elevator-pushouterbutton2.gif?raw=true" height="200"><br>
+        <sub>로봇암을 이용한 버튼 클릭</sub>
+      </td>
+    </tr>
+  </table>
+</div>
 
 <p align="center">
   <a href="ros2_ws/src/roomie_ac/README.md">상세 설계 보기</a>
@@ -351,8 +362,8 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" height="200"><br>
-        <sub>버튼 인식</sub>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-obstacle.gif?raw=true" height="200"><br>
+        <sub>장애물 회피를 위한 주행중 장애물 인식</sub>
       </td>
       <td align="center">
         <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-elevator.gif?raw=true" height="200"><br>
@@ -381,6 +392,24 @@
 ---
 
 ## 4) 마이크로 ROS
+
+<div align="center">
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/microros-2.jpg?raw=true" height="200"><br>
+        <sub>적재 여부 및 문 닫힘 확인을 위한 초음파 센서</sub>
+      </td>
+      <td align="center">
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/dooropening.gif?raw=true" width="200"><br>
+        <sub>마이크로 ROS를 이용한 서랍 문 제어</sub>
+      </td>
+    </tr>
+  </table>
+</div>
+
+
+
 - **적재함 문 감지**
   - 센서와 문 사이의 거리 측정
   - 측정거리 5.0cm 초과 시 문이 열린 것으로 판단
@@ -393,6 +422,8 @@
   - 카드 읽기 성공 시 `success=true`, `location_id=읽은값`, 실패 시 `success=false`, `location_id=-1`
 - **LED 상태 표시**
   - 로봇의 상태(RobotState)에 따라 RGB LED 색상 제어
+ 
+<br>
 
   | 상태 ID | 상태 이름 | RGB LED |
   |---|---|---|
@@ -468,38 +499,42 @@
 ---
 
 ### 2) System Architecture Diagram
-- 로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램
 
 <p align="center">
-  <img src="assets/images/system_architecture_diagram.png" alt="시스템 아키텍처 다이어그램" width="80%">
+  <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/systemarchtecture_diagram.png?raw=true" alt="시스템 아키텍처 다이어그램" width="80%">
 </p>
+
+- 로봇, GUI, 서버 등 전체 시스템 구성 요소와 통신 흐름을 한눈에 보여주는 아키텍처 다이어그램
 
 ---
 
 ### 3) State Diagram
-- 로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현
 
 <p align="center">
   <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="80%">
 </p>
 
+- 로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현
+
 ---
 
 ### 4) ERD(Entity Relationship Diagram)
-- 시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램
 
 <p align="center">
   <img src="assets/images/erd.png" alt="ERD 다이어그램" width="80%">
 </p>
 
+- 시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램
+
 ---
 
 ### 5) Test MAP
-- 로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵
 
 <p align="center">
   <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="80%">
 </p>
+
+- 로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵
 
 ---
 
@@ -555,13 +590,12 @@ Roomie/
 |------|-----------|
 | **ML / DL** | [![PyTorch](https://img.shields.io/badge/PyTorch-E34A6F?style=for-the-badge&logo=pytorch&logoColor=white)](https://pytorch.org/) ![CNN](https://img.shields.io/badge/CNN-1E90FF?style=for-the-badge) [![YOLO](https://img.shields.io/badge/YOLO-FFB400?style=for-the-badge&logo=yolov5&logoColor=black)](https://github.com/AlexeyAB/darknet) [![DeepSORT](https://img.shields.io/badge/DeepSORT-800080?style=for-the-badge&logo=github&logoColor=white)](https://github.com/nwojke/deep_sort) ![OCR](https://img.shields.io/badge/OCR-4682B4?style=for-the-badge) [![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)](https://opencv.org/) ||
 | **GUI**        | [![PyQt](https://img.shields.io/badge/PyQt-41CD52?style=for-the-badge&logo=qt&logoColor=white)](https://riverbankcomputing.com/software/pyqt/intro) [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript) [![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML) [![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS) |
-| **Network&protocol** | [![UDP](https://img.shields.io/badge/UDP-0088cc?style=for-the-badge&logo=wifi&logoColor=white)](https://en.wikipedia.org/wiki/User_Datagram_Protocol) [![HTTP](https://img.shields.io/badge/HTTP-E34F26?style=for-the-badge&logo=fastapi&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTTP) [![WebSocket](https://img.shields.io/badge/WebSocket-3D9BE9?style=for-the-badge&logo=socketdotio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) |
+| **Network & Protocol** | [![UDP](https://img.shields.io/badge/UDP-0088cc?style=for-the-badge&logo=wifi&logoColor=white)](https://en.wikipedia.org/wiki/User_Datagram_Protocol) [![HTTP](https://img.shields.io/badge/HTTP-E34F26?style=for-the-badge&logo=fastapi&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTTP) [![WebSocket](https://img.shields.io/badge/WebSocket-3D9BE9?style=for-the-badge&logo=socketdotio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) |
 | **Robotics** | [![ROS2](https://img.shields.io/badge/ROS2-22314E?style=for-the-badge&logo=ros&logoColor=white)](https://docs.ros.org/en/foxy/index.html) ![ikpy](https://img.shields.io/badge/ikpy-6A5ACD?style=for-the-badge) ![FreeRTOS](https://img.shields.io/badge/FreeRTOS-007ACC?style=for-the-badge) ![Nav2](https://img.shields.io/badge/Nav2-D33825?style=for-the-badge) |
 | **Software** | [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/) [![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://isocpp.org/) [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/) [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/) |
 ---
 
 # 8. 프로젝트 관리
-Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 
 **1. Jira 관리**
 
@@ -591,6 +625,7 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였습니다.</br>
 ## 🧑‍💼 장진혁 [`@jinhyuk2me`](https://github.com/jinhyuk2me)
 - 프로젝트 기획 및 총괄
 - ROS2 패키지 구조 및 통신 시퀀스 설계
+- 시스템 시나리오 설계
 - 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현
 - ROS2 × PyQt 기반 ROBOT GUI 구현
 
