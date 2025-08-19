@@ -638,7 +638,7 @@ Roomie/
 ## 🧑‍💼 장진혁 [`@jinhyuk2me`](https://github.com/jinhyuk2me)
 - 프로젝트 기획 및 총괄
 - ROS2 패키지 구조 및 통신 시퀀스 설계
-- 시스템 시나리오 설계
+- 시스템 시나리오 및 FSM 설계
 - 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현
 - ROS2 × PyQt 기반 ROBOT GUI 구현
 
