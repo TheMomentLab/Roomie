@@ -94,9 +94,11 @@
       </td>
       <td valign="top">
         <p align="center">
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup1.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/pickup_new_1.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/pickup_new_2.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/pickup_new_3.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-staffgui.gif?raw=true" width="300"><br>
-          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-pickup.gif?raw=true" width="300">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/pickup_new_4.gif?raw=true" width="300">
         </p>
       </td>
     </tr>
@@ -109,6 +111,8 @@
       </td>
       <td valign="top">
         <p align="center">
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery_new_1.gif?raw=true" width="300"><br>
+          <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery_new_2.gif?raw=true" width="300"><br>
           <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/delivery-finalcheck.gif?raw=true" width="300">
         </p>
       </td>
