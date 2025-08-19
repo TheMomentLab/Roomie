@@ -362,8 +362,8 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" height="200"><br>
-        <sub>버튼 인식</sub>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-obstacle.gif?raw=true" height="200"><br>
+        <sub>장애물 회피를 위한 주행중 장애물 인식</sub>
       </td>
       <td align="center">
         <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-elevator.gif?raw=true" height="200"><br>
@@ -596,7 +596,6 @@ Roomie/
 ---
 
 # 8. 프로젝트 관리
-Confluence와 Jira를 이용해 전체 일정을 관리하였음</br>
 
 **1. Jira 관리**
 
@@ -626,6 +625,7 @@ Confluence와 Jira를 이용해 전체 일정을 관리하였음</br>
 ## 🧑‍💼 장진혁 [`@jinhyuk2me`](https://github.com/jinhyuk2me)
 - 프로젝트 기획 및 총괄
 - ROS2 패키지 구조 및 통신 시퀀스 설계
+- 시스템 시나리오 설계
 - 비전 인식 딥러닝 AI 모델 제작 및 비전 서비스 구현
 - ROS2 × PyQt 기반 ROBOT GUI 구현
 
