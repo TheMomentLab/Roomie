@@ -312,7 +312,9 @@
 </p>
 
 - **구성**
-  - 서보모터, 2D 카메라, 버튼 클릭 엔드이펙터
+  - 서보모터
+  - 2D 카메라
+  - 버튼 클릭 엔드이펙터
 - **버튼 인식**
   - 베이스 좌표 → 팔끝 좌표 → 카메라 좌표 → 버튼 좌표 계산
 - **동작 방식**
@@ -397,11 +399,11 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/microros-2.jpg?raw=true" height="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/microros-2.jpg?raw=true" height="300"><br>
         <sub>적재 여부 및 문 닫힘 확인을 위한 초음파 센서</sub>
       </td>
       <td align="center">
-        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/dooropening.gif?raw=true" width="200"><br>
+        <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/dooropening.gif?raw=true" height="300"><br>
         <sub>마이크로 ROS를 이용한 서랍 문 제어</sub>
       </td>
     </tr>
@@ -597,26 +599,37 @@ Roomie/
 
 # 8. 프로젝트 관리
 
-**1. Jira 관리**
+## 1. Jira 관리
 
-<p align="center">
-  <img src="assets/images/jira-1.gif" width="500" height="300">
-  <img src="assets/images/jira-2.gif" width="500" height="300">
-</p>
-
-  - 총 6스프린트로 구성된 애자일 기반 프로젝트 관리
-  - 에픽-태스크 구조로 체계적 일정 관리
+<table>
+  <tr>
+    <td align="center" width="400">
+      <img src="assets/images/jira-1.gif" width="500"><br>
+      <img src="assets/images/jira-2.gif" width="500">
+    </td>
+    <td align="left">
+      ▪ 총 6스프린트로 구성된 애자일 기반 프로젝트 관리<br>
+      ▪ 에픽-태스크 구조로 체계적 일정 관리
+    </td>
+  </tr>
+</table>
 
 ---
 
-**2. Confluence 관리**
+## 2. Confluence 관리
 
-<p align="center">
-  <img src="assets/images/confluence.gif" width="400">
-</p>
+<table>
+  <tr>
+    <td align="center" width="400">
+      <img src="assets/images/confluence.gif" width="200">
+    </td>
+    <td align="left">
+      ▪ 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 체계적 문서화<br>
+      ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 문서화
+    </td>
+  </tr>
+</table>
 
-  - 프로젝트 진행시 주기적으로 회의록 작성 및 일정 진행사항 체계적 문서화
-  - 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 문서화
 
 ---
 
