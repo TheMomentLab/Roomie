@@ -449,6 +449,25 @@
 - **해결**: 웨이포인트 기반 경로 설계 + A\* 알고리즘으로 사전 우회 처리  
 
 ### 🧠 YOLO 단일 모델 한계
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vision-button.gif?raw=true" height="200"><br>
+      <sub>YOLOv8n-CNN 파이프라인을 통한 버튼 분류</sub>
+    </td>
+    <td align="center">
+      <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/vison-elevator2.gif?raw=true" height="200"><br>
+      <sub>YOLOv8n-EasyOCR 파이프라인을 통한 층수 인식</sub>
+    </td>
+  </tr>
+</table>
+
+</div>
+
+
 - **문제**: 객체 클래스 수 증가 → 성능 저하  
 - **해결**: YOLOv8n은 ROI 생성, CNN으로 버튼 분류, EasyOCR로 층수 인식  
 
@@ -676,8 +695,8 @@ Roomie/
 
 <table>
   <tr>
-    <td align="center" width="400" valign="top">
-      <img src="assets/images/confluence.gif" width="200">
+    <td align="center" width="300" valign="top">
+      <img src="assets/images/confluence.gif" width="300">
     </td>
     <td align="left" valign="top">
       ▪ 표준적인 개발 과정에 따라 기획, 설계, 기술조사, 구현, 테스트로 단계별 Confluence를 통해 문서화<br>
