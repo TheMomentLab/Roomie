@@ -23,7 +23,6 @@
 - [7. 기술 스택](#7-기술-스택)
 - [8. 일정 관리](#8-프로젝트-일정-관리)
 - [9. 팀 구성](#9-팀-구성)
-- [10. 라이선스](#10-라이선스)
 
 ---
 
@@ -458,7 +457,8 @@
 
 # 5. 시스템 설계
 
-## 1) 시스템 요구사항
+<details>
+<summary>사용자 요구사항</summary>
 
 ```
 [Priority 범례]
@@ -466,47 +466,85 @@
 - `O` : 선택 구현 (Optional)  
 ```
 
-| SR_ID    | SR_NAME              | Description | Priority |
-|----------|----------------------|-------------|----------|
-| SR_01    | 로봇 호출 기능 | 특정 위치로 로봇 호출<br>호출 가능 장소:<br>- 객실 입구 (ROOM_XX)<br>- 레스토랑 (RES_2)<br>- 로비 (LOB_2) | R |
-| SR_02    | 로봇 이동 기능 | 로봇이 자율 주행을 통해 작업 수행 또는 복귀 이동<br>작업 종류:<br>- 호출<br>- 길 안내<br>- 배송<br>- 식음료<br>- 비품 | R |
-| SR_02_01 | 경로 생성 기능 | 목적지까지 로봇 스스로 경로를 생성하고 이동 | R |
-| SR_02_02 | 장애물 회피 기능 | 이동 중 장애물 인식 및 충돌 회피<br>장애물:<br>- 정적: 식탁, 의자, 휴지통<br>- 동적: 사람 | R |
-| SR_02_03 | 충돌 감지 기능 | 주행 중 충돌 감지하여 일시 정지<br>IMU 값 기반 충돌 판단 (Threshold 하드웨어 측정) | R |
-| SR_02_04 | 전복 감지 기능 | 주행 불능 시 전복 감지 및 관리자 알림<br>IMU 값 기반 전복 판단 (Threshold 하드웨어 측정) | O |
-| SR_02_05 | 팔로잉 확인 기능 | ‘길 안내’ 수행 시 투숙객이 따라오고 있는지 확인 | R |
-| SR_03    | 층간 이동 기능 | 엘리베이터 호출 및 버튼 조작을 통해 층간 이동 | R |
-| SR_03_01 | 엘리베이터 호출 기능 | 로봇이 엘리베이터를 현재 층으로 호출<br>방법:<br>- API 호출<br>- 로봇팔 물리 조작 | R |
-| SR_03_02 | 엘리베이터 목적 층 선택 기능 | 탑승 후 목적 층 선택<br>방법:<br>- API 호출<br>- 로봇팔 물리 조작 | R |
-| SR_03_03 | 엘리베이터 탑승 기능 | 현재 층 도착 시 로봇 탑승<br>판단 요소:<br>- 엘리베이터 방향<br>- 위치<br>- 문 열림/닫힘 | R |
-| SR_03_04 | 엘리베이터 하차 기능 | 목적 층 도착 시 로봇 하차<br>판단 요소:<br>- 위치<br>- 문 열림/닫힘 | R |
-| SR_04    | 작업 수행 중 알림 기능 | 작업 중 투숙객에게 알림 제공<br>호출, 길 안내, 배송 각각 상태 알림<br>작업 실패/시스템 오류 시 사유 포함 | R |
-| SR_05    | 맞춤 응대 기능 | 작업 시작/종료 시 사용 언어에 따른 음성 응대<br>상황:<br>- 길 안내 시작<br>- 호출 도착<br>- 길 안내 종료<br>- 배송 수령 | R |
-| SR_06    | 길 안내 요청 기능 | 투숙객 카드키 인식 후 목적지 안내 요청<br>가능 장소:<br>- 객실 입구<br>- 레스토랑<br>- 로비 | R |
-| SR_06_01 | 투숙객 외형 인식 기능 | 투숙객 추적을 위한 외형 인식 (카메라 활용) | O |
-| SR_06_02 | 목적지 입력 기능 | 목적지 선택 옵션:<br>- 객실: 카드키 자동 입력 / 직접 입력 / 음성 / 디스플레이 조작<br>- 객실 외: 레스토랑 / 로비 | O |
-| SR_07    | 배송 요청 기능 | 객실 내 물품 배송 요청<br>배송 유형:<br>- 식료품(스파게티, 피자)<br>- 비품(칫솔, 타월, 생수, 수저) | O |
-| SR_08    | 배송 물품 적재 기능 | 픽업 장소에서 직원이 물품 적재<br>적재 가능 수량: 최대 2개 객실 | O |
-| SR_08_01 | 배송 물품 확인 기능 | 적재 물품 확인<br>절차:<br>- IR 센서 1차 감지 → 직원 ‘적재 확인’ → 출발 카운트다운 | R |
-| SR_09    | 배송 상태 확인 기능 | 투숙객에게 배송 상태 실시간 제공<br>상태:<br>- 진행 단계<br>- 현재 위치<br>- 예상 도착 시간 | O |
-| SR_10    | 작업 정보 관리 기능 | 작업 종류/진행 상태 관리<br>- 호출, 길 안내, 배송<br>진행 상태 추적 | R |
-| SR_10_01 | 작업 이력 조회 기능 | 관리자 전체 작업 이력 조회<br>조회 항목: ID, 종류, 진행 상태 | R |
-| SR_10_02 | 작업 정보 모니터링 기능 | 직원에게 작업 정보 실시간 제공 | R |
-| SR_10_03 | 작업 순서 변경 기능 | 대기 작업 순서 수동 변경 | R |
-| SR_10_04 | 작업 자동 배정 기능 | 대기 로봇에 작업 자동 배정 | O |
-| SR_11    | 자동 복귀 기능 | 작업 종료 후 대기 장소(로비) 자동 복귀<br>조건: 작업 완료/취소 시 복귀, 충전 필요 시 충전 스테이션으로 이동 | O |
-| SR_12    | 로봇 정보 관리 기능 | 로봇 ID, 모델명, 생산일자 관리 | R |
-| SR_12_01 | 로봇 정보 조회 기능 | 관리자 필터링/검색으로 로봇 리스트 조회 | R |
-| SR_13    | 로봇 상태 관리 기능 | 로봇 상태 항목 관리:<br>- 위치, 배터리, 충전 여부, 작업 ID, 오류 상태 | R |
-| SR_13_01 | 로봇 상태 모니터링 기능 | 관리자에게 로봇 상태 실시간 제공 | R |
-| SR_13_02 | 충돌 알림 기능 | 충돌 감지 시 관리자 알림 제공 (SR_02_03 연계) | R |
-| SR_13_03 | 로봇 상태 조회 기능 | 충전/충돌 이력 조회<br>- 충전 ID, 시간<br>- 충돌 장소, 시간 | R |
-| SR_14    | 자동 충전 기능 | 대기장소에서 배터리 상태에 따라 자동 충전<br>도킹 스테이션 기반 충전 | R |
-| SR_14_01 | 저전력 자동 복귀 기능 | 배터리 20% 이하일 경우 작업 종료 후 대기 장소 복귀 | R |
+| UR_ID | UR_NAME | UR Description | Condition | Required |
+|-------|---------|--------|-----------------|----------|
+| **투숙객** |||||
+| UR_01 | 로봇 호출 | 로봇을 특정 위치로 호출 | 호출 가능 장소:<br>▪ 로비<br>▪ 객실<br>▪ 레스토랑 | O |
+| UR_02 | 길 안내 | 호텔 내 특정 목적지로 로봇이 짐을 운반하며 안내 | 가능 장소:<br>▪ 객실<br>▪ 로비<br>▪ 레스토랑 | O |
+| UR_03 | 맞춤 응대 | 로봇이 투숙객의 사용 언어에 따라 맞춤 인사를 제공 | 상황:<br>▪ 안내 종료 시<br>▪ 배송 수령 완료 시 | O |
+| UR_04 | 물품 배송 | 객실 내 물품 배송 수행 | 배송 대상:<br>▪ **식음료**: 스파게티, 피자<br>▪ **비품**: 칫솔, 타월, 생수, 수저 | R |
+| UR_05 | 투숙객 요청 실시간 모니터링 | 요청한 작업의 실시간 진행 상황 제공 | 항목:<br>▪ 요청 처리 상태<br>▪ 현재 위치<br>▪ 예상 도착 시간 | R |
+| UR_06 | 투숙객 요청 알림 | 요청의 진행 및 처리 상태에 대한 알림 제공 | 상황:<br>▪ 로봇 호출: 배정, 출발, 도착<br>▪ 길 안내: 시작, 종료<br>▪ 배송: 픽업 도착, 완료, 배송 도착, 수령<br>▪ 작업 실패 알림 (사유 포함: 경로 차단, 투숙객 이탈, 충돌 등) | R |
+| **관리자** |||||
+| UR_07 | 작업 상태 관리 | 현재 수행 중인 작업 상태 실시간 확인 | 항목:<br>▪ 현재 작업 상태<br>▪ 작업 ID<br>▪ 작업 종류<br>▪ 작업 실패 여부 및 사유 알림 | O |
+| UR_08 | 작업 이력 조회 | 관리자 전체 작업 이력 조회 | 조회 기준:<br>▪ 작업 종류<br>▪ 진행 상태<br>▪ 투숙객 ID<br>▪ 호실 번호 | O |
+| UR_09 | 작업 순서 제어 | 대기 중인 작업의 우선순위 변경 | - | O |
+| UR_10 | 로봇 정보 관리 | 로봇별 고유 정보 관리 | 항목:<br>▪ 로봇 ID<br>▪ 모델명<br>▪ 생산일자 | O |
+| UR_11 | 로봇 상태 관리 | 로봇별 현재 상태 관리 | 항목:<br>▪ 현재 위치<br>▪ 현재 배터리 잔량<br>▪ 충전 중 여부<br>▪ 현재 작업 ID<br>▪ 시스템 오류 상태 | O |
 
----
+</details>
 
-### 2) 시스템 아키텍처 다이어그램
+  
+</details>
+
+<details>
+<summary>시스템 요구사항</summary>
+
+```
+[Priority 범례]
+- `R` : 필수 구현 (Required) 
+- `O` : 선택 구현 (Optional)  
+```
+
+| SR_ID | SR_NAME | SR Description | Condition | Priority |
+|-------|---------|----------------|-----------|----------|
+| SR_01 | 로봇 호출 기능 | 특정 위치로 로봇 호출 | 호출 가능 장소:<br>- 객실 입구 (ROOM_XX)<br>- 레스토랑 (RES_2)<br>- 로비 (LOB_2) | R |
+| SR_02 | 로봇 이동 기능 | 로봇이 자율 주행을 통해 작업 수행 또는 복귀 이동 | 작업 종류:<br>- 호출<br>- 길 안내<br>- 배송<br>- 식음료<br>- 비품 | R |
+| SR_02_01 | 경로 생성 기능 | 목적지까지 로봇 스스로 경로를 생성하고 이동 | - | R |
+| SR_02_02 | 장애물 회피 기능 | 이동 중 장애물 인식 및 충돌 회피 | 장애물:<br>- 정적: 식탁, 의자, 휴지통<br>- 동적: 사람 | R |
+| SR_02_03 | 충돌 감지 기능 | 주행 중 충돌 감지하여 일시 정지 | IMU 값 기반 충돌 판단 (Threshold 하드웨어 측정) | R |
+| SR_02_04 | 전복 감지 기능 | 주행 불능 시 전복 감지 및 관리자 알림 | IMU 값 기반 전복 판단 (Threshold 하드웨어 측정) | O |
+| SR_02_05 | 팔로잉 확인 기능 | ‘길 안내’ 수행 시 투숙객이 따라오고 있는지 확인 | - | R |
+| SR_03 | 층간 이동 기능 | 엘리베이터 호출 및 버튼 조작을 통해 층간 이동 | - | R |
+| SR_03_01 | 엘리베이터 호출 기능 | 로봇이 엘리베이터를 현재 층으로 호출 | 방법:<br>- API 호출<br>- 로봇팔 물리 조작 | R |
+| SR_03_02 | 엘리베이터 목적 층 선택 기능 | 탑승 후 목적 층 선택 | 방법:<br>- API 호출<br>- 로봇팔 물리 조작 | R |
+| SR_03_03 | 엘리베이터 탑승 기능 | 현재 층 도착 시 로봇 탑승 | 판단 요소:<br>- 엘리베이터 방향<br>- 위치<br>- 문 열림/닫힘 | R |
+| SR_03_04 | 엘리베이터 하차 기능 | 목적 층 도착 시 로봇 하차 | 판단 요소:<br>- 위치<br>- 문 열림/닫힘 | R |
+| SR_04 | 작업 수행 중 알림 기능 | 작업 중 투숙객에게 알림 제공 | 호출, 길 안내, 배송 각각 상태 알림<br>작업 실패/시스템 오류 시 사유 포함 | R |
+| SR_05 | 맞춤 응대 기능 | 작업 시작/종료 시 사용 언어에 따른 음성 응대 | 상황:<br>- 길 안내 시작<br>- 호출 도착<br>- 길 안내 종료<br>- 배송 수령 | R |
+| SR_06 | 길 안내 요청 기능 | 투숙객 카드키 인식 후 목적지 안내 요청 | 가능 장소:<br>- 객실 입구<br>- 레스토랑<br>- 로비 | R |
+| SR_06_01 | 투숙객 외형 인식 기능 | 투숙객 추적을 위한 외형 인식 | 카메라 활용 | O |
+| SR_06_02 | 목적지 입력 기능 | 목적지 선택 옵션 제공 | 객실: 카드키 자동 입력 / 직접 입력 / 음성 / 디스플레이 조작<br>객실 외: 레스토랑 / 로비 | O |
+| SR_07 | 배송 요청 기능 | 객실 내 물품 배송 요청 | 배송 유형:<br>- 식료품(스파게티, 피자)<br>- 비품(칫솔, 타월, 생수, 수저) | O |
+| SR_08 | 배송 물품 적재 기능 | 픽업 장소에서 직원이 물품 적재 | 적재 가능 수량: 최대 2개 객실 | O |
+| SR_08_01 | 배송 물품 확인 기능 | 적재 물품 확인 | 절차:<br>- IR 센서 1차 감지 → 직원 ‘적재 확인’ → 출발 카운트다운 | R |
+| SR_09 | 배송 상태 확인 기능 | 투숙객에게 배송 상태 실시간 제공 | 상태:<br>- 진행 단계<br>- 현재 위치<br>- 예상 도착 시간 | O |
+| SR_10 | 작업 정보 관리 기능 | 작업 종류/진행 상태 관리 | 호출, 길 안내, 배송 진행 상태 추적 | R |
+| SR_10_01 | 작업 이력 조회 기능 | 관리자 전체 작업 이력 조회 | 조회 항목:<br>- ID<br>- 종류<br>- 진행 상태 | R |
+| SR_10_02 | 작업 정보 모니터링 기능 | 직원에게 작업 정보 실시간 제공 | - | R |
+| SR_10_03 | 작업 순서 변경 기능 | 대기 작업 순서 수동 변경 | - | R |
+| SR_10_04 | 작업 자동 배정 기능 | 대기 로봇에 작업 자동 배정 | - | O |
+| SR_11 | 자동 복귀 기능 | 작업 종료 후 대기 장소(로비) 자동 복귀 | 조건:<br>- 작업 완료/취소 시 복귀<br>- 충전 필요 시 충전 스테이션 이동 | O |
+| SR_12 | 로봇 정보 관리 기능 | 로봇 ID, 모델명, 생산일자 관리 | - | R |
+| SR_12_01 | 로봇 정보 조회 기능 | 관리자 필터링/검색으로 로봇 리스트 조회 | - | R |
+| SR_13 | 로봇 상태 관리 기능 | 로봇 상태 항목 관리 | 위치, 배터리, 충전 여부, 작업 ID, 오류 상태 | R |
+| SR_13_01 | 로봇 상태 모니터링 기능 | 관리자에게 로봇 상태 실시간 제공 | - | R |
+| SR_13_02 | 충돌 알림 기능 | 충돌 감지 시 관리자 알림 제공 | SR_02_03 연계 | R |
+| SR_13_03 | 로봇 상태 조회 기능 | 충전/충돌 이력 조회 | 충전 ID, 시간<br>충돌 장소, 시간 | R |
+| SR_14 | 자동 충전 기능 | 대기장소에서 배터리 상태에 따라 자동 충전 | 도킹 스테이션 기반 충전 | R |
+| SR_14_01 | 저전력 자동 복귀 기능 | 배터리 20% 이하일 경우 작업 종료 후 대기 장소 복귀 | - | R |
+
+</details>
+
+<details>
+<summary>시스템 시나리오</summary>
+  
+📄 [시스템 시나리오 PDF 보기](https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/docs/system_scenario.pdf)
+  
+</details>
+
+<details>
+<summary>시스템 아키텍처</summary>
 
 <p align="center">
   <img src="https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/assets/images/systemarchtecture_diagram.png?raw=true" alt="시스템 아키텍처 다이어그램" width="80%"><br>
@@ -517,37 +555,45 @@
 호텔 엘리베이터 내부는 네트워크 연결이 불안정하거나 끊기는 구간이 많습니다.
 따라서 Roomie는 Vision Service를 로봇에 내장(On-Device AI) 하여, 버튼·문·층수 표시기 등을 네트워크 의존 없이 인식할 수 있도록 설계했습니다.
 ```
+  
+</details>
 
----
-
-### 3) 상태 다이어그램
+<details>
+<summary>상태 다이어그램</summary>
 
 <p align="center">
   <img src="assets/images/state_diagram.png" alt="상태 다이어그램" width="80%"><br>
   <sub>로봇의 전체 동작을 상태 전이로 설계하여 상태 다이어그램으로 표현</sub>
 </p>
+  
+</details>
 
----
+<details>
+<summary>인터페이스 명세서</summary>
 
-### 4) ER 다이어그램 (Entity Relationship Diagram)
+📄 [인터페이스 명세서 PDF 보기](https://github.com/addinedu-ros-9th/ros-repo-2/blob/main/docs/interface_specification.pdf)
+  
+</details>
+
+<details>
+<summary>ER 다이어그램 (Entity Relationship Diagram)</summary>
 
 <p align="center">
   <img src="assets/images/erd.png" alt="ERD 다이어그램" width="80%"><br>
   <sub>시스템에서 사용하는 데이터베이스 테이블 구조와 관계를 나타낸 ERD 다이어그램</sub>
 </p>
+  
+</details>
 
----
-
-### 5) 테스트 맵 (Test Map)
+<details>
+<summary>테스트 맵</summary>
 
 <p align="center">
   <img src="assets/images/test_map.png" alt="ERD 다이어그램" width="80%"><br>
   <sub>로봇 주행 및 기능 테스트를 수행하기 위해 제작된 실내 테스트 맵</sub>
 </p>
-
----
-
-
+  
+</details>
 
 # 6. 프로젝트 구조
 
@@ -593,7 +639,7 @@ Roomie/
 
 ---
 
-## 7. 기술 스택
+# 7. 기술 스택
 
 | 분류 | 사용 기술 |
 |------|-----------|
@@ -601,7 +647,7 @@ Roomie/
 | **GUI**        | [![PyQt](https://img.shields.io/badge/PyQt-41CD52?style=for-the-badge&logo=qt&logoColor=white)](https://riverbankcomputing.com/software/pyqt/intro) [![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript) [![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML) [![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS) |
 | **Network & Protocol** | [![UDP](https://img.shields.io/badge/UDP-0088cc?style=for-the-badge&logo=wifi&logoColor=white)](https://en.wikipedia.org/wiki/User_Datagram_Protocol) [![HTTP](https://img.shields.io/badge/HTTP-E34F26?style=for-the-badge&logo=fastapi&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTTP) [![WebSocket](https://img.shields.io/badge/WebSocket-3D9BE9?style=for-the-badge&logo=socketdotio&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/API/WebSockets_API) |
 | **Robotics** | [![ROS2](https://img.shields.io/badge/ROS2-22314E?style=for-the-badge&logo=ros&logoColor=white)](https://docs.ros.org/en/foxy/index.html) ![ikpy](https://img.shields.io/badge/ikpy-6A5ACD?style=for-the-badge) ![FreeRTOS](https://img.shields.io/badge/FreeRTOS-007ACC?style=for-the-badge) ![Nav2](https://img.shields.io/badge/Nav2-D33825?style=for-the-badge) |
-| **Software** | [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/) [![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://isocpp.org/) [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/) [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/) |
+| **Environment** | [![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://www.python.org/) [![C++](https://img.shields.io/badge/C++-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)](https://isocpp.org/) [![Ubuntu](https://img.shields.io/badge/Ubuntu-E95420?style=for-the-badge&logo=ubuntu&logoColor=white)](https://ubuntu.com/) [![Linux](https://img.shields.io/badge/Linux-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/) |
 ---
 
 # 8. 프로젝트 관리
@@ -667,3 +713,5 @@ Roomie/
 - 동적/정적 장애물 처리 알고리즘 설계 및 구현
 - 경로 생성 및 주행 동작 구현
 - 시스템 통합 및 물품 배송, 길안내, 층간 이동 기능 구현
+
+
