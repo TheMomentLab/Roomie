@@ -4,7 +4,7 @@ import glob
 
 package_name = 'roomie_rgui'
 
-# UI 파일들을 재귀적으로 찾기
+# UI 파일 재귀적으로 찾기
 def find_ui_files():
     ui_files = []
     for root, dirs, files in os.walk('ui'):
@@ -22,14 +22,14 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # UI 파일들 포함
+        # UI 파일 포함
         ('share/' + package_name + '/ui/common', glob.glob('ui/common/*.ui')),
         ('share/' + package_name + '/ui/delivery', glob.glob('ui/delivery/*.ui')),
         ('share/' + package_name + '/ui/countdown', glob.glob('ui/countdown/*.ui')),
         ('share/' + package_name + '/ui/call', glob.glob('ui/call/*.ui')),
         ('share/' + package_name + '/ui/guide', glob.glob('ui/guide/*.ui')),
         ('share/' + package_name + '/ui/elevator', glob.glob('ui/elevator/*.ui')),
-        # 테스트 클라이언트 스크립트 설치 (ros2 run roomie_rgui test_service_client.py)
+        # 테스트 클라이언트 스크립트 설치
 
     ],
     install_requires=['setuptools'],

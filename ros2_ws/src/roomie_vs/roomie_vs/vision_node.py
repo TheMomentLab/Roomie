@@ -17,7 +17,7 @@ from .camera_manager import MultiCameraManager, setup_openni2_environment
 from .model_manager import MultiModelDetector, CNNButtonClassifier, ButtonPressedCNN
 from .obstacle_detector import ObstacleDetector
 from .udp_streamer import UDPVideoStreamer
-from .person_tracking.person_tracker import PersonTracker
+from .person_tracker import PersonTracker
 from .display_ocr import DisplayOCR
 from .gpu_monitor import GPUResourceMonitor
 

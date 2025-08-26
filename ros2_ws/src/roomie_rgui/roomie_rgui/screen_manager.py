@@ -50,7 +50,7 @@ class ScreenManager(QStackedWidget):
         self.audio_output.setVolume(self.audio_volume)
         
         # 음성 설정 로그
-        self.node.get_logger().info(f"🔊 음성 시스템 초기화: enabled={self.audio_enabled}, volume={self.audio_volume}")
+        self.node.get_logger().info(f"음성 시스템 초기화: enabled={self.audio_enabled}, volume={self.audio_volume}")
 
         # 신호 연결 (메인 스레드에서 실행)
         self.requestShowScreen.connect(self._show_screen_impl)
@@ -194,7 +194,7 @@ class ScreenManager(QStackedWidget):
 
     def preload_all_screens(self):
         """모든 화면을 미리 로드"""
-        self.node.get_logger().info("🔄 모든 화면 로딩 시작...")
+        self.node.get_logger().info("모든 화면 로딩 시작...")
         
         for screen_name, ui_path in self.ui_paths.items():
             try:
@@ -219,7 +219,7 @@ class ScreenManager(QStackedWidget):
                 self.node.get_logger().info(f"{screen_name} 로드 완료 (index: {index})")
                 
             except Exception as e:
-                self.node.get_logger().error(f"❌ {screen_name} 로드 실패: {e}")
+                self.node.get_logger().error(f"{screen_name} 로드 실패: {e}")
         
         self.node.get_logger().info(f"총 {len(self.screen_widgets)}개 화면 로드 완료!")
 
@@ -240,41 +240,41 @@ class ScreenManager(QStackedWidget):
         index = self.screen_indices[screen_name]
         self.setCurrentIndex(index)
         self.current_screen_name = screen_name
-        self.node.get_logger().info(f"📺 화면 전환: {screen_name} (index: {index})")
+        self.node.get_logger().info(f"화면 전환: {screen_name} (index: {index})")
         
         # 화면 전환 시 음성 재생
-        self.node.get_logger().info(f"🎵 {screen_name} 화면 음성 재생 호출")
+        self.node.get_logger().info(f"{screen_name} 화면 음성 재생 호출")
         self.play_screen_audio(screen_name)
         
         # 화면 전환 시 해당 컨트롤러의 이벤트 활성화
         controller = self.screen_controllers.get(screen_name)
         if controller and hasattr(controller, 'on_screen_activated'):
             controller.on_screen_activated()
-            self.node.get_logger().info(f"🎯 {screen_name} 컨트롤러 이벤트 활성화")
+            self.node.get_logger().info(f"{screen_name} 컨트롤러 이벤트 활성화")
         
         return True
     
     def play_screen_audio(self, screen_name):
         """화면 전환 시 음성 재생"""
-        self.node.get_logger().info(f"🔊 음성 재생 시도: {screen_name}")
+        self.node.get_logger().info(f"음성 재생 시도: {screen_name}")
         
         if not self.audio_enabled:
-            self.node.get_logger().warn(f"🔇 음성 재생이 비활성화됨: {screen_name}")
+            self.node.get_logger().warn(f"음성 재생이 비활성화됨: {screen_name}")
             return
             
         if screen_name in self.screen_audio_map:
             audio_file = self.screen_audio_map[screen_name]
-            self.node.get_logger().info(f"🎵 {screen_name} 음성 파일: {audio_file}")
+            self.node.get_logger().info(f"{screen_name} 음성 파일: {audio_file}")
             
             if audio_file is not None:  # None이 아닌 경우에만 재생
                 # 즉시 실행 (QTimer.singleShot 대신)
-                self.node.get_logger().info(f"🎵 즉시 음성 재생 호출: {audio_file}")
+                self.node.get_logger().info(f"즉시 음성 재생 호출: {audio_file}")
                 self._play_audio_file_internal(audio_file, f"화면 음성")
-                self.node.get_logger().info(f"▶️ {screen_name} 음성 재생 시작")
+                self.node.get_logger().info(f"{screen_name} 음성 재생 시작")
             else:
-                self.node.get_logger().info(f"🔇 {screen_name} 화면은 음성이 설정되지 않음")
+                self.node.get_logger().info(f"{screen_name} 화면은 음성이 설정되지 않음")
         else:
-            self.node.get_logger().warn(f"⚠️ {screen_name} 화면의 음성 매핑이 없음")
+            self.node.get_logger().warn(f"{screen_name} 화면의 음성 매핑이 없음")
     
     def play_audio_file(self, audio_filename):
         """특정 음성 파일을 직접 재생 (스레드 안전)"""
@@ -320,58 +320,58 @@ class ScreenManager(QStackedWidget):
     @pyqtSlot(str, str)
     def _play_audio_file_internal(self, audio_file, log_type):
         """내부 음성 재생 메서드 (메인 스레드에서만 호출)"""
-        self.node.get_logger().info(f"🎵 _play_audio_file_internal 진입: {audio_file}")
+        self.node.get_logger().info(f"_play_audio_file_internal 진입: {audio_file}")
         
         # 새 폴더 구조(ui/voice/voice_delivery) 및 구 구조(ui/voice) 모두 지원
         base_dir = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui"
         resolved_rel = self._resolve_audio_relpath(audio_file)
         audio_path = os.path.join(base_dir, resolved_rel)
         
-        self.node.get_logger().info(f"🔍 음성 파일 경로 확인: {audio_path}")
+        self.node.get_logger().info(f"음성 파일 경로 확인: {audio_path}")
         
         if os.path.exists(audio_path):
             try:
                 # 기존 재생 중인 음성 정지
                 if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
                     self.media_player.stop()
-                    self.node.get_logger().info("⏹️ 기존 음성 정지")
+                    self.node.get_logger().info("기존 음성 정지")
                 
                 # 새 음성 파일 설정 및 재생
                 self.media_player.setSource(QUrl.fromLocalFile(audio_path))
                 self.media_player.play()
                 
                 filename = os.path.basename(audio_path)
-                self.node.get_logger().info(f"🔊 {log_type} 재생 시작: {filename}")
+                self.node.get_logger().info(f"{log_type} 재생 시작: {filename}")
                 
                 # 재생 상태 확인 (약간의 지연 후)
                 QTimer.singleShot(100, lambda: self._check_playback_state(filename))
                     
             except Exception as e:
-                self.node.get_logger().error(f"❌ 음성 재생 중 오류: {e}")
+                self.node.get_logger().error(f"음성 재생 중 오류: {e}")
         else:
             self.node.get_logger().warn(f"음성 파일을 찾을 수 없음: {audio_path}")
     
     def _check_playback_state(self, filename):
         """재생 상태 확인"""
         if self.media_player.playbackState() == QMediaPlayer.PlaybackState.PlayingState:
-            self.node.get_logger().info(f"✅ 음성 재생 성공: {filename}")
+            self.node.get_logger().info(f"음성 재생 성공: {filename}")
         else:
-            self.node.get_logger().warn(f"⚠️ 음성 재생 실패: {filename}")
+            self.node.get_logger().warn(f"음성 재생 실패: {filename}")
             # 오류 정보 출력
             error = self.media_player.error()
             if error != QMediaPlayer.Error.NoError:
-                self.node.get_logger().error(f"❌ 미디어 플레이어 오류: {error}")
+                self.node.get_logger().error(f"미디어 플레이어 오류: {error}")
     
     def set_audio_enabled(self, enabled):
         """음성 재생 켜기/끄기"""
         self.audio_enabled = enabled
-        self.node.get_logger().info(f"🔊 음성 재생: {'켜짐' if enabled else '꺼짐'}")
+        self.node.get_logger().info(f"음성 재생: {'켜짐' if enabled else '꺼짐'}")
     
     def set_audio_volume(self, volume):
         """음성 볼륨 설정 (0.0 ~ 1.0)"""
         self.audio_volume = max(0.0, min(1.0, volume))
         self.audio_output.setVolume(self.audio_volume)
-        self.node.get_logger().info(f"🔊 음성 볼륨: {self.audio_volume}")
+        self.node.get_logger().info(f"음성 볼륨: {self.audio_volume}")
 
     def get_current_screen_name(self):
         """현재 표시 중인 화면 이름 반환"""

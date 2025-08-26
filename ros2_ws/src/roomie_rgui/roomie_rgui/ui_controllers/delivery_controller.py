@@ -37,7 +37,7 @@ class DeliveryController(BaseController):
         elif "DELI_8" in self.ui_filename:
             self.setup_thank_you_events()
     
-    # 🚚 DELI_1: 픽업 이동중
+    # DELI_1: 픽업 이동중
     def setup_pickup_moving_events(self):
         """픽업 장소로 이동중 화면"""
         self.log_info("픽업 이동중 화면 - 외부 시스템 대기")
@@ -47,7 +47,7 @@ class DeliveryController(BaseController):
         
         # 이 화면에서는 사용자 입력 없음, 외부 시스템에서 화면 전환
     
-    # 📍 DELI_2: 픽업 도착
+    # DELI_2: 픽업 도착
     def setup_pickup_arrival_events(self):
         """픽업 장소 도착 화면"""
         self.log_info("픽업 도착 화면 - 터치 대기")
@@ -60,12 +60,12 @@ class DeliveryController(BaseController):
     
     def on_pickup_arrival_touch(self):
         """픽업 도착 화면 터치 시"""
-        self.log_info("📍 픽업 도착 화면이 터치되었습니다!")
+        self.log_info("픽업 도착 화면이 터치되었습니다!")
         
         # 주문 확인 화면으로 전환
         self.screen_manager.show_screen("CHECKING_ORDER")
     
-    # 📋 DELI_3: 주문 확인
+    # DELI_3: 주문 확인
     def setup_order_confirm_events(self):
         """주문 확인 화면"""
         self.log_info("주문 확인 화면 준비")
@@ -75,14 +75,14 @@ class DeliveryController(BaseController):
     
     def on_order_confirmed(self):
         """확인 버튼 클릭 시"""
-        self.log_info("📋 주문 확인 완료!")
+        self.log_info("주문 확인 완료!")
         
         # 픽업 서랍 조작 화면으로 전환
         self.screen_manager.show_screen("PICKUP_DRAWER_CONTROL")
     
 
     
-    # 🔧 DELI_4: 픽업 서랍 조작
+    # DELI_4: 픽업 서랍 조작
     def setup_pickup_drawer_events(self):
         """픽업 서랍 조작 화면"""
         self.log_info("픽업 서랍 조작 화면 준비")
@@ -97,7 +97,7 @@ class DeliveryController(BaseController):
     
     def on_request_drawer_open(self):
         """[서랍 열기] 버튼 클릭 시"""
-        self.log_info("🔓 [서랍 열기] 버튼이 클릭되었습니다")
+        self.log_info("[서랍 열기] 버튼이 클릭되었습니다")
         
         # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
         self.publish_event(event_id=104, detail="")
@@ -107,12 +107,12 @@ class DeliveryController(BaseController):
     
     def on_loading_complete(self):
         """[적재 완료] 버튼 클릭 시"""
-        self.log_info("📦 [적재 완료] 버튼이 클릭되었습니다")
+        self.log_info("[적재 완료] 버튼이 클릭되었습니다")
         
         # 적재 완료 클릭 이벤트 발행 (rgui_event_id: 105)
         self.publish_event(event_id=105, detail="")
     
-    # 🚛 DELI_5: 배송 이동중
+    # DELI_5: 배송 이동중
     def setup_delivery_moving_events(self):
         """배송지로 이동중 화면"""
         self.log_info("배송 이동중 화면 - 외부 시스템 대기")
@@ -122,7 +122,7 @@ class DeliveryController(BaseController):
         
         # 이 화면에서는 사용자 입력 없음, 외부 시스템에서 화면 전환
     
-    # 🏠 DELI_6: 배송지 도착
+    # DELI_6: 배송지 도착
     def setup_delivery_arrival_events(self):
         """배송지 도착 화면"""
         self.log_info("배송지 도착 화면 - 터치 대기")
@@ -135,12 +135,12 @@ class DeliveryController(BaseController):
     
     def on_delivery_arrival_touch(self):
         """배송지 도착 화면 터치 시"""
-        self.log_info("🏠 배송지 도착 화면이 터치되었습니다!")
+        self.log_info("배송지 도착 화면이 터치되었습니다!")
         
         # 배송 서랍 조작 화면으로 전환
         self.screen_manager.show_screen("DELIVERY_DRAWER_CONTROL")
     
-    # 📦 DELI_7: 배송 서랍 조작
+    # DELI_7: 배송 서랍 조작
     def setup_delivery_drawer_events(self):
         """배송 서랍 조작 화면"""
         self.log_info("배송 서랍 조작 화면 준비")
@@ -155,7 +155,7 @@ class DeliveryController(BaseController):
     
     def on_delivery_drawer_open(self):
         """서랍 열기 버튼 클릭 시"""
-        self.log_info("🔓 [배송 서랍 열기] 버튼이 클릭되었습니다")
+        self.log_info("[배송 서랍 열기] 버튼이 클릭되었습니다")
         
         # 서랍 열기 클릭 이벤트 발행 (rgui_event_id: 104)
         self.publish_event(event_id=104, detail="")
@@ -167,14 +167,14 @@ class DeliveryController(BaseController):
     
     def on_pickup_complete(self):
         """[수령 완료] 버튼 클릭 시"""
-        self.log_info("✅ [수령 완료] 버튼이 클릭되었습니다")
+        self.log_info("[수령 완료] 버튼이 클릭되었습니다")
         
         # 수령 완료 클릭 이벤트 발행 (rgui_event_id: 100)
         self.publish_event(event_id=100, detail="")
     
     def on_drawer_opened(self, detail=""):
         """서랍이 열렸을 때 호출되는 메서드"""
-        self.log_info(f"🔓 서랍 열림 알림 수신: {detail}")
+        self.log_info(f"서랍 열림 알림 수신: {detail}")
         
         # 현재 화면에 따라 버튼 활성화 처리
         current_screen = self.screen_manager.get_current_screen_name()
@@ -185,7 +185,7 @@ class DeliveryController(BaseController):
             if loading_button:
                 loading_button.setEnabled(True)
                 loading_button.setStyleSheet("background-color: #e74c3c; font-size: 18px; font-weight: bold;")
-                self.log_info("✅ 적재완료 버튼이 활성화되었습니다")
+                self.log_info("적재완료 버튼이 활성화되었습니다")
                 
         elif current_screen == "DELIVERY_DRAWER_CONTROL":
             # 배송 서랍 조작: 수령완료 버튼 활성화
@@ -193,13 +193,13 @@ class DeliveryController(BaseController):
             if pickup_button:
                 pickup_button.setEnabled(True)
                 pickup_button.setStyleSheet("background-color: #e74c3c; font-size: 18px; font-weight: bold;")
-                self.log_info("✅ 수령완료 버튼이 활성화되었습니다")
+                self.log_info("수령완료 버튼이 활성화되었습니다")
     
     def show_pickup_order(self, items, room_number="202"):
         """주문 내역을 화면에 표시 (rgui_node.py에서 호출됨)"""
         from PyQt6.QtWidgets import QLabel
         
-        self.log_info(f"📋 주문 내역 표시 요청: {len(items)}개 항목, 호실: {room_number}호")
+        self.log_info(f"주문 내역 표시 요청: {len(items)}개 항목, 호실: {room_number}호")
         
         # menuItems 위젯 찾기
         menu_items_label = self.widget.findChild(QLabel, "menuItems")
@@ -220,13 +220,13 @@ class DeliveryController(BaseController):
         
         # 화면에 표시
         menu_items_label.setText(menu_text.strip())
-        self.log_info(f"✅ 주문 내역 표시 완료:\n{menu_text}")
+        self.log_info(f"주문 내역 표시 완료:\n{menu_text}")
         
         # 호실 번호 업데이트
         room_number_label = self.widget.findChild(QLabel, "roomNumber")
         if room_number_label:
             room_number_label.setText(f"{room_number}호")
-            self.log_info(f"✅ 호실 번호 표시: {room_number}호")
+            self.log_info(f"호실 번호 표시: {room_number}호")
     
     def show_room_number(self, room_number):
         """호실 번호를 화면에 표시"""
@@ -235,11 +235,11 @@ class DeliveryController(BaseController):
         room_number_label = self.widget.findChild(QLabel, "roomNumber")
         if room_number_label:
             room_number_label.setText(f"{room_number}호")
-            self.log_info(f"✅ 호실 번호 표시: {room_number}호")
+            self.log_info(f"호실 번호 표시: {room_number}호")
         else:
             self.log_error("roomNumber 라벨을 찾을 수 없습니다")
     
-    # 🎉 DELI_8: 감사 인사
+    # DELI_8: 감사 인사
     def setup_thank_you_events(self):
         """감사 인사 화면"""
         self.log_info("감사 인사 화면 - 외부 복귀 카운트다운 서비스 요청 대기")
@@ -290,14 +290,14 @@ class DeliveryController(BaseController):
                 if not pixmap.isNull():
                     pickup_image_label.setPixmap(pixmap)
                     pickup_image_label.setScaledContents(True)
-                    self.log_info(f"✅ 픽업 이미지 로드 성공: {image_path}")
+                    self.log_info(f"픽업 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ pickupImage 라벨을 찾을 수 없음")
+                self.log_error("pickupImage 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+            self.log_error(f"이미지 로드 중 오류: {e}")
     
     def load_receive_image(self):
         """수령 이미지 로드"""
@@ -313,11 +313,11 @@ class DeliveryController(BaseController):
                 if not pixmap.isNull():
                     receive_image_label.setPixmap(pixmap)
                     receive_image_label.setScaledContents(True)
-                    self.log_info(f"✅ 수령 이미지 로드 성공: {image_path}")
+                    self.log_info(f"수령 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ receiveImage 라벨을 찾을 수 없음")
+                self.log_error("receiveImage 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}") 
+            self.log_error(f"이미지 로드 중 오류: {e}") 

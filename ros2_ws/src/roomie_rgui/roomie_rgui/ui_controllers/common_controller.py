@@ -54,7 +54,7 @@ class CommonController(BaseController):
     
     def on_user_occupied(self):
         """사용자가 화면을 터치했을 때 - 점유 상태 알림"""
-        self.log_info("👤 사용자가 화면을 터치했습니다")
+        self.log_info("사용자가 화면을 터치했습니다")
         
         # 사용자 점유 상태 이벤트 발행 (rgui_event_id: 102)
         self.publish_event(event_id=102, detail="OCCUPIED")
@@ -85,14 +85,14 @@ class CommonController(BaseController):
                 if not pixmap.isNull():
                     robot_eyes_label.setPixmap(pixmap)
                     robot_eyes_label.setScaledContents(True)
-                    self.log_info(f"✅ 로봇 눈 이미지 로드 성공: {image_path}")
+                    self.log_info(f"로봇 눈 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ robotEyes 라벨을 찾을 수 없음")
+                self.log_error("robotEyes 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+            self.log_error(f"이미지 로드 중 오류: {e}")
     
     def load_charging_image(self):
         """충전 이미지 로드"""
@@ -108,11 +108,11 @@ class CommonController(BaseController):
                 if not pixmap.isNull():
                     charging_image_label.setPixmap(pixmap)
                     charging_image_label.setScaledContents(True)
-                    self.log_info(f"✅ 충전 이미지 로드 성공: {image_path}")
+                    self.log_info(f"충전 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ chargingImage 라벨을 찾을 수 없음")
+                self.log_error("chargingImage 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}") 
+            self.log_error(f"이미지 로드 중 오류: {e}") 

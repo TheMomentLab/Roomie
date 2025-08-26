@@ -118,14 +118,14 @@ class ElevatorController(BaseController):
                 if not pixmap.isNull():
                     caution_image_label.setPixmap(pixmap)
                     caution_image_label.setScaledContents(True)
-                    self.log_info(f"✅ 주의 이미지 로드 성공: {image_path}")
+                    self.log_info(f"주의 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ cautionImage 라벨을 찾을 수 없음")
+                self.log_error("cautionImage 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}")
+            self.log_error(f"이미지 로드 중 오류: {e}")
     
     def load_elevator_image(self):
         """엘리베이터 이미지 로드"""
@@ -141,11 +141,11 @@ class ElevatorController(BaseController):
                 if not pixmap.isNull():
                     elevator_image_label.setPixmap(pixmap)
                     elevator_image_label.setScaledContents(True)
-                    self.log_info(f"✅ 엘리베이터 이미지 로드 성공: {image_path}")
+                    self.log_info(f"엘리베이터 이미지 로드 성공: {image_path}")
                 else:
-                    self.log_error(f"❌ 이미지 로드 실패: {image_path}")
+                    self.log_error(f"이미지 로드 실패: {image_path}")
             else:
-                self.log_error("❌ elevatorImage 라벨을 찾을 수 없음")
+                self.log_error("elevatorImage 라벨을 찾을 수 없음")
                 
         except Exception as e:
-            self.log_error(f"❌ 이미지 로드 중 오류: {e}") 
+            self.log_error(f"이미지 로드 중 오류: {e}") 

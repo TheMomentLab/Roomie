@@ -18,15 +18,15 @@ class RobotGuiNode(Node):
         self.app = app
         self.screen = ScreenManager(self)
 
-        # Publisher
+        # 퍼블리셔
         self.event_pub = self.create_publisher(RobotGuiEvent, '/robot_gui/event', 10)
         
-        # Subscriber
+        # 구독자
         self.event_sub = self.create_subscription(RobotGuiEvent, '/robot_gui/event', self.on_robot_event, 10)
 
 
         
-        # Action Servers
+        # 액션 서버
         self.departure_action_srv = ActionServer(
             self, 
             StartCountdown, 
@@ -40,7 +40,7 @@ class RobotGuiNode(Node):
             self.handle_start_return_countdown
         )
         
-        # 내부 카운트다운 관련 변수 (기존 호환성용)
+        # 내부 카운트다운 관련 변수
         self.countdown_timer = None
         self.countdown_remaining = 0
         self.countdown_action_text = ""
@@ -49,10 +49,10 @@ class RobotGuiNode(Node):
         # 엘리베이터 사용 전 화면 상태 저장
         self.screen_before_elevator = None
         
-        # 목적지(호실 번호 등) 저장
+        # 목적지 저장 (호실 번호 등)
         self.current_destination: str | None = None
         
-        # 카운트다운 시작 전 화면 상태 저장 (픽업/배송 단계 구분용)
+        # 카운트다운 시작 전 화면 상태 저장 (픽업/배송 단계 구분)
         self.screen_before_countdown = None
 
     def publish_event(self, event_id: int, robot_id: int, task_id: int = 0, detail: str = ""):
@@ -78,11 +78,11 @@ class RobotGuiNode(Node):
         4. 액션 성공 응답 반환
         """
         goal = goal_handle.request
-        self.get_logger().info(f"📞 출발 카운트다운 액션 요청: robot_id={goal.robot_id}, task_id={goal.task_id}, task_type_id={goal.task_type_id}")
+        self.get_logger().info(f"출발 카운트다운 액션 요청: robot_id={goal.robot_id}, task_id={goal.task_id}, task_type_id={goal.task_type_id}")
         
         # 카운트다운 시작 전 현재 화면 저장 (픽업/배송 단계 구분용)
         self.screen_before_countdown = self.screen.get_current_screen_name()
-        self.get_logger().info(f"📱 카운트다운 시작 전 화면: {self.screen_before_countdown}")
+        self.get_logger().info(f"카운트다운 시작 전 화면: {self.screen_before_countdown}")
         
         # 카운트다운 화면으로 전환
         self.screen.show_screen("COUNTDOWN")
@@ -100,7 +100,7 @@ class RobotGuiNode(Node):
         else:
             action_text = "이동"
         
-        self.get_logger().info(f"⏰ 출발 카운트다운 시작: 5초 ({action_text})")
+        self.get_logger().info(f"출발 카운트다운 시작: 5초 ({action_text})")
         
         # 액션에서 직접 카운트다운 처리 (5초)
         import time
@@ -114,13 +114,13 @@ class RobotGuiNode(Node):
             feedback = StartCountdown.Feedback()
             feedback.remaining_time = remaining
             goal_handle.publish_feedback(feedback)
-            self.get_logger().info(f"📤 액션 피드백 발송: remaining_time={remaining}")
+            self.get_logger().info(f"액션 피드백 발송: remaining_time={remaining}")
             
             # 1초 대기
             time.sleep(1.0)
         
         # 카운트다운 완료
-        self.get_logger().info("🎉 카운트다운 완료!")
+        self.get_logger().info("카운트다운 완료!")
         
         # 화면 전환
         self.handle_countdown_completed_direct(goal.task_type_id)
@@ -131,7 +131,7 @@ class RobotGuiNode(Node):
         result.success = True
         
         goal_handle.succeed()
-        self.get_logger().info(f"📤 액션 완료: success=True, robot_id={result.robot_id}")
+        self.get_logger().info(f"액션 완료: success=True, robot_id={result.robot_id}")
         
         return result
     
@@ -148,19 +148,19 @@ class RobotGuiNode(Node):
         if task_type_id in [0, 1]:  # 배송 작업 (음식배송, 비품배송)
             # 카운트다운 시작 전 화면에 따라 다음 화면 결정
             if self.screen_before_countdown in ["PICKUP_DRAWER_CONTROL", "CHECKING_ORDER", "PICKUP_ARRIVED", "DELIVERY_ARRIVED"]:
-                self.get_logger().info("🚚 배송 출발 카운트다운 완료 - 배송장소 이동중 화면으로 전환")
+                self.get_logger().info("배송 출발 카운트다운 완료 - 배송장소 이동중 화면으로 전환")
                 self.screen.show_screen("DELIVERY_MOVING")
             else:
-                self.get_logger().info("🚚 픽업 출발 카운트다운 완료 - 픽업장소 이동중 화면으로 전환")
+                self.get_logger().info("픽업 출발 카운트다운 완료 - 픽업장소 이동중 화면으로 전환")
                 self.screen.show_screen("PICKUP_MOVING")
             
             # 상태 초기화
             self.screen_before_countdown = None
         elif task_type_id == 2:  # 호출
-            self.get_logger().info("📞 호출 작업 카운트다운 완료 - 대기 화면으로 전환")
+            self.get_logger().info("호출 작업 카운트다운 완료 - 대기 화면으로 전환")
             self.screen.show_screen("TOUCH_SCREEN")
         elif task_type_id == 3:  # 길안내
-            self.get_logger().info("🗺️ 길안내 작업 카운트다운 완료 - 대기 화면으로 전환")
+            self.get_logger().info("길안내 작업 카운트다운 완료 - 대기 화면으로 전환")
             self.screen.show_screen("TOUCH_SCREEN")
         else:
             self.get_logger().warn(f"알 수 없는 task_type_id: {task_type_id} - 대기 화면으로 전환")
@@ -175,7 +175,7 @@ class RobotGuiNode(Node):
         이제 [적재 완료] 클릭 시 event_id=105를 RC로 발송하고,
         RC가 다시 StartCountdown 액션을 보내는 방식으로 변경됨
         """
-        self.get_logger().warn("⚠️ start_delivery_countdown()는 더 이상 사용되지 않습니다. RC에서 액션으로 요청해주세요.")
+        self.get_logger().warn("start_delivery_countdown()는 더 이상 사용되지 않습니다. RC에서 액션으로 요청해주세요.")
     
     def update_countdown_text(self):
         """카운트다운 화면의 텍스트 업데이트"""
@@ -193,7 +193,7 @@ class RobotGuiNode(Node):
             if title_label:
                 title_text = f"{self.countdown_remaining}초후에 {self.countdown_action_text}합니다."
                 title_label.setText(title_text)
-                self.get_logger().info(f"📝 카운트다운 countdownTitle 업데이트: {title_text}")
+                self.get_logger().info(f"카운트다운 countdownTitle 업데이트: {title_text}")
             else:
                 self.get_logger().warn("countdownTitle 라벨을 찾을 수 없음")
             
@@ -201,7 +201,7 @@ class RobotGuiNode(Node):
             countdown_label = countdown_widget.findChild(QLabel, "countdownNumber")
             if countdown_label:
                 countdown_label.setText(str(self.countdown_remaining))
-                self.get_logger().info(f"📝 카운트다운 countdownNumber 업데이트: {self.countdown_remaining}")
+                self.get_logger().info(f"카운트다운 countdownNumber 업데이트: {self.countdown_remaining}")
             else:
                 self.get_logger().warn("countdownNumber 라벨을 찾을 수 없음")
                 
@@ -218,7 +218,7 @@ class RobotGuiNode(Node):
     def on_countdown_tick(self):
         """카운트다운 타이머 틱 (1초마다 호출) - 내부 카운트다운용"""
         self.countdown_remaining -= 1
-        self.get_logger().info(f"⏰ 내부 카운트다운: {self.countdown_remaining}초 남음")
+        self.get_logger().info(f"내부 카운트다운: {self.countdown_remaining}초 남음")
         
         if self.countdown_remaining > 0:
             # 남은 시간 표시 업데이트
@@ -227,7 +227,7 @@ class RobotGuiNode(Node):
             self.start_countdown_timer()
         else:
             # 카운트다운 완료
-            self.get_logger().info("🎉 내부 카운트다운 완료!")
+            self.get_logger().info("내부 카운트다운 완료!")
             
             # 내부 카운트다운 완료 후 화면 전환
             self.handle_internal_countdown_completed()
@@ -242,7 +242,7 @@ class RobotGuiNode(Node):
     # DEPRECATED: 내부 카운트다운은 더 이상 사용하지 않음
     def handle_internal_countdown_completed(self):
         """DEPRECATED: 사용하지 않음"""
-        self.get_logger().warn("⚠️ handle_internal_countdown_completed()는 더 이상 사용되지 않습니다.")
+        self.get_logger().warn("handle_internal_countdown_completed()는 더 이상 사용되지 않습니다.")
     
     def handle_start_return_countdown(self, goal_handle):
         """
@@ -254,13 +254,13 @@ class RobotGuiNode(Node):
         3. ReturnCountdown 액션 수신 → 카운트다운 후 복귀화면 전환
         """
         goal = goal_handle.request
-        self.get_logger().info(f"🏠 복귀 카운트다운 액션 요청: robot_id={goal.robot_id}")
+        self.get_logger().info(f"복귀 카운트다운 액션 요청: robot_id={goal.robot_id}")
         
         # 카운트다운 화면으로 전환 (감사화면은 18번 이벤트에서 이미 처리됨)
         self.screen.show_screen("COUNTDOWN")
         
         action_text = "대기장소로 복귀"
-        self.get_logger().info(f"⏰ 복귀 카운트다운 시작: 10초 ({action_text})")
+        self.get_logger().info(f"복귀 카운트다운 시작: 10초 ({action_text})")
         
         # 액션에서 직접 카운트다운 처리 (10초)
         import time
@@ -274,16 +274,16 @@ class RobotGuiNode(Node):
             feedback = ReturnCountdown.Feedback()
             feedback.remaining_time = remaining
             goal_handle.publish_feedback(feedback)
-            self.get_logger().info(f"📤 복귀 액션 피드백 발송: remaining_time={remaining}")
+            self.get_logger().info(f"복귀 액션 피드백 발송: remaining_time={remaining}")
             
             # 1초 대기
             time.sleep(1.0)
         
         # 카운트다운 완료
-        self.get_logger().info("🎉 복귀 카운트다운 완료!")
+        self.get_logger().info("복귀 카운트다운 완료!")
         
         # 화면 전환
-        self.get_logger().info("🏠 복귀 카운트다운 완료 - 대기장소 복귀 화면으로 전환")
+        self.get_logger().info("복귀 카운트다운 완료 - 대기장소 복귀 화면으로 전환")
         self.screen.show_screen("RETURN_TO_BASE")
         
         # 결과 반환
@@ -292,58 +292,58 @@ class RobotGuiNode(Node):
         result.success = True
         
         goal_handle.succeed()
-        self.get_logger().info(f"📤 복귀 액션 완료: success=True, robot_id={result.robot_id}")
+        self.get_logger().info(f"복귀 액션 완료: success=True, robot_id={result.robot_id}")
         
         return result
 
     def on_robot_event(self, msg):
         """RC로부터 받은 이벤트 처리"""
         event_id = msg.rgui_event_id
-        self.get_logger().info(f"🔔 이벤트 수신: ID={event_id}, robot_id={msg.robot_id}, detail={msg.detail}")
+        self.get_logger().info(f"이벤트 수신: ID={event_id}, robot_id={msg.robot_id}, detail={msg.detail}")
         
         # 이벤트 ID에 따른 화면 전환 (순서대로)
         # 엘리베이터 관련 이벤트 처리
         if event_id == 1:  # 엘리베이터 버튼 조작 시작
             # 현재 화면 상태 저장 (엘리베이터 사용 후 복원용)
             self.screen_before_elevator = self.screen.get_current_screen_name()
-            self.get_logger().info(f"🛗 엘리베이터 사용 전 화면 저장: {self.screen_before_elevator}")
+            self.get_logger().info(f"엘리베이터 사용 전 화면 저장: {self.screen_before_elevator}")
             
-            self.get_logger().info("🛗 엘리베이터 버튼 조작 시작 - ELEVATOR_MANIPULATING 화면으로 전환")
+            self.get_logger().info("엘리베이터 버튼 조작 시작 - ELEVATOR_MANIPULATING 화면으로 전환")
             self.screen.show_screen("ELEVATOR_MANIPULATING")
         elif event_id == 2:  # 엘리베이터 버튼 조작 종료
-            self.get_logger().info("🛗 엘리베이터 버튼 조작 종료 - ELEVATOR_CALLING 화면으로 전환")
+            self.get_logger().info("엘리베이터 버튼 조작 종료 - ELEVATOR_CALLING 화면으로 전환")
             self.screen.show_screen("ELEVATOR_CALLING")
         elif event_id == 3:  # 엘리베이터 탑승 시작
-            self.get_logger().info("🛗 엘리베이터 탑승 시작 - ELEVATOR_BOARDING 화면으로 전환")
+            self.get_logger().info("엘리베이터 탑승 시작 - ELEVATOR_BOARDING 화면으로 전환")
             self.screen.show_screen("ELEVATOR_BOARDING")
         elif event_id == 4:  # 엘리베이터 탑승 종료
-            self.get_logger().info("🛗 엘리베이터 탑승 종료 - ELEVATOR_MOVING_TO_TARGET 화면으로 전환")
+            self.get_logger().info("엘리베이터 탑승 종료 - ELEVATOR_MOVING_TO_TARGET 화면으로 전환")
             self.screen.show_screen("ELEVATOR_MOVING_TO_TARGET")
         elif event_id == 5:  # 엘리베이터 하차 시작
-            self.get_logger().info("🛗 엘리베이터 하차 시작 - ELEVATOR_EXITING 화면으로 전환")
+            self.get_logger().info("엘리베이터 하차 시작 - ELEVATOR_EXITING 화면으로 전환")
             self.screen.show_screen("ELEVATOR_EXITING")
         elif event_id == 6:  # 엘리베이터 하차 종료
-            self.get_logger().info("🛗 엘리베이터 하차 종료 - 원래 화면으로 복원")
+            self.get_logger().info("엘리베이터 하차 종료 - 원래 화면으로 복원")
             
             # 엘리베이터 사용 전 화면으로 복원
             if self.screen_before_elevator:
-                self.get_logger().info(f"🛗 엘리베이터 사용 전 화면으로 복원: {self.screen_before_elevator}")
+                self.get_logger().info(f"엘리베이터 사용 전 화면으로 복원: {self.screen_before_elevator}")
                 self.screen.show_screen(self.screen_before_elevator)
                 # 상태 초기화
                 self.screen_before_elevator = None
             else:
                 # 저장된 화면이 없으면 기본 화면으로
-                self.get_logger().warn("🛗 저장된 화면이 없어서 TOUCH_SCREEN으로 전환")
+                self.get_logger().warn("저장된 화면이 없어서 TOUCH_SCREEN으로 전환")
                 self.screen.show_screen("TOUCH_SCREEN")
         elif event_id == 7:  # 호출 이동 시작
-            self.get_logger().info("📞 호출 이동 시작")
+            self.get_logger().info("호출 이동 시작")
             # 호출 작업의 이동은 보통 TOUCH_SCREEN에서 시작
             # 특별한 화면 전환이 필요하면 여기에 구현
         elif event_id == 8:  # 호출 이동 종료
-            self.get_logger().info("📞 호출 이동 종료")
+            self.get_logger().info("호출 이동 종료")
             # 호출 완료 후 처리
         elif event_id == 9:  # 호실 번호 인식 완료
-            self.get_logger().info(f"🏠 호실 번호 인식 완료: {msg.detail}")
+            self.get_logger().info(f"호실 번호 인식 완료: {msg.detail}")
             # 인식된 호실 번호는 detail에 저장됨 (예: "101")
             # REGISTERING 화면으로 전환
             try:
@@ -352,7 +352,7 @@ class RobotGuiNode(Node):
                 self.current_destination = None
             self.screen.show_screen("REGISTERING")
         elif event_id == 10:  # 길안내 이동 시작
-            self.get_logger().info("🗺️ 길안내 이동 시작")
+            self.get_logger().info("길안내 이동 시작")
             # 현재 화면이 REGISTERING일 때만 GUIDANCE_SCREEN으로 전환
             current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
             if current == "REGISTERING":
@@ -360,7 +360,7 @@ class RobotGuiNode(Node):
             else:
                 self.get_logger().info(f"현재 화면이 {current}이므로 화면 전환 생략")
         elif event_id == 11:  # 길안내 이동 종료
-            self.get_logger().info("🗺️ 길안내 이동 종료")
+            self.get_logger().info("길안내 이동 종료")
             # 도착 화면으로 전환
             self.screen.show_screen("DESTINATION_ARRIVED")
         elif event_id == 12:  # 픽업장소 이동 시작
@@ -405,14 +405,14 @@ class RobotGuiNode(Node):
                 # 배송 서랍 조작 화면에서 서랍이 열렸을 때 수령완료 버튼 활성화
                 self.screen.notify_drawer_opened(msg.detail)
         elif event_id == 17:  # 서랍 닫힘
-            self.get_logger().info("🔒 서랍 닫힘 이벤트 수신")
+            self.get_logger().info("서랍 닫힘 이벤트 수신")
             # 서랍이 닫혔을 때 처리 로직
         elif event_id == 18:  # 서랍 잠금
-            self.get_logger().info("🔐 서랍 잠금 이벤트 수신 - 감사 화면으로 전환")
+            self.get_logger().info("서랍 잠금 이벤트 수신 - 감사 화면으로 전환")
             # 서랍이 잠긴 후 감사 화면 표시 (수령 완료 시나리오)
             self.screen.show_screen("THANK_YOU")
         elif event_id == 21:  # 투숙객 이탈
-            self.get_logger().info("👤 투숙객 이탈 이벤트 수신")
+            self.get_logger().info("투숙객 이탈 이벤트 수신")
             # GUIDANCE_SCREEN에서 이탈 시 RECHECKING으로 전환
             current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
             if current == "GUIDANCE_SCREEN":
@@ -421,7 +421,7 @@ class RobotGuiNode(Node):
                 # 다른 화면에서는 별도 처리 없음
                 pass
         elif event_id == 22:  # 투숙객 이탈 후 재등록
-            self.get_logger().info("👤 투숙객 이탈 후 재등록 이벤트 수신")
+            self.get_logger().info("투숙객 이탈 후 재등록 이벤트 수신")
             # RECHECKING에서 재등록 시 GUIDANCE_SCREEN으로 전환
             current = self.screen.get_current_screen_name() if hasattr(self.screen, "get_current_screen_name") else None
             if current == "RECHECKING":
@@ -430,7 +430,7 @@ class RobotGuiNode(Node):
                 # 다른 화면에서는 별도 처리 없음
                 pass
         elif event_id == 23:  # 투숙객 등록
-            self.get_logger().info("👤 투숙객 등록 이벤트 수신")
+            self.get_logger().info("투숙객 등록 이벤트 수신")
             # 새로운 투숙객이 등록되었을 때 처리
         elif event_id == 24:  # 배송 수령 완료
             self.screen.show_screen("THANK_YOU")
@@ -438,26 +438,26 @@ class RobotGuiNode(Node):
             # 감사 화면 후 초기 화면으로
             self.screen.show_screen("TOUCH_SCREEN")
         elif event_id == 26:  # 적재 감지
-            self.get_logger().info("📦 적재 감지 이벤트 수신")
+            self.get_logger().info("적재 감지 이벤트 수신")
             # 물품이 적재되었을 때 처리
         elif event_id == 27:  # 적재 미감지
-            self.get_logger().info("📦 적재 미감지 이벤트 수신")
+            self.get_logger().info("적재 미감지 이벤트 수신")
             # 물품이 적재되지 않았을 때 처리
         elif event_id == 100:  # [수령 완료] 클릭
-            self.get_logger().info("✅ 수령 완료 버튼 클릭됨 - RC로 이벤트 발송")
+            self.get_logger().info("수령 완료 버튼 클릭됨 - RC로 이벤트 발송")
             # 수령 완료 이벤트를 RC로 발송 (RC가 ReturnCountdown 액션을 보낼 것임)
             # 여기서는 이벤트 발송만 하고, 실제 감사 화면과 복귀 카운트다운은 RC에서 액션으로 요청할 때 시작
         elif event_id == 101:  # 목적지 입력 완료
-            self.get_logger().info(f"📍 목적지 입력 완료: {msg.detail}")
+            self.get_logger().info(f"목적지 입력 완료: {msg.detail}")
             # detail에 목적지 정보가 저장됨 (예: "LOCATION_NAME")
         elif event_id == 102:  # 사용자 점유 상태
-            self.get_logger().info(f"👤 사용자 점유 상태: {msg.detail}")
+            self.get_logger().info(f"사용자 점유 상태: {msg.detail}")
             # detail: "OCCUPIED" 또는 "VACANT"
         elif event_id == 103:  # [카드키로 입력] 선택
-            self.get_logger().info("🔑 카드키로 입력 선택됨")
+            self.get_logger().info("카드키로 입력 선택됨")
             # 카드키 입력 방식 선택 시 처리
         elif event_id == 104:  # 서랍 열기 버튼 클릭
-            self.get_logger().info("🔓 서랍 열기 버튼 클릭됨 - 서랍 열림 이벤트 발행")
+            self.get_logger().info("서랍 열기 버튼 클릭됨 - 서랍 열림 이벤트 발행")
             # 서랍 열림을 알리는 이벤트 발행 (event_id=16)
             event_msg = RobotGuiEvent()
             event_msg.robot_id = 0  # 기본 로봇 ID
@@ -465,22 +465,22 @@ class RobotGuiNode(Node):
             event_msg.detail = "drawer_opened"
             self.event_pub.publish(event_msg)
         elif event_id == 105:  # 적재 완료 버튼 클릭
-            self.get_logger().info("📦 적재 완료 버튼 클릭됨 - RC로 이벤트 발송")
+            self.get_logger().info("적재 완료 버튼 클릭됨 - RC로 이벤트 발송")
             # 적재 완료 이벤트를 RC로 발송 (RC가 다시 StartCountdown 액션을 보낼 것임)
             # 여기서는 이벤트 발송만 하고, 실제 카운트다운은 RC에서 액션으로 요청할 때 시작
         elif event_id == 106:  # 인식모드 전환 요청
-            self.get_logger().info(f"👁️ 인식모드 전환 요청: {msg.detail}")
+            self.get_logger().info(f"인식모드 전환 요청: {msg.detail}")
             # detail에 모드 값이 저장됨:
             # "0": 대기모드, "1": 등록모드, "2": 추적모드, "3": 엘리베이터모드
             mode_names = {"0": "대기모드", "1": "등록모드", "2": "추적모드", "3": "엘리베이터모드"}
             mode_name = mode_names.get(msg.detail, f"알 수 없는 모드({msg.detail})")
-            self.get_logger().info(f"👁️ 인식모드를 {mode_name}으로 전환 요청")
+            self.get_logger().info(f"인식모드를 {mode_name}으로 전환 요청")
         elif event_id == 19:  # 충전 시작
-            self.get_logger().info("🔋 충전 시작 이벤트 수신 - 충전 화면으로 전환")
+            self.get_logger().info("충전 시작 이벤트 수신 - 충전 화면으로 전환")
             # 복귀중 화면에서 충전중 화면으로 전환
             self.screen.show_screen("CHARGING")
         elif event_id == 20:  # 충전 종료
-            self.get_logger().info("🔋 충전 완료 이벤트 수신 - 초기 화면으로 전환")
+            self.get_logger().info("충전 완료 이벤트 수신 - 초기 화면으로 전환")
             # 충전 완료 후 초기 화면으로 전환
             self.screen.show_screen("TOUCH_SCREEN")
         else:
@@ -494,7 +494,7 @@ def main():
     app = QApplication(sys.argv)
     node = RobotGuiNode(app)
     
-    # ROS2 스핀을 백그라운드에서 실행
+    # ROS2 스핀 백그라운드 실행
     import threading
     def spin_ros():
         rclpy.spin(node)
@@ -502,7 +502,7 @@ def main():
     ros_thread = threading.Thread(target=spin_ros, daemon=True)
     ros_thread.start()
     
-    # GUI 메인루프 실행
+    # GUI 메인 루프 실행
     try:
         sys.exit(app.exec())
     finally:

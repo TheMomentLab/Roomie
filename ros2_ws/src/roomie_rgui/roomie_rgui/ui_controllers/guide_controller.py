@@ -52,7 +52,7 @@ class GuideController(BaseController):
         else:
             self.log_info("알 수 없는 가이드 화면 - 기본 설정만 수행")
 
-    # GUIDANCE_SCREEN
+    # GUIDANCE_SCREEN 화면
     def setup_guidance_screen_events(self):
         self.log_info("GUIDANCE_SCREEN 준비")
         # GUIDANCE_SCREEN 진입 시 인식모드(추적모드) 전환 요청 발행
@@ -79,12 +79,12 @@ class GuideController(BaseController):
         self.log_info("GUIDANCE_SCREEN 터치")
         # 필요 시 다음 화면으로 전환 로직을 여기서 구현
 
-    # INPUT_METHOD_SELECTION
+    # INPUT_METHOD_SELECTION 화면
     def setup_input_method_selection_events(self):
         self.log_info("INPUT_METHOD_SELECTION 준비")
         # 카드키 입력만 사용
         self.setup_button_event("cardKeyButton", self.on_select_card_key)
-        # 이미지 보장: qrc→절대경로 폴백
+        # 이미지 로드 보장 (QRC 또는 절대 경로 폴백)
         base_dir = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets"
         self._set_label_pixmap_with_fallback("cardKeyImage", ":/roomie_rgui/assets/rgui_card.png", f"{base_dir}/rgui_card.png")
         self._set_label_pixmap_with_fallback("directInputImage", ":/roomie_rgui/assets/rgui_touch.png", f"{base_dir}/rgui_touch.png")
@@ -96,7 +96,7 @@ class GuideController(BaseController):
         # 다음 화면으로 전환 (예: 카드키 대기)
         self.screen_manager.show_screen("CARD_KEY_WAITING")
 
-    # CARD_KEY_WAITING
+    # CARD_KEY_WAITING 화면
     def setup_card_key_waiting_events(self):
         self.log_info("CARD_KEY_WAITING 준비")
         # 취소 버튼은 선택 사항: 있을 때만 연결
@@ -108,7 +108,7 @@ class GuideController(BaseController):
             pass
         # 카운트다운 초기화 및 시작
         self._start_card_key_countdown()
-        # 이미지 보장: qrc→절대경로 폴백
+        # 이미지 로드 보장 (QRC 또는 절대 경로 폴백)
         base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_scan.png"
         self._set_label_pixmap_with_fallback("cardKeyImage", ":/roomie_rgui/assets/rgui_scan.png", base)
 
@@ -117,7 +117,7 @@ class GuideController(BaseController):
         self._stop_card_key_countdown()
         self.screen_manager.show_screen("INPUT_METHOD_SELECTION")
 
-    # 카드키 대기 카운트다운 로직 (라벨 숫자만 갱신, 타임아웃 시 추가 동작 없음)
+    # 카드키 대기 카운트다운 로직 (라벨 숫자만 갱신)
     def _start_card_key_countdown(self):
         try:
             from PyQt6.QtWidgets import QLabel
@@ -170,7 +170,7 @@ class GuideController(BaseController):
             self.card_key_countdown_timer = None
             self.log_info("카운트다운 정지")
 
-    # REGISTERING
+    # REGISTERING 화면
     def setup_registering_events(self):
         self.log_info("REGISTERING 준비")
         # REGISTERING 진입 시 인식모드(등록모드) 전환 요청 발행
@@ -193,7 +193,7 @@ class GuideController(BaseController):
         self._stop_registering_video()
         self.screen_manager.show_screen("RECHECKING")
 
-    # === REGISTERING 영상 수신/표시 ===
+    # REGISTERING 영상 수신 및 표시
     def _start_registering_video(self):
         try:
             # 공용 UDP 표시 진입점 사용
@@ -202,11 +202,11 @@ class GuideController(BaseController):
         except Exception as e:
             self.log_error(f"REGISTERING 영상 수신 시작 실패: {e}")
 
-    # === 공용 UDP 영상 수신/표시 ===
+    # 공용 UDP 영상 수신 및 표시
     def _start_udp_video(self, target_frame_name: str):
         """주어진 프레임 이름 내부에 UDP로 수신한 영상을 표시한다."""
         try:
-            # 표시 라벨 준비 (프레임 내부에 꽉 차게)
+            # 표시 라벨 준비 (프레임 내부에 맞춤)
             from PyQt6.QtWidgets import QLabel, QFrame, QWidget
             target_frame = self.widget.findChild(QLabel, target_frame_name)
             if target_frame is None:
@@ -223,7 +223,7 @@ class GuideController(BaseController):
             self.video_label.setScaledContents(True)
             self.video_label.raise_()
             try:
-                # 부모 프레임 리사이즈 시 라벨을 꽉 채우도록 동기화
+                # 부모 프레임 리사이즈 시 라벨 크기 동기화
                 original_resize = getattr(target_frame, "resizeEvent", None)
                 def _on_target_resize(event):
                     self.video_label.setGeometry(0, 0, target_frame.width(), target_frame.height())
@@ -234,7 +234,7 @@ class GuideController(BaseController):
                 pass
             self.video_label.show()
 
-            # 수신 스레드 시작 (중복 방지 위해 기존 정리)
+            # 수신 스레드 시작 (기존 스레드 정리 후)
             if self.udp_running:
                 self._stop_registering_video()
             self.udp_running = True
@@ -252,7 +252,7 @@ class GuideController(BaseController):
             self.udp_thread = threading.Thread(target=self._udp_receive_loop, daemon=True)
             self.udp_thread.start()
 
-            # GUI 타이머로 주기적 갱신
+            # GUI 타이머로 주기적 화면 갱신
             from PyQt6.QtCore import QTimer
             if self.video_timer is None:
                 self.video_timer = QTimer(self.widget)
@@ -281,7 +281,7 @@ class GuideController(BaseController):
         except Exception as e:
             self.log_warn(f"REGISTERING 영상 수신 정지 중 경고: {e}")
 
-    # 별칭: 공용 정지
+    # 공용 정지
     def _stop_udp_video(self):
         self._stop_registering_video()
 
@@ -308,7 +308,7 @@ class GuideController(BaseController):
             except socket.timeout:
                 continue
             except Exception as e:
-                # 과도한 로그 방지: 최초 1회만 상세 출력
+                # 과도한 로그 방지 (최초 1회만 상세 출력)
                 if not getattr(self, "_first_frame_logged", False):
                     self.log_warn(f"UDP 수신 예외: {e}")
                 continue
@@ -334,7 +334,7 @@ class GuideController(BaseController):
         import os
         return os.environ.get(key, default)
 
-    # RECHECKING
+    # RECHECKING 화면
     def setup_rechecking_events(self):
         self.log_info("RECHECKING 준비")
         self.setup_button_event("reenterButton", self.on_reenter)
@@ -358,14 +358,14 @@ class GuideController(BaseController):
         base = "/home/jinhyuk2me/project_ws/Roomie/ros2_ws/src/roomie_rgui/roomie_rgui/assets/rgui_guide_out.png"
         self._set_label_pixmap_with_fallback("guideImage", ":/roomie_rgui/assets/rgui_guide_out.png", base)
 
-    # GUIDE_REQUEST
+    # GUIDE_REQUEST 화면
     def setup_guide_request_events(self):
         self.log_info("GUIDE_REQUEST 준비")
         # 뒤로가기 버튼
         self.setup_button_event("backButton", self.on_guide_request_back)
-        # 카드 전체 터치 영역(터치 전용 헬퍼로 z-order 보정 포함)
+        # 카드 전체 터치 영역 (z-order 보정 포함)
         self.setup_touch_event("touchButton", self.on_request_guidance)
-        # 루트 전체 화면 터치 대체 (버튼 z-order/미탐색 대비)
+        # 루트 전체 화면 터치 대체 (버튼 z-order 및 미탐색 대비)
         try:
             from PyQt6.QtWidgets import QWidget
             from PyQt6.QtCore import Qt
@@ -379,7 +379,7 @@ class GuideController(BaseController):
             self.widget.mouseReleaseEvent = on_root_mouse_release
         except Exception as e:
             self.log_warn(f"GUIDE_REQUEST 전체 화면 터치 연결 중 경고: {e}")
-        # 이미지 보장: qrc→절대경로 폴백
+        # 이미지 로드 보장 (QRC 또는 절대 경로 폴백)
         self._load_guide_request_image()
 
     def _set_label_pixmap_with_fallback(self, label_name: str, qrc_path: str, abs_path: str):
@@ -415,7 +415,7 @@ class GuideController(BaseController):
         self.log_info("GUIDE_REQUEST 뒤로가기")
         self.screen_manager.show_screen("TOUCH_SCREEN")
 
-    # DESTINATION_ARRIVED
+    # DESTINATION_ARRIVED 화면
     def setup_destination_arrived_events(self):
         self.log_info("DESTINATION_ARRIVED 준비")
         self.setup_button_event("okButton", self.on_destination_confirm)
@@ -425,5 +425,5 @@ class GuideController(BaseController):
 
     def on_destination_confirm(self):
         self.log_info("도착 확인")
-        # 길안내 종료 이벤트 발행 (참고: rgui_node에서 11=길안내 종료 정의)
+        # 길안내 종료 이벤트 발행
         self.publish_event(event_id=11, detail="") 

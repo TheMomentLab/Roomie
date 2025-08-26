@@ -15,7 +15,7 @@ class BaseController:
         
         self.log_info(f"컨트롤러 초기화: {self.ui_filename}")
     
-    # 🔧 위젯 찾기 헬퍼
+    # 위젯 찾기 헬퍼
     def find_widget(self, widget_name, widget_type=None):
         """UI에서 특정 위젯 찾기"""
         if widget_type:
@@ -25,7 +25,7 @@ class BaseController:
             return (self.widget.findChild(QPushButton, widget_name) or 
                    self.widget.findChild(QLabel, widget_name))
     
-    # 🖱️ 이벤트 연결 헬퍼들
+    # 이벤트 연결 헬퍼들
     def setup_button_event(self, button_name, callback):
         """버튼 클릭 이벤트 연결"""
         button = self.find_widget(button_name, QPushButton)
@@ -58,31 +58,31 @@ class BaseController:
             touch_area.clicked.connect(callback)
             
             # 디버깅: 테스트 클릭 이벤트도 연결
-            touch_area.pressed.connect(lambda: self.log_info(f"🖱️ {area_name} 위젯이 눌렸습니다!"))
-            touch_area.released.connect(lambda: self.log_info(f"🖱️ {area_name} 위젯이 릴리즈되었습니다!"))
+                        self.log_info(f"{area_name} 위젯이 눌렸습니다!")
+            touch_area.released.connect(lambda:             self.log_info(f"{area_name} 위젯이 릴리즈되었습니다!"))
             
             # 시각적 피드백을 위해 hover 효과 추가
             original_style = touch_area.styleSheet()
             
             def on_enter(event):
                 touch_area.setStyleSheet(original_style + "; background-color: rgba(255, 255, 255, 0.1);")
-                self.log_info(f"🖱️ {area_name} 마우스 진입!")
+                self.log_info(f"{area_name} 마우스 진입!")
             
             def on_leave(event):
                 touch_area.setStyleSheet(original_style)
-                self.log_info(f"🖱️ {area_name} 마우스 이탈!")
+                self.log_info(f"{area_name} 마우스 이탈!")
             
             def on_mouse_press(event):
-                self.log_info(f"🖱️ {area_name} 마우스 눌림! 버튼: {event.button()}")
+                self.log_info(f"{area_name} 마우스 눌림! 버튼: {event.button()}")
                 # 원래 이벤트도 처리하도록 전달
                 QPushButton.mousePressEvent(touch_area, event)
             
             def on_mouse_release(event):
-                self.log_info(f"🖱️ {area_name} 마우스 릴리즈! 버튼: {event.button()}")
+                self.log_info(f"{area_name} 마우스 릴리즈! 버튼: {event.button()}")
                 # 왼쪽 버튼 클릭이면 직접 콜백 호출
                 from PyQt6.QtCore import Qt
                 if event.button() == Qt.MouseButton.LeftButton:
-                    self.log_info(f"🖱️ {area_name} 왼쪽 클릭 감지 - 콜백 직접 호출")
+                    self.log_info(f"{area_name} 왼쪽 클릭 감지 - 콜백 직접 호출")
                     callback()
                 # 원래 이벤트도 처리하도록 전달
                 QPushButton.mouseReleaseEvent(touch_area, event)
@@ -106,7 +106,7 @@ class BaseController:
             
             return False
     
-    # 📡 ROS2 이벤트 발행
+    # ROS2 이벤트 발행
     def publish_event(self, event_id, detail=""):
         """ROS2 GUI 이벤트 발행"""
         self.node.publish_event(event_id, robot_id=0, detail=detail)
@@ -114,7 +114,7 @@ class BaseController:
     
 
     
-    # 📝 로깅 헬퍼들
+    # 로깅 헬퍼들
     def log_info(self, message):
         self.node.get_logger().info(f"[{self.__class__.__name__}] {message}")
     
@@ -124,7 +124,7 @@ class BaseController:
     def log_error(self, message):
         self.node.get_logger().error(f"[{self.__class__.__name__}] {message}")
     
-    # 🎯 하위 클래스에서 구현해야 할 메서드
+    # 하위 클래스에서 구현해야 할 메서드
     def setup_events(self):
         """하위 클래스에서 구현: 이벤트 연결 로직"""
         pass 
