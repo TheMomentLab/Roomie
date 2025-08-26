@@ -1,205 +1,94 @@
-#!/usr/bin/env python3
-"""
-PersonTracker 통합 테스트 스크립트
-기존 VS 인터페이스와의 호환성 확인
-"""
+import cv2
+import yaml
+import os
+from rclpy.logging import get_logger
+from ament_index_python.packages import get_package_share_directory
+from roomie_vs.person_tracking.person_tracker import PersonTracker
+from roomie_vs.camera_manager import WebCamCamera
+from ultralytics import YOLO
 
-import rclpy
-from rclpy.node import Node
-from rclpy.action import ActionClient
-from roomie_msgs.srv import SetVSMode
-from roomie_msgs.action import Enroll
-from roomie_msgs.msg import Tracking
-from std_srvs.srv import Trigger
-import time
+class PersonTrackerTester:
+    """ROS2 환경 없이 PersonTracker 클래스를 독립적으로 테스트하기 위한 클래스입니다."""
 
-class PersonTrackerTester(Node):
     def __init__(self):
-        super().__init__('person_tracker_tester')
+        self.logger = get_logger('person_tracker_tester')
         
-        # 클라이언트들 생성
-        self.set_mode_client = self.create_client(SetVSMode, '/vs/command/set_vs_mode')
-        self.enroll_action_client = ActionClient(self, Enroll, '/vs/action/enroll')
-        self.stop_tracking_client = self.create_client(Trigger, '/vs/command/stop_tracking')
-        
-        # 추적 상태 구독
-        self.tracking_subscription = self.create_subscription(
-            Tracking,
-            '/vs/tracking',
-            self.tracking_callback,
-            10
-        )
-        
-        self.latest_tracking = None
-        self.get_logger().info("PersonTracker 테스터 초기화 완료")
+        # 설정 파일 로드
+        package_share_directory = get_package_share_directory('roomie_vs')
+        config_path = os.path.join(package_share_directory, 'config', 'vision_config.yaml')
+        with open(config_path, 'r') as f:
+            self.config = yaml.safe_load(f)
 
-    def tracking_callback(self, msg):
-        """추적 상태 메시지 수신"""
-        self.latest_tracking = msg
-        event_name = {0: "NONE", 1: "LOST", 2: "REACQUIRED"}.get(msg.event, "UNKNOWN")
-        self.get_logger().info(
-            f"📍 추적 상태: id={msg.id}, event={event_name}"
-        )
+        # YOLO 모델 로드
+        yolo_model_path = self.config['yolo']['models']['normal']
+        if not os.path.exists(yolo_model_path):
+            self.logger.error(f"YOLO 모델을 찾을 수 없습니다: {yolo_model_path}")
+            return
+        self.yolo_model = YOLO(yolo_model_path)
+        self.logger.info("YOLO 모델 로드가 완료되었습니다.")
 
-    def wait_for_services(self):
-        """모든 서비스가 준비될 때까지 대기"""
-        self.get_logger().info("VS 서비스들이 준비될 때까지 대기 중...")
-        
-        if not self.set_mode_client.wait_for_service(timeout_sec=10.0):
-            self.get_logger().error("SetVSMode 서비스를 찾을 수 없습니다")
-            return False
-            
-        if not self.enroll_action_client.wait_for_server(timeout_sec=10.0):
-            self.get_logger().error("Enroll 액션 서버를 찾을 수 없습니다")
-            return False
-            
-        if not self.stop_tracking_client.wait_for_service(timeout_sec=10.0):
-            self.get_logger().error("StopTracking 서비스를 찾을 수 없습니다")
-            return False
-            
-        self.get_logger().info("✅ 모든 VS 서비스 준비 완료!")
-        return True
+        # PersonTracker 초기화
+        self.person_tracker = PersonTracker(self.logger, self.config, self.yolo_model)
 
-    def set_vs_mode(self, mode_id):
-        """VS 모드 설정"""
-        request = SetVSMode.Request()
-        request.robot_id = 1
-        request.mode_id = mode_id
+        # 웹캠 초기화
+        self.camera = WebCamCamera(self.logger, camera_id=0)
+        if not self.camera.initialize():
+            self.logger.error("카메라를 열 수 없습니다.")
+            return
         
-        self.get_logger().info(f"🔄 모드 {mode_id} 설정 요청...")
-        future = self.set_mode_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
-        
-        if future.result() is not None:
-            response = future.result()
-            if response.success:
-                self.get_logger().info(f"✅ 모드 {mode_id} 설정 성공")
-                return True
-            else:
-                self.get_logger().error(f"❌ 모드 {mode_id} 설정 실패")
-                return False
-        else:
-            self.get_logger().error(f"❌ 모드 {mode_id} 설정 타임아웃")
-            return False
+        self.logger.info("테스트 준비 완료. 키 입력을 통해 모드를 변경할 수 있습니다.")
+        self.logger.info("  - 'r': 등록 모드 시작 (3초간)")
+        self.logger.info("  - 't': 추적 모드 시작")
+        self.logger.info("  - 's': 추적 중지 (대기 모드)")
+        self.logger.info("  - 'q': 종료")
 
-    def run_enrollment_test(self, duration_sec=3.0):
-        """등록 테스트"""
-        self.get_logger().info(f"👤 등록 테스트 시작 (duration: {duration_sec}초)")
-        
-        goal = Enroll.Goal()
-        goal.duration_sec = duration_sec
-        
-        future = self.enroll_action_client.send_goal_async(
-            goal,
-            feedback_callback=self.enroll_feedback_callback
-        )
-        
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
-        goal_handle = future.result()
-        
-        if not goal_handle.accepted:
-            self.get_logger().error("❌ 등록 액션 거부됨")
-            return False
-        
-        self.get_logger().info("✅ 등록 액션 수락됨, 진행 중...")
-        
-        # 등록 완료까지 대기
-        result_future = goal_handle.get_result_async()
-        rclpy.spin_until_future_complete(self, result_future, timeout_sec=duration_sec + 2.0)
-        
-        result = result_future.result()
-        if result and result.result.success:
-            self.get_logger().info("✅ 등록 완료!")
-            return True
-        else:
-            self.get_logger().error("❌ 등록 실패")
-            return False
+    def run(self):
+        """메인 루프: 키 입력을 받아 PersonTracker의 모드를 변경하고, 결과를 화면에 표시합니다."""
+        if not self.camera.is_running:
+            return
 
-    def enroll_feedback_callback(self, feedback):
-        """등록 진행률 피드백"""
-        progress = feedback.feedback.progress
-        self.get_logger().info(f"📊 등록 진행률: {progress:.1%}")
+        while True:
+            _, frame = self.camera.get_frames()
+            if frame is None:
+                self.logger.warning("카메라에서 프레임을 받을 수 없습니다.")
+                continue
 
-    def stop_tracking_test(self):
-        """추적 중지 테스트"""
-        self.get_logger().info("🛑 추적 중지 테스트")
-        
-        request = Trigger.Request()
-        future = self.stop_tracking_client.call_async(request)
-        rclpy.spin_until_future_complete(self, future, timeout_sec=5.0)
-        
-        if future.result() is not None:
-            response = future.result()
-            if response.success:
-                self.get_logger().info(f"✅ 추적 중지 성공: {response.message}")
-                return True
-            else:
-                self.get_logger().error(f"❌ 추적 중지 실패: {response.message}")
-                return False
-        else:
-            self.get_logger().error("❌ 추적 중지 타임아웃")
-            return False
+            # PersonTracker에 프레임 전달 및 이벤트 수신
+            tracking_events = self.person_tracker.process_frame(frame)
+            for event in tracking_events:
+                self.logger.info(f"추적 이벤트 수신: {event}")
 
-    def run_full_test(self):
-        """전체 워크플로우 테스트"""
-        self.get_logger().info("🚀 PersonTracker 전체 테스트 시작!")
-        
-        if not self.wait_for_services():
-            return False
-        
-        # 1. 대기모드로 설정 (후방)
-        if not self.set_vs_mode(0):
-            return False
-        time.sleep(1)
-        
-        # 2. 등록모드로 전환
-        if not self.set_vs_mode(1):
-            return False
-        time.sleep(1)
-        
-        # 3. 등록 실행 (실제 카메라가 없어도 테스트)
-        if not self.run_enrollment_test(3.0):
-            self.get_logger().warning("⚠️ 등록 실패 (카메라 없을 수 있음) - 계속 진행")
-        time.sleep(1)
-        
-        # 4. 추적모드로 전환
-        if not self.set_vs_mode(2):
-            return False
-        time.sleep(2)
-        
-        # 5. 추적 상태 모니터링 (5초간)
-        self.get_logger().info("📡 추적 상태 모니터링 (5초간)...")
-        start_time = time.time()
-        while time.time() - start_time < 5.0:
-            rclpy.spin_once(self, timeout_sec=0.1)
-        
-        # 6. 추적 중지
-        if not self.stop_tracking_test():
-            return False
-        
-        # 7. 대기모드로 복귀
-        if not self.set_vs_mode(0):
-            return False
-        
-        self.get_logger().info("🎉 PersonTracker 전체 테스트 완료!")
-        return True
+            # 시각화된 오버레이 프레임 가져오기
+            overlay_frame = self.person_tracker.get_overlay_frame(frame)
+            cv2.imshow('Person Tracker Test', overlay_frame)
+
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+            elif key == ord('r'):
+                self.logger.info("'r' 입력: 등록 모드로 변경합니다.")
+                self.person_tracker.set_mode(1)
+                self.person_tracker.register_target(duration_sec=3.0)
+            elif key == ord('t'):
+                self.logger.info("'t' 입력: 추적 모드로 변경합니다.")
+                self.person_tracker.set_mode(2)
+            elif key == ord('s'):
+                self.logger.info("'s' 입력: 대기 모드로 변경합니다.")
+                self.person_tracker.set_mode(0)
+
+        self.camera.cleanup()
+        cv2.destroyAllWindows()
 
 def main():
-    rclpy.init()
-    
-    tester = PersonTrackerTester()
-    
+    # rclpy.init()을 사용하지 않으므로, get_logger가 기본 로거를 사용하도록 설정
+    from rclpy.logging import set_logger_level
+    set_logger_level('person_tracker_tester', 10) # DEBUG 레벨
+
     try:
-        success = tester.run_full_test()
-        if success:
-            tester.get_logger().info("✅ 모든 테스트 통과!")
-        else:
-            tester.get_logger().error("❌ 일부 테스트 실패")
-    except KeyboardInterrupt:
-        tester.get_logger().info("사용자에 의해 중단됨")
-    finally:
-        tester.destroy_node()
-        rclpy.shutdown()
+        tester = PersonTrackerTester()
+        tester.run()
+    except Exception as e:
+        print(f"테스트 실행 중 오류 발생: {e}")
 
 if __name__ == '__main__':
-    main() 
+    main()
