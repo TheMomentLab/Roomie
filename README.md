@@ -14,22 +14,52 @@
 
 # 📚 Table of Contents
 
-- [1. Project Overview](#1-project-overview)
-- [2. Key Features](#2-key-features)
-- [3. Core Technologies](#3-core-technologies)
-- [4. Technical Challenges and Solutions](#4-technical-challenges-and-solutions)
-- [5. System Design](#5-system-design)
-- [6. Project Structure](#6-project-structure)
-- [7. Tech Stack](#7-tech-stack)
-- [8. Project Management](#8-project-management)
-- [9. Team](#9-team)
+- [1. Team](#1-team)
+- [2. Project Overview](#2-project-overview)
+- [3. Key Features](#3-key-features)
+- [4. Core Technologies](#4-core-technologies)
+- [5. Technical Challenges and Solutions](#5-technical-challenges-and-solutions)
+- [6. System Design](#6-system-design)
+- [7. Project Structure](#7-project-structure)
+- [8. Tech Stack](#8-tech-stack)
+- [9. Project Management](#9-project-management)
 - [10. License](#10-license)
 
 > 📄 Looking for the Korean version? See [`README.ko.md`](README.ko.md).
 
 ---
 
-# 1. Project Overview
+# 1. Team
+
+## 🧑‍💼 Jinhyeok Jang [`@jinhyuk2me`](https://github.com/jinhyuk2me)
+- Project planning and overall lead
+- System architecture and ROS2 package design
+- System scenario and FSM design
+- Vision AI model development and Vision Service implementation
+- ROS2 × PyQt-based Robot GUI implementation
+
+## 🧑‍💼 Jiyeon Kim [`@heyjay1002`](https://github.com/heyjay1002)
+- Backend development and database design
+- micro-ROS-based IO controller implementation
+- HTTP/WebSocket × PyQt Admin GUI
+- Robot hardware fabrication
+
+## 🧑‍💼 Jongmyeong Kim [`@jongbob1918`](https://github.com/jongbob1918)
+- FreeRTOS-based robot arm control
+- HTTP/WebSocket × HTML/JS/CSS Guest GUI
+- HTTP/WebSocket × PyQt Staff GUI
+- Jira schedule management
+- Robot hardware fabrication
+
+## 🧑‍💼 Hyojin Park [`@Park-hyojin`](https://github.com/Park-hyojin)
+- Robot SLAM & navigation lead
+- Static/dynamic obstacle-handling algorithm design and implementation
+- Path creation and driving behaviors
+- System integration plus delivery, guidance, and inter-floor travel features
+
+---
+
+# 2. Project Overview
 
 <div align="center">
   <table>
@@ -62,7 +92,7 @@
 
 ---
 
-# 2. Key Features
+# 3. Key Features
 
 ## 🍽️ Room Service Delivery
 
@@ -291,7 +321,7 @@
 
 ---
 
-# 3. Core Technologies
+# 4. Core Technologies
 
 ## 1) Robot Arm Control
 
@@ -437,7 +467,7 @@
 
 ---
 
-# 4. Technical Challenges and Solutions
+# 5. Technical Challenges and Solutions
 
 ### 🤖 Arm Vibration
 - **Problem**: Constant-velocity control created small jitter at the end effector.  
@@ -475,7 +505,7 @@
 
 ---
 
-# 5. System Design
+# 6. System Design
 
 <details>
 <summary>User Requirements</summary>
@@ -614,7 +644,7 @@ To stay reliable, Roomie embeds the Vision Service on the robot (on-device AI) s
 
 ---
 
-# 6. Project Structure
+# 7. Project Structure
 
 ```
 Roomie/
@@ -658,7 +688,7 @@ Roomie/
 
 ---
 
-# 7. Tech Stack
+# 8. Tech Stack
 
 | Category | Technologies |
 |----------|--------------|
@@ -670,7 +700,7 @@ Roomie/
 
 ---
 
-# 8. Project Management
+# 9. Project Management
 
 ## 1. Schedule Management
 
@@ -702,36 +732,6 @@ Roomie/
     </td>
   </tr>
 </table>
-
----
-
-# 9. Team
-
-## 🧑‍💼 Jinhyeok Jang [`@jinhyuk2me`](https://github.com/jinhyuk2me)
-- Project planning and overall lead
-- System architecture and ROS2 package design
-- System scenario and FSM design
-- Vision AI model development and Vision Service implementation
-- ROS2 × PyQt-based Robot GUI implementation
-
-## 🧑‍💼 Jiyeon Kim [`@heyjay1002`](https://github.com/heyjay1002)
-- Backend development and database design
-- micro-ROS-based IO controller implementation
-- HTTP/WebSocket × PyQt Admin GUI
-- Robot hardware fabrication
-
-## 🧑‍💼 Jongmyeong Kim [`@jongbob1918`](https://github.com/jongbob1918)
-- FreeRTOS-based robot arm control
-- HTTP/WebSocket × HTML/JS/CSS Guest GUI
-- HTTP/WebSocket × PyQt Staff GUI
-- Jira schedule management
-- Robot hardware fabrication
-
-## 🧑‍💼 Hyojin Park [`@Park-hyojin`](https://github.com/Park-hyojin)
-- Robot SLAM & navigation lead
-- Static/dynamic obstacle-handling algorithm design and implementation
-- Path creation and driving behaviors
-- System integration plus delivery, guidance, and inter-floor travel features
 
 ---
 
