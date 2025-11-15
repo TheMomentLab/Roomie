@@ -31,31 +31,89 @@
 
 # 1. Team
 
-## 🧑‍💼 Jinhyeok Jang [`@jinhyuk2me`](https://github.com/jinhyuk2me)
-- Project planning and overall lead
-- System architecture and ROS2 package design
-- System scenario and FSM design
-- Vision AI model development and Vision Service implementation
-- ROS2 × PyQt-based Robot GUI implementation
+<h3>👨‍💼 Team Lead</h3>
 
-## 🧑‍💼 Jiyeon Kim [`@heyjay1002`](https://github.com/heyjay1002)
-- Backend development and database design
-- micro-ROS-based IO controller implementation
-- HTTP/WebSocket × PyQt Admin GUI
-- Robot hardware fabrication
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>GitHub</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Jinhyeok Jang</strong></td>
+      <td>
+        <a href="https://github.com/jinhyuk2me">
+          <img src="https://img.shields.io/badge/github-jinhyuk2me-181717?style=flat-square&logo=github&logoColor=white">
+        </a>
+      </td>
+      <td>
+        Project planning & overall leadership<br>
+        ROS2 architecture, package layout, and FSM design<br>
+        Vision AI model & Vision Service implementation<br>
+        ROS2 × PyQt Robot GUI development
+      </td>
+    </tr>
+  </tbody>
+</table>
 
-## 🧑‍💼 Jongmyeong Kim [`@jongbob1918`](https://github.com/jongbob1918)
-- FreeRTOS-based robot arm control
-- HTTP/WebSocket × HTML/JS/CSS Guest GUI
-- HTTP/WebSocket × PyQt Staff GUI
-- Jira schedule management
-- Robot hardware fabrication
+<h3>👥 Team Members</h3>
 
-## 🧑‍💼 Hyojin Park [`@Park-hyojin`](https://github.com/Park-hyojin)
-- Robot SLAM & navigation lead
-- Static/dynamic obstacle-handling algorithm design and implementation
-- Path creation and driving behaviors
-- System integration plus delivery, guidance, and inter-floor travel features
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>GitHub</th>
+      <th>Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Jiyeon Kim</strong></td>
+      <td>
+        <a href="https://github.com/heyjay1002">
+          <img src="https://img.shields.io/badge/github-heyjay1002-181717?style=flat-square&logo=github&logoColor=white">
+        </a>
+      </td>
+      <td>
+        Backend development & DB design<br>
+        micro-ROS IO controller<br>
+        HTTP/WebSocket × PyQt Admin GUI<br>
+        Robot hardware fabrication
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Jongmyeong Kim</strong></td>
+      <td>
+        <a href="https://github.com/jongbob1918">
+          <img src="https://img.shields.io/badge/github-jongbob1918-181717?style=flat-square&logo=github&logoColor=white">
+        </a>
+      </td>
+      <td>
+        FreeRTOS-based robot arm control<br>
+        HTTP/WebSocket × HTML/JS/CSS Guest GUI<br>
+        HTTP/WebSocket × PyQt Staff GUI<br>
+        Jira schedule management & robot hardware build
+      </td>
+    </tr>
+    <tr>
+      <td><strong>Hyojin Park</strong></td>
+      <td>
+        <a href="https://github.com/Park-hyojin">
+          <img src="https://img.shields.io/badge/github-Park--hyojin-181717?style=flat-square&logo=github&logoColor=white">
+        </a>
+      </td>
+      <td>
+        SLAM & navigation lead<br>
+        Static/dynamic obstacle-handling algorithms<br>
+        Path planning & driving behaviors<br>
+        System integration for delivery/escort/elevator features
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ---
 
